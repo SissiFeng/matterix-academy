@@ -583,12 +583,12 @@ function Workspace({
   const stateRef = useRef(session);
   stateRef.current = session;
   const mounted = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
       mounted.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
   const dirty = JSON.stringify(draft) !== JSON.stringify(session.experiment);
   useEffect(() => {
     registerLeaveGuard(
