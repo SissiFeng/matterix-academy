@@ -1,0 +1,4 @@
+region      = "ca-central-1"
+environment = "dev"
+# Reuse the account's GitHub OIDC provider after verifying its trust configuration.
+# github_oidc_provider_arn = "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"

@@ -1,0 +1,64 @@
+name: Deploy academy to AWS
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: deploy-aws-development
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: aws-development
+    timeout-minutes: 20
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      WEB_BUCKET: ${{ vars.WEB_BUCKET }}
+      DISTRIBUTION_ID: ${{ vars.DISTRIBUTION_ID }}
+      LAMBDA_FUNCTION: ${{ vars.LAMBDA_FUNCTION }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        with:
+          python-version: '3.12'
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: '1.5.7'
+      - name: Check deployment configuration
+        env:
+          ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          test -n "$ROLE_ARN"
+          test -n "$AWS_REGION"
+          test -n "$WEB_BUCKET"
+          test -n "$DISTRIBUTION_ID"
+          test -n "$LAMBDA_FUNCTION"
+          test -n "$APP_URL"
+      - run: uv sync --frozen
+      - run: npm --prefix app/frontend ci --include=optional
+      - run: bash scripts/build-lambda.sh
+      - run: bash scripts/verify.sh
+      - run: npx playwright install --with-deps chromium
+        working-directory: app/frontend
+      - run: npm run test:e2e
+        working-directory: app/frontend
+      - uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Publish tested application
+        run: |
+          aws lambda update-function-code --function-name "$LAMBDA_FUNCTION" --zip-file fileb://build/lambda.zip > /dev/null
+          aws lambda wait function-updated-v2 --function-name "$LAMBDA_FUNCTION"
+          aws s3 sync app/frontend/dist/assets "s3://$WEB_BUCKET/assets" --cache-control 'public,max-age=31536000,immutable'
+          aws s3 cp app/frontend/dist/index.html "s3://$WEB_BUCKET/index.html" --cache-control 'no-cache'
+          INVALIDATION_ID=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/' '/index.html' '/auth/callback' --query 'Invalidation.Id' --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$INVALIDATION_ID"
+          curl --fail --retry 3 "$APP_URL/api/health"
+          curl --fail "$APP_URL/"
