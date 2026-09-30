@@ -1,5 +1,11 @@
 # Architecture and boundaries
 
+## Current development direction — 2026-09-30
+
+The next integration targets an existing remote Ubuntu GPU server. Student access stays in the browser; students do not receive Ubuntu accounts or a general-purpose remote desktop. The Academy web/API layer may later run on AWS, but provisioning an AWS GPU host is not a prerequisite. Start with one active learner session and a queue, with confirmed reset between learners, before qualifying classroom concurrency.
+
+The novice curriculum, implemented first-transfer workspace and remaining remote-session acceptance criteria are specified in [LEARNING-EXPERIENCE.md](LEARNING-EXPERIENCE.md). The browser now supports equipment exploration, preparation, prediction, step-by-step transfer and reflection, including a 50 µL retry. The runtime diagram below shows the eventual AWS control plane; the current application remains a local teaching preview. Operator setup and unresolved Ubuntu integration work are listed in [REMOTE-UBUNTU.md](REMOTE-UBUNTU.md).
+
 ## Runtime
 
 ```mermaid
@@ -20,9 +26,11 @@ The teaching runner is an isolated educational model, not a compatibility implem
 
 ## Teaching semantics
 
-The available experiment begins with stock at 100% and three wells containing diluent. Each dispense uses ideal instantaneous mixing. The pipette holds at most 300 µL; modeled containers hold at most 1,500 µL. A new tip is required after dispensing before the next aspiration. This is a lesson policy, not a quantitative contamination or vendor sensor model. Discarded liquid and solute are accounted for in waste. Rejecting an invalid operation leaves the liquid state unchanged and records the failed step.
+The introductory lesson transfers 100 µL (or 50 µL in the retry challenge) from a source containing 1,000 µL into empty well A1. Equipment exploration, preparation checks and a correct prediction are required before starting or resuming. Learning checkpoints are learner-owned, versioned and persisted alongside execution state. Editing the experiment invalidates preparation and prediction; reset preserves a copy of learning answers in the previous attempt. Practical completion and conceptual understanding are assessed separately.
 
-An action sequence completes independently of course success. The assessment checks the three target concentrations and that the tip is discarded with no remaining pipette liquid. The visual deck is a placement exercise; layout does not change motion or liquid semantics in this release.
+The existing dilution experiment begins with stock at 100% and three wells containing diluent. Each dispense uses ideal instantaneous mixing. Both courses limit the pipette to 300 µL and modeled containers to 1,500 µL. A new tip is required after dispensing before the next aspiration. This is a lesson policy, not a quantitative contamination or vendor sensor model. Discarded liquid and solute are accounted for in waste. Rejecting an invalid operation leaves the liquid state unchanged and records the failed step.
+
+An action sequence completes independently of course success. First-transfer assessment checks the requested liquid transfer and empty discarded tip; dilution assessment checks the three target concentrations and discarded tip. The visual deck is a placement exercise; layout does not change motion or liquid semantics in this release. The waste chute is fixed at D3. Older saved A3 layouts require explicit correction and saving before running.
 
 Browser auto-run advances the teaching model one step per request. Closing the page stops those requests; reopening offers Continue or single-step. It is not a background robot runner. Every mutation has an expected version and writes atomically. A duplicate or stale advance returns 409. A reset also advances the version, so a pre-reset request cannot execute against a restored world.
 
@@ -40,4 +48,6 @@ Local guest access requires an explicit environment flag, loopback hosting and a
 
 ## Next integration slice
 
-Build and qualify the Ubuntu gateway against the documented contract, including scoped scene control and authenticated streaming. Then add remote session leasing, expiration and reconnection to the platform. Test GPU memory and single-client streaming limits before selecting classroom concurrency. Teacher authoring, cohort administration, multiple devices, realistic collision physics and certification are not included in v0.1.
+The Academy-side HTTPS client implements allocation, revision-bound commands, observations, reset, release and read-only recovery using caller-known request IDs. It never retries uncertain mutations automatically. The authenticated connection-status route reports configuration and capability checks but cannot enable remote execution by itself.
+
+Build and qualify the Ubuntu gateway against the documented contract, including scoped scene control and authenticated streaming. Then add persistent remote operation records, session leasing, expiration and reconnection to the platform. Test GPU memory and single-client streaming limits before selecting classroom concurrency. Teacher authoring, cohort administration, multiple devices, realistic collision physics and certification remain unimplemented.

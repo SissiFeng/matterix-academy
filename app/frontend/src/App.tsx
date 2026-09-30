@@ -41,6 +41,8 @@ import type {
 } from "./types";
 import s from "./App.module.css";
 import { useDialog } from "./useDialog";
+import LearningLab, { FirstLessonCard } from "./LearningLab";
+import { firstTransfer } from "./learningContent";
 
 const LABWARE: Record<string, { name: string; detail: string }> = {
   stock: { name: "Stock solution", detail: "1,500 µL vial" },
@@ -241,7 +243,7 @@ function Welcome({
             <span>01 / FLEX FOUNDATIONS</span>
           </div>
           <Deck
-            layout={{ stock: "D1", plate: "C2", tips: "B1", waste: "A3" }}
+            layout={{ stock: "D1", plate: "C2", tips: "B1", waste: "D3" }}
             locked
             large
           />
@@ -413,6 +415,7 @@ function Dashboard({
   courses,
   sessions,
   onCreate,
+  onFirstLesson,
   onOpen,
   view,
 }: {
@@ -420,6 +423,7 @@ function Dashboard({
   courses: Course[];
   sessions: Session[];
   onCreate: () => void;
+  onFirstLesson: () => void;
   onOpen: (run: Session) => void;
   view: string;
 }) {
@@ -446,10 +450,19 @@ function Dashboard({
       </div>
       {view !== "history" && (
         <>
+          <FirstLessonCard
+            onStart={onFirstLesson}
+            resume={sessions.some(
+              (run) => run.experiment.course_id === "flex-first-transfer",
+            )}
+          />
           <div className={s.courseFeature}>
             <section>
               <span className={s.courseTag}>01 · FLEX FOUNDATIONS</span>
-              <h2>{courses[0]?.title ?? "A little less, each time."}</h2>
+              <h2>
+                {courses.find((course) => course.id === "flex-foundations")
+                  ?.title ?? "A little less, each time."}
+              </h2>
               <p>
                 Turn one stock solution into three dilutions.
                 <br />A small experiment with a lot to teach you.
@@ -707,6 +720,12 @@ function Workspace({
   const place = (slot: string, asset?: string) => {
     const target = asset || selected;
     if (!editable || !target || !LABWARE[target]) return;
+    if (target === "waste" || slot === "D3") {
+      onError(
+        "The Flex waste chute is fixed at D3; choose another slot for movable labware.",
+      );
+      return;
+    }
     const layout = { ...draft.layout };
     const previous = layout[target];
     const occupant = Object.keys(layout).find((key) => layout[key] === slot);
@@ -799,8 +818,25 @@ function Workspace({
                   <strong>A place for everything.</strong>
                   <p>
                     Select a piece of labware, then choose a slot. Occupied
-                    slots swap.
+                    slots swap. The waste chute is fixed at D3.
                   </p>
+                  {draft.layout.waste !== "D3" && (
+                    <button
+                      className={s.secondary}
+                      disabled={!editable}
+                      onClick={() => {
+                        const layout = { ...draft.layout };
+                        const occupant = Object.keys(layout).find(
+                          (key) => layout[key] === "D3",
+                        );
+                        if (occupant) layout[occupant] = layout.waste;
+                        layout.waste = "D3";
+                        setDraft({ ...draft, layout });
+                      }}
+                    >
+                      Correct legacy waste chute position
+                    </button>
+                  )}
                 </div>
                 <button className={s.secondary} onClick={() => setViewer(true)}>
                   <Monitor size={15} /> Matterix 3D
@@ -816,12 +852,12 @@ function Workspace({
                 {Object.entries(LABWARE).map(([id, item]) => (
                   <button
                     key={id}
-                    draggable={editable}
+                    draggable={editable && id !== "waste"}
                     onDragStart={(e) =>
                       e.dataTransfer.setData("text/plain", id)
                     }
                     className={selected === id ? s.selectedAsset : ""}
-                    disabled={!editable}
+                    disabled={!editable || id === "waste"}
                     onClick={() => setSelected(id)}
                   >
                     <LabwareDrawing kind={id} />
@@ -1381,10 +1417,13 @@ export default function App() {
     window.history.replaceState({}, "", "/");
     window.scrollTo(0, 0);
   };
-  const create = async () => {
+  const create = async (first = false) => {
     setBusy(true);
     try {
-      const run = await api<Session>("/sessions", json({}));
+      const run = await api<Session>(
+        "/sessions",
+        json(first ? firstTransfer() : {}),
+      );
       setSessions([run, ...sessions]);
       open(run);
     } catch (e) {
@@ -1530,7 +1569,17 @@ export default function App() {
                   : "Academy workspace"}
               </span>
             </header>
-            {view === "lab" && session ? (
+            {view === "lab" &&
+            session?.experiment.course_id === "flex-first-transfer" ? (
+              <LearningLab
+                key={session.id}
+                session={session}
+                onChange={updateSession}
+                onBack={() => nav("learn")}
+                onError={showError}
+                registerLeaveGuard={registerLeaveGuard}
+              />
+            ) : view === "lab" && session ? (
               <Workspace
                 key={session.id}
                 session={session}
@@ -1546,6 +1595,14 @@ export default function App() {
                 sessions={sessions}
                 onCreate={() => {
                   if (!busy) create();
+                }}
+                onFirstLesson={() => {
+                  if (busy) return;
+                  const existing = sessions.find(
+                    (run) => run.experiment.course_id === "flex-first-transfer",
+                  );
+                  if (existing) open(existing);
+                  else create(true);
                 }}
                 onOpen={open}
                 view={view}

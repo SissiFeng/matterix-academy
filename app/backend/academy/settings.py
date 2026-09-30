@@ -15,6 +15,8 @@ class Settings:
     client_id: str = ""
     cognito_domain: str = ""
     app_url: str = "http://127.0.0.1:5173"
+    gateway_url: str = ""
+    gateway_token: str = ""
 
     def __post_init__(self):
         if self.runtime not in {"local", "aws"}:
@@ -56,4 +58,6 @@ class Settings:
             client_id=os.getenv("ACADEMY_CLIENT_ID", ""),
             cognito_domain=os.getenv("ACADEMY_COGNITO_DOMAIN", ""),
             app_url=os.getenv("ACADEMY_APP_URL", "http://127.0.0.1:5173"),
+            gateway_url=os.getenv("ACADEMY_GATEWAY_URL", ""),
+            gateway_token=os.getenv("ACADEMY_GATEWAY_TOKEN", ""),
         )

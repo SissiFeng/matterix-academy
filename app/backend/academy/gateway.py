@@ -4,10 +4,12 @@ Kept outside the teaching runner. No fallback from remote failure to synthetic s
 The platform does not expose this until a deployed gateway passes qualification.
 """
 
+from typing import Literal
 from urllib.parse import urlparse
+from uuid import UUID
 
 import httpx
-from pydantic import Field
+from pydantic import AwareDatetime, Field, model_validator
 
 from .models import StrictModel
 
@@ -22,6 +24,49 @@ class GatewayCapabilities(StrictModel):
 
 class GatewayUnavailable(RuntimeError):
     pass
+
+
+class RemoteOutcomeUnknown(GatewayUnavailable):
+    """A submitted mutation may have executed. Reconcile; do not retry it blindly."""
+
+
+class RemoteCommand(StrictModel):
+    command_id: UUID
+    expected_revision: int = Field(ge=1)
+    action: Literal["pickup", "aspirate", "dispense", "drop"]
+    object_id: Literal["tips", "stock", "plate", "waste"]
+    well_id: str = Field(default="", max_length=16, pattern=r"^[A-Za-z0-9]*$")
+    volume_ul: float | None = Field(default=None, gt=0, le=300, allow_inf_nan=False)
+
+
+class RemoteSnapshot(StrictModel):
+    id: UUID
+    revision: int = Field(ge=1)
+    status: Literal["loading", "ready", "running", "paused", "faulted", "closed"]
+    engine: Literal["matterix"]
+    simulation_only: Literal[True]
+    engine_version: str = Field(min_length=1, max_length=100)
+    asset_version: str = Field(min_length=1, max_length=100)
+    lease_expires_at: AwareDatetime
+    observed_at: AwareDatetime
+
+
+class RemoteOperation(StrictModel):
+    command_id: UUID
+    operation_id: UUID
+    status: Literal["accepted", "running", "completed", "failed", "unknown"]
+
+
+class RemoteAllocation(StrictModel):
+    allocation_id: UUID
+    status: Literal["pending", "allocated", "failed", "unknown"]
+    session_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def allocated_requires_identity(self):
+        if self.status == "allocated" and self.session_id is None:
+            raise ValueError("An allocated lease must identify its session")
+        return self
 
 
 class MatterixGateway:
@@ -64,3 +109,103 @@ class MatterixGateway:
 
     def close(self):
         self.client.close()
+
+    def _exchange(self, method, path, model, payload=None):
+        mutation = method != "GET"
+        try:
+            response = self.client.request(method, path, json=payload)
+            if mutation and response.status_code >= 500:
+                raise RemoteOutcomeUnknown(
+                    "Remote result is unknown; reconcile the operation before continuing"
+                )
+            response.raise_for_status()
+        except httpx.TransportError as exc:
+            error = RemoteOutcomeUnknown if mutation else GatewayUnavailable
+            raise error("Remote connection failed; do not automatically repeat a command") from exc
+        except httpx.HTTPStatusError as exc:
+            raise GatewayUnavailable("Remote request was rejected") from exc
+        try:
+            return model.model_validate(response.json())
+        except ValueError as exc:
+            error = RemoteOutcomeUnknown if mutation else GatewayUnavailable
+            raise error("Remote response did not match the expected contract") from exc
+
+    def allocate(self, allocation_id: UUID):
+        return self._exchange(
+            "POST",
+            "v1/sessions",
+            RemoteSnapshot,
+            {
+                "allocation_id": str(UUID(str(allocation_id))),
+                "scene_id": "flex-first-transfer-v1",
+            },
+        )
+
+    def allocation(self, allocation_id: UUID):
+        allocation_id = UUID(str(allocation_id))
+        result = self._exchange("GET", f"v1/allocations/{allocation_id}", RemoteAllocation)
+        if result.allocation_id != allocation_id:
+            raise GatewayUnavailable("Remote allocation identity did not match")
+        return result
+
+    def snapshot(self, session_id: UUID):
+        session_id = UUID(str(session_id))
+        result = self._exchange("GET", f"v1/sessions/{session_id}", RemoteSnapshot)
+        if result.id != session_id:
+            raise GatewayUnavailable("Remote session identity did not match")
+        return result
+
+    def submit(self, session_id: UUID, command: RemoteCommand):
+        result = self._exchange(
+            "POST",
+            f"v1/sessions/{UUID(str(session_id))}/commands",
+            RemoteOperation,
+            command.model_dump(mode="json"),
+        )
+        if result.command_id != command.command_id:
+            raise RemoteOutcomeUnknown("Remote acknowledgement did not match the submitted command")
+        return result
+
+    def command_result(self, session_id: UUID, command_id: UUID):
+        command_id = UUID(str(command_id))
+        result = self._exchange(
+            "GET", f"v1/sessions/{UUID(str(session_id))}/commands/{command_id}", RemoteOperation
+        )
+        if result.command_id != command_id:
+            raise GatewayUnavailable("Remote command identity did not match")
+        return result
+
+    def operation(self, session_id: UUID, operation_id: UUID):
+        operation_id = UUID(str(operation_id))
+        result = self._exchange(
+            "GET", f"v1/sessions/{UUID(str(session_id))}/operations/{operation_id}", RemoteOperation
+        )
+        if result.operation_id != operation_id:
+            raise GatewayUnavailable("Remote operation identity did not match")
+        return result
+
+    def reset(self, session_id: UUID, command_id: UUID, expected_revision: int):
+        if expected_revision < 1:
+            raise ValueError("A positive expected revision is required")
+        result = self._exchange(
+            "POST",
+            f"v1/sessions/{UUID(str(session_id))}/reset",
+            RemoteOperation,
+            {"command_id": str(UUID(str(command_id))), "expected_revision": expected_revision},
+        )
+        if result.command_id != UUID(str(command_id)):
+            raise RemoteOutcomeUnknown("Remote reset acknowledgement did not match")
+        return result
+
+    def release(self, session_id: UUID, command_id: UUID, expected_revision: int):
+        if expected_revision < 1:
+            raise ValueError("A positive expected revision is required")
+        result = self._exchange(
+            "DELETE",
+            f"v1/sessions/{UUID(str(session_id))}",
+            RemoteOperation,
+            {"command_id": str(UUID(str(command_id))), "expected_revision": expected_revision},
+        )
+        if result.command_id != UUID(str(command_id)):
+            raise RemoteOutcomeUnknown("Remote release acknowledgement did not match")
+        return result

@@ -1,3 +1,19 @@
+# Guided first-transfer validation — 2026-09-30
+
+Verified locally for `codex/flex-guided-learning`:
+
+- **110 backend tests passed**, across SQLite and mocked DynamoDB. New coverage checks 50/100 µL transfers, preparation and prediction gates on start/resume, learning ownership/versioning, edit invalidation, reset answer preservation, fixed D3 fixtures, and remote client uncertainty/recovery by caller-known IDs.
+- **10 Chromium browser journeys passed**. The five new journeys cover the full equipment-to-reflection lesson and 50 µL challenge, mobile overflow and unavailable remote status, unsaved prediction/discard behavior, prediction feedback independent of prerequisites, and a committed action whose response is lost without automatically replaying it. The original five dilution/account/navigation journeys still pass.
+- `bash scripts/verify.sh` passed: Python lint/format, backend tests, TypeScript/production build, frontend formatting and Terraform initialization/validation. No AWS plan or apply was run.
+- `bash scripts/build-lambda.sh` produced a Linux x86_64 Python 3.12 archive; it was not invoked in AWS.
+- Security review reported no findings. Architecture review findings were fixed and rechecked, with regression coverage for archived answers, discarded inputs, prediction feedback and remote request-ID reconciliation.
+
+This revision has automated browser evidence, but no fresh manual visual acceptance: the app browser returned a local-URL policy rejection during the preceding preview attempt. The tests do not establish the appearance of a live 3D scene.
+
+Still unverified/unimplemented: actual Ubuntu gateway server, native Matterix adapter, durable remote operation orchestration, lease/queue scheduling, authenticated streaming, GPU execution, classroom concurrency and deployed AWS identity/network behavior. `/api/remote/status` deliberately reports remote execution unavailable even after a successful capability response. Gateway tests use a mock HTTP transport.
+
+The two existing upstream Python deprecation warnings remain. Consult GitHub Actions for live CI status and the commit tested; these dated results are local evidence.
+
 # Initial release validation — 2026-09-28
 
 Verified locally in this development session:

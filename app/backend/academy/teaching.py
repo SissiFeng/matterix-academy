@@ -4,7 +4,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from .models import Experiment
+from .models import Experiment, LearningProgress
 
 
 class InvalidTransition(ValueError):
@@ -46,10 +46,11 @@ def new_session(experiment: Experiment) -> dict:
         "events": [],
         "assessment": None,
         "attempts": [],
+        "learning": LearningProgress().model_dump(),
     }
 
 
-def assessment(state: dict) -> dict:
+def assessment(state: dict, experiment: dict) -> dict:
     targets = {"A1": 50, "A2": 25, "A3": 12.5}
     measured = {
         name: round(well["solute"] / well["volume"], 4) if well["volume"] else 0
@@ -63,6 +64,25 @@ def assessment(state: dict) -> dict:
         }
         for name, target in targets.items()
     ]
+    if experiment["course_id"] == "flex-first-transfer":
+        volume = experiment["transfer_volume"]
+        checks = [
+            {
+                "label": f"目标 A1 孔收到 {volume:g} µL",
+                "passed": abs(state["wells"]["A1"]["volume"] - volume) < 1e-6,
+            },
+            {
+                "label": "源容器减少了对应体积",
+                "passed": abs(
+                    state["wells"]["stock"]["volume"] - (experiment["source_volume"] - volume)
+                )
+                < 1e-6,
+            },
+            {
+                "label": "未向其他孔转移",
+                "passed": all(state["wells"][w]["volume"] == 0 for w in ["A2", "A3"]),
+            },
+        ]
     checks.append(
         {
             "label": "All liquid is dispensed and the final tip is discarded",
@@ -184,7 +204,7 @@ def execute_step(session: dict) -> dict:
         )
         if result["cursor"] == len(result["experiment"]["actions"]):
             result["status"] = "completed"
-            result["assessment"] = assessment(state)
+            result["assessment"] = assessment(state, result["experiment"])
     return result
 
 
@@ -207,6 +227,7 @@ def control(session: dict, command: str) -> dict:
                         "steps": result["cursor"],
                         "assessment": result["assessment"],
                         "last_event": result["events"][-1] if result["events"] else None,
+                        "learning": deepcopy(result.get("learning")),
                     }
                 ]
             )[-10:]
@@ -217,6 +238,8 @@ def control(session: dict, command: str) -> dict:
             events=[],
             assessment=None,
         )
+        if result["experiment"]["course_id"] == "flex-first-transfer":
+            result["learning"].update(phase="predict", checks=[], prediction=None, reflection="")
     else:
         raise InvalidTransition(f"Cannot {command} an experiment that is {status}")
     return result
