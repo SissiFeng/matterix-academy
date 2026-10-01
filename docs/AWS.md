@@ -6,7 +6,7 @@ The repository contains a standalone serverless deployment. The AC environment u
 
 - S3 private, encrypted, versioned frontend bucket with CloudFront Origin Access Control.
 - CloudFront HTTPS frontend and same-origin `/api/*` routing; API responses are never cached. SPA rewriting applies only to frontend paths, so API 401/403 responses remain errors.
-- Cognito invitation-only user pool and public browser client using authorization code + PKCE.
+- Cognito user pool with configurable email-domain admission and a public browser client using authorization code + PKCE. AC dev admits verified `@utoronto.ca` learners; other deployments default to invitation-only.
 - API Gateway HTTP API with JWT authorization and a custom access-token scope.
 - Python 3.12 x86_64 Lambda running FastAPI through Mangum; no public Lambda function URL.
 - Separate worker HTTP API, zero-cache machine authorizer, worker Lambda and scheduled lease reaper. Workers initiate outbound HTTPS; AWS needs no inbound connection to Ubuntu. Native execution defaults off, and each worker requires operator qualification.
@@ -61,9 +61,9 @@ terraform -chdir=infra output
 | `APP_URL` | `app_url` |
 
 6. Every push/merge to `main` automatically starts **Deploy academy to AWS**. Its build job packages and tests the exact commit without AWS credentials, then uploads a checksum-bound release artifact. The separate, serialized deployment job receives short-lived OIDC credentials only after tests pass, publishes that artifact to all four Lambda functions and S3, invalidates CloudFront, and verifies `/version.json`, health and unauthenticated denial. A superseded main commit is skipped before publishing. Manual reruns remain available. The workflow does not run Terraform or create infrastructure. See [CONTINUOUS-DEPLOYMENT.md](CONTINUOUS-DEPLOYMENT.md).
-7. Invite a test learner through the Cognito console. Confirm Hosted UI login, first-run onboarding, create/run/reset, refresh persistence and sign-out at the deployed URL. Use two distinct accounts to check isolation. Public health checks alone do not prove login or classroom readiness.
+7. In AC dev, register using an actual `@utoronto.ca` mailbox and confirm its email code, or invite a test learner through the Cognito console. Confirm Hosted UI login, first-run onboarding, create/run/reset, refresh persistence and sign-out at the deployed URL. Use two distinct accounts to check isolation. Public health checks alone do not prove login or classroom readiness.
 
-Terraform bootstraps Lambda code and owns resources, configuration and IAM. After bootstrap, the workflow owns application code; Terraform ignores `filename`/`source_code_hash` changes so an infrastructure apply cannot silently republish an older local package. For initial publication use the tested release workflow with verified output values. Do not open API CORS broadly; requests use the CloudFront origin. Add a custom hostname only after updating Cognito callback/logout URLs and the application's configured URL together.
+Terraform bootstraps application Lambda code and owns resources, configuration and IAM. The separate Cognito admission Lambda is entirely Terraform-owned, including its deterministic `build/cognito-signup.zip`; application deployment credentials cannot update it. After bootstrap, the workflow owns application code; Terraform ignores `filename`/`source_code_hash` changes so an infrastructure apply cannot silently republish an older local package. For initial publication use the tested release workflow with verified output values. Do not open API CORS broadly; requests use the CloudFront origin. Add a custom hostname only after updating Cognito callback/logout URLs and the application's configured URL together.
 
 ## AC environment
 
@@ -72,6 +72,18 @@ The account was selected by the user and verified against both Chrome and STS. A
 `remote_execution_enabled=true` requires the native acceptance evidence and operator enrollment described in [WORKER-CONTROL.md](WORKER-CONTROL.md). The account currently has only 10 total Lambda concurrent executions, so AC dev disables reservations (`reserve_lambda_concurrency=false`) and uses a 5 requests/second learner throttle, burst 10. Functions share this capacity with existing account workloads. This is a development environment; raise the quota and qualify capacity before classroom use.
 
 The legacy direct gateway status route is diagnostic only; this deployment does not configure an inbound Ubuntu URL or gateway secret in Lambda.
+
+## Learner registration
+
+AC dev sets `self_signup_email_domains = ["utoronto.ca"]`. On the welcome page, choose **Sign in or create an account**, then **Sign up** in Cognito. Use an email whose domain is exactly `utoronto.ca`, choose a password, and enter the code received at that mailbox. Cognito confirms the account after email verification, so no administrator approval is required. This is email-based registration, not University of Toronto SSO.
+
+The pre-sign-up trigger rejects other domains, subdomains and suffix lookalikes. It never auto-confirms users or auto-verifies email, and client metadata cannot grant a role. Every admitted account receives the existing ordinary learner experience: its own progress and teaching exercises, with no teacher/admin role or native-device access. IAM-authorized operators can still invite external learners through Cognito. The rule controls admission; it does not periodically verify university affiliation or revoke existing accounts. Email changes require verification before replacing the current address.
+
+To suspend new self-registration, set the domain list to `[]`, rebuild with `bash scripts/build-lambda.sh`, and review/apply the Terraform plan. Existing accounts continue to sign in. Change the allowed domains through Terraform only; the public `/api/config` list is a display hint, while Cognito's trigger enforces admission. The trigger role can write only its own logs, and Cognito invocation is restricted to this account and user pool. A trigger failure denies registration.
+
+For verification, local tests cover domain boundaries, untrusted metadata and the welcome screen. Live checks can invoke the policy with synthetic events and reject a disallowed Cognito sign-up. A successful real-mailbox confirmation and two-user isolation exercise still require actual test learners; do not send registration emails to invented university addresses.
+
+References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-pre-sign-up.html), [email confirmation and attribute verification](https://docs.aws.amazon.com/cognito/latest/developerguide/signing-up-users-in-your-app.html).
 
 ## Operations and rollback
 

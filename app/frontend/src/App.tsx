@@ -235,7 +235,9 @@ function Welcome({
               {busy
                 ? "Opening your workspace…"
                 : config.auth === "cognito"
-                  ? "Sign in to Lab Onboarding"
+                  ? config.self_signup_email_domains?.length
+                    ? "Sign in or create an account"
+                    : "Sign in to Lab Onboarding"
                   : "Enter the learning lab"}
               <ArrowRight size={18} />
             </button>
@@ -245,7 +247,9 @@ function Welcome({
               ? "Local preview · your progress stays on this computer"
               : config.auth === "disabled"
                 ? "Sign-in has not been configured. Ask your administrator."
-                : "Use your training account to save your progress."}
+                : config.self_signup_email_domains?.length
+                  ? `New learners can sign up with ${config.self_signup_email_domains.map((domain) => `@${domain}`).join(" or ")}. Verify your email to start learning.`
+                  : "Use your training account to save your progress."}
           </span>
         </section>
         <section className={s.welcomeVisual}>

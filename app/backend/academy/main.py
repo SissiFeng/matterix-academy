@@ -97,6 +97,9 @@ def create_app(settings: Settings | None = None, store=None):
             "client_id": settings.client_id,
             "cognito_domain": settings.cognito_domain,
             "app_url": settings.app_url,
+            "self_signup_email_domains": settings.self_signup_email_domains
+            if settings.runtime == "aws"
+            else [],
             "engines": {
                 "teaching": {"available": True, "evidence": "synthetic"},
                 "matterix": {

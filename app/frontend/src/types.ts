@@ -3,6 +3,7 @@ export type Config = {
   issuer: string;
   client_id: string;
   cognito_domain: string;
+  self_signup_email_domains?: string[];
   app_url: string;
   engines: { matterix: { available: boolean; reason: string } };
 };

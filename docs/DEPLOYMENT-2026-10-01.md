@@ -72,3 +72,13 @@ AWS_PROFILE=pas-sdl0-dev AWS_DEFAULT_REGION=ca-central-1 \
 - Error alarms exist without a notification destination. An operator must attach the intended notification channel and budget before production operations.
 
 The dedicated worker authorizer uses the [HTTP API Lambda authorizer 2.0 contract](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-lambda-authorizer.html) with zero cache. The deployment uses an existing [S3 Terraform backend](https://developer.hashicorp.com/terraform/language/backend/s3) and a distinct Academy state key.
+
+## University learner self-registration
+
+A later user-authorized change opened AC dev self-registration for the exact email domain `utoronto.ca`. Terraform applied **5 additions, 2 in-place changes, 0 deletions**, retaining the same user pool and data table. The fifth Lambda, `matterix-academy-dev-signup`, is Terraform-owned and admits university sign-ups without auto-confirming or auto-verifying them. Cognito email confirmation remains required. Other domains require an operator invitation. No teacher/admin role or native execution permission is granted.
+
+Validation on the implementation branch: `scripts/build-lambda.sh` passed; `scripts/verify.sh` passed with **310 backend tests** and Terraform validation; **28 Playwright tests** passed, including the two new registration/invitation welcome cases. Security and architecture reviews found no actionable issues.
+
+Live checks verified the pool's trigger, exact allowlist, email verification settings, source-pool/account invocation policy and deployed ZIP hash (`x8xqb+zGRYNUg9HoCn3T2UhLXI6Xu2guE8Iw/pRxHhk=`). Operator-invoked synthetic events admitted the university domain without confirmation bypass, rejected a subdomain, and preserved administrator invitations. An actual Cognito `SignUp` request using a reserved invalid domain returned `UserLambdaValidationException`; no probe account was created. Chrome showed the **Sign up** link and registration form through the application's PKCE login flow. No real mailbox, password or verification code was entered, so real email delivery and an authenticated learner journey remain unverified.
+
+The application welcome hint ships through the existing main-branch deployment workflow. The four application Lambdas remain workflow-owned; the Cognito policy cannot be changed by that deployment role. See [AWS.md](AWS.md#learner-registration) for the registration path and how to suspend new registrations.
