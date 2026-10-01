@@ -1,3 +1,9 @@
+# Synchronized run contract validation — 2026-10-01
+
+Verified locally: **139 backend tests** passed. New coverage binds whole-workflow inputs to a run, distinguishes acknowledgement from confirmed progress, rejects cross-run/out-of-order reports and rewritten native observations, requires ordered completion evidence, and recovers a lost start response through the original run ID without another POST. Both specialist reviewers identified observation-integrity gaps; these were fixed, regression-tested and rechecked.
+
+The **10 Chromium journeys** also passed during this change; the student interface continues to use the teaching runner. `scripts/verify.sh` and `scripts/build-lambda.sh` passed after the final backend fixes. All remote-run responses in these tests are HTTP fixtures. The Ubuntu implementation, native scene/action/observation mapping, durable orchestration, live student progress and media integration are still pending. This is contract validation, not a working Academy-to-Matterix synchronization demonstration.
+
 # English interface validation — 2026-10-01
 
 All student interface copy is now English, including course content, diagram labels, accessibility labels, dialogs, readiness checks, assessments and remote connection messages. Exact legacy system-generated titles and assessment labels are translated on read; stored outcomes, learning progress and custom learner titles are preserved.

@@ -4,6 +4,8 @@ This is a **new gateway contract**, not a claim that these endpoints exist in th
 
 The gateway runs next to Matterix on a managed Ubuntu GPU host. The operator supplies its HTTPS base URL and service credential through deployment configuration/Secrets Manager. A student cannot supply gateway URLs, executable code, shell commands, asset paths or credentials. Streaming and service access need authenticated, expiring session grants; students receive no Linux accounts.
 
+The required student execution flow is specified in [SYNCHRONIZED-RUNS.md](SYNCHRONIZED-RUNS.md): submitting the saved workflow to Matterix and reflecting that same run's confirmed progress and native observations. `remote_run.py` and the client now support the proposed whole-workflow request/snapshot contract. The server implementation, durable Academy orchestration, media binding and student remote execution routes remain pending; the existing teaching runner is not this integration.
+
 ## Qualification endpoint implemented by the client
 
 `GET /v1/capabilities`, authenticated with a service Bearer credential:
@@ -27,6 +29,8 @@ The client rejects redirects, unknown contract versions, non-Matterix evidence, 
 | `POST /v1/sessions` | Allocate an isolated simulation lease from an operator-controlled scene catalog; include caller-generated allocation idempotency key. |
 | `GET /v1/allocations/{allocation_id}` | Recover the allocation result using an ID known before sending the request. Return allocation ID, pending/allocated/failed/unknown status, and session ID when allocated. |
 | `GET /v1/sessions/{id}` | Return authoritative state, revision, engine/asset versions, lease expiry and observation timestamps. |
+| `POST /v1/sessions/{id}/runs` | Submit the complete immutable experiment with original run ID, plan hash and expected revision. A receipt does not confirm any steps. |
+| `GET /v1/sessions/{id}/runs/{run_id}` | Recover cumulative native progress for that exact workflow without re-executing it. |
 | `POST /v1/sessions/{id}/commands` | Submit an allowlisted action with expected revision and command ID; return accepted operation ID. |
 | `GET /v1/sessions/{id}/commands/{command_id}` | Recover a command/reset/release result when its acknowledgement, including the operation ID, was lost. |
 | `GET /v1/sessions/{id}/operations/{operation_id}` | Resolve accepted/completed/failed/unknown without replaying an uncertain command. |
@@ -40,6 +44,8 @@ The allocation request uses `{allocation_id, scene_id: "flex-first-transfer-v1"}
 Every operation response includes the original `command_id`, an `operation_id`, and a status from `accepted/running/completed/failed/unknown`. Reset and release requests also carry unique caller-generated `command_id` and `expected_revision`. The gateway must durably register IDs before execution, associate them with the session and exact payload, and retain lookup records after release. A repeated ID must not execute twice; the same ID with a different payload is rejected. A lookup returning no record does not by itself prove the command never ran. Unknown outcomes remain blocked for reconciliation or operator recovery, with no automatic replay.
 
 The client checks response identities, rejects redirects, does not retry mutations, and classifies network failures, 5xx responses and malformed successful mutation responses as unknown. This behavior is verified using mock transport, not a native Matterix server.
+
+For a whole workflow, the gateway must durably bind `run_id` to the owning session and exact plan before dispatch. Reusing an ID with a different plan fails; looking up a missing run never authorizes automatic resubmission. Apply the command idempotency and retention rules above to run IDs as well. A whole-workflow runner and individual command submission must not execute concurrently in the same session.
 
 ## Required acceptance evidence
 

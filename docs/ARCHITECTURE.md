@@ -24,6 +24,8 @@ Academy owns identity, curriculum, learner work, teaching attempts and session a
 
 The teaching runner is an isolated educational model, not a compatibility implementation of Matterix. Its evidence source is always `synthetic`. The UI never converts a gateway error into a teaching result or a synthetic result into a GPU claim.
 
+The required next execution path is a [synchronized run](SYNCHRONIZED-RUNS.md): Academy persists the student's complete plan, Matterix executes it in an isolated lease, and Academy renders the same run's confirmed step outcomes and native observations. Browser timers may poll for updates but never execute or complete remote steps. The typed workflow/progress client contract is implemented; durable orchestration, Ubuntu endpoints and the live UI are not yet connected.
+
 ## Teaching semantics
 
 The introductory lesson transfers 100 µL (or 50 µL in the retry challenge) from a source containing 1,000 µL into empty well A1. Equipment exploration, preparation checks and a correct prediction are required before starting or resuming. Learning checkpoints are learner-owned, versioned and persisted alongside execution state. Editing the experiment invalidates preparation and prediction; reset preserves a copy of learning answers in the previous attempt. Practical completion and conceptual understanding are assessed separately.

@@ -12,6 +12,7 @@ import httpx
 from pydantic import AwareDatetime, Field, model_validator
 
 from .models import StrictModel
+from .remote_run import RemoteRunRequest, RemoteRunSnapshot, check_run_snapshot
 
 
 class GatewayCapabilities(StrictModel):
@@ -153,6 +154,44 @@ class MatterixGateway:
         result = self._exchange("GET", f"v1/sessions/{session_id}", RemoteSnapshot)
         if result.id != session_id:
             raise GatewayUnavailable("Remote session identity did not match")
+        return result
+
+    def start_run(self, session_id: UUID, request: RemoteRunRequest):
+        """Submit a saved whole workflow once; receipt is not step completion."""
+        session_id = UUID(str(session_id))
+        request = RemoteRunRequest.model_validate(request.model_dump())
+        result = self._exchange(
+            "POST",
+            f"v1/sessions/{session_id}/runs",
+            RemoteRunSnapshot,
+            request.model_dump(mode="json"),
+        )
+        try:
+            check_run_snapshot(result, session_id, request)
+        except ValueError as exc:
+            raise RemoteOutcomeUnknown(
+                "Remote run acknowledgement did not match the saved plan"
+            ) from exc
+        return result
+
+    def run_snapshot(
+        self,
+        session_id: UUID,
+        request: RemoteRunRequest,
+        previous: RemoteRunSnapshot | None = None,
+    ):
+        """Recover progress by the original run ID, including after a lost response."""
+        session_id = UUID(str(session_id))
+        request = RemoteRunRequest.model_validate(request.model_dump())
+        result = self._exchange(
+            "GET", f"v1/sessions/{session_id}/runs/{request.run_id}", RemoteRunSnapshot
+        )
+        try:
+            check_run_snapshot(result, session_id, request, previous)
+        except ValueError as exc:
+            raise GatewayUnavailable(
+                "Remote progress could not be reconciled with this run"
+            ) from exc
         return result
 
     def submit(self, session_id: UUID, command: RemoteCommand):

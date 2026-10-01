@@ -15,6 +15,7 @@ Do not reinstall drivers, expose new ports or change the operator's current simu
 
 - A read-only authenticated `/api/remote/status` endpoint. It accepts no browser-supplied host, token or URL. Its response never includes service credentials or the configured host.
 - An HTTPS client for the proposed [gateway contract](MATTERIX-CONTRACT.md), including recovery by allocation and command IDs known before transmission.
+- A [whole-workflow synchronization contract](SYNCHRONIZED-RUNS.md), with plan-bound run IDs, cumulative native progress and read-only recovery after a lost start response. It does not yet connect the student run button to Matterix.
 - Student UI states for not configured, unavailable and awaiting qualification. All states keep remote execution disabled. A successful capability response is not an execution or streaming acceptance test.
 
 The operator supplies `ACADEMY_GATEWAY_URL` (HTTPS base URL, no embedded credentials/query/fragment) and `ACADEMY_GATEWAY_TOKEN` through a protected environment or deployment secret. The API uses these to request `/v1/capabilities`. Do not put the service token in frontend environment variables, student forms, URLs or logs. AWS secret wiring and private network reachability require deployment configuration; adding these environment variables locally is not an AWS deployment.

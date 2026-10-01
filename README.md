@@ -56,6 +56,7 @@ Tests cover teaching behavior, conservation, error recovery, ownership, stale an
 | `infra` | Standalone Terraform AWS stack |
 | `docs/AWS.md` | Bootstrap, deployment, operations and rollback |
 | `docs/MATTERIX-CONTRACT.md` | Integration boundary and required qualification |
+| `docs/SYNCHRONIZED-RUNS.md` | Whole-workflow execution, authoritative progress, reconnection and video synchronization |
 | `docs/ARCHITECTURE.md` | State ownership, limitations and design choices |
 | `docs/LEARNING-EXPERIENCE.md` | Novice curriculum, target experience and implementation boundaries |
 | `docs/REMOTE-UBUNTU.md` | Administrator handoff for connecting the existing Ubuntu host |
