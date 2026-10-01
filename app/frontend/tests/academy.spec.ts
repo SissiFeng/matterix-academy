@@ -130,6 +130,10 @@ test("late response from another experiment cannot replace the active workspace"
   const firstUrl = page.url();
   await page.getByLabel("Experiment title").fill("Experiment A");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  // Save is disabled while the PUT is still pending. Wait until it has settled.
+  await expect(
+    page.getByRole("button", { name: "Run experiment", exact: true }),
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Save changes", exact: true }),
   ).toBeDisabled();
@@ -137,6 +141,9 @@ test("late response from another experiment cannot replace the active workspace"
   await page.getByRole("button", { name: "Start an experiment" }).click();
   await page.getByLabel("Experiment title").fill("Experiment B");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Run experiment", exact: true }),
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Save changes", exact: true }),
   ).toBeDisabled();

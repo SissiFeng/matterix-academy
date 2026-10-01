@@ -1,0 +1,985 @@
+.page {
+  max-width: 1320px;
+  margin: auto;
+  padding: 38px 42px 70px;
+}
+.page button,
+.invitation button {
+  font: inherit;
+}
+.page h1 {
+  font-size: clamp(30px, 3.5vw, 48px);
+  line-height: 1.13;
+  letter-spacing: -1.8px;
+  margin: 12px 0 16px;
+}
+.page h2 {
+  font-size: 24px;
+  letter-spacing: -0.65px;
+  line-height: 1.3;
+}
+.page h3 {
+  font-size: 17px;
+  line-height: 1.4;
+}
+.page p,
+.invitation p {
+  line-height: 1.65;
+  color: #5c6b61;
+}
+.page a {
+  color: #305a48;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.page small {
+  color: #617064;
+  line-height: 1.55;
+}
+.page svg {
+  flex-shrink: 0;
+}
+.eyebrow {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  font-weight: 700;
+  color: #63765e;
+  line-height: 1.6;
+}
+.hero {
+  padding-bottom: 32px;
+  max-width: 850px;
+}
+.hero > p {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+.hero > small {
+  display: block;
+  max-width: 720px;
+  font-size: 14px;
+}
+.primary,
+.secondary,
+.textButton {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 12px 17px;
+  min-height: 44px;
+  border: 1px solid #d6dccf;
+  font-weight: 600 !important;
+}
+.primary {
+  background: #365445;
+  color: #fffefa;
+  border-color: #365445;
+}
+.primary:hover {
+  background: #294735;
+}
+.secondary {
+  background: #fffefa;
+}
+.textButton {
+  background: transparent;
+  padding: 8px 0;
+  border: 0;
+}
+.invitation {
+  margin-bottom: 26px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  padding: 34px;
+  background: #e9ede3;
+  border: 1px solid #d4dccb;
+  border-radius: 12px;
+}
+.invitation h2 {
+  font-size: 30px;
+  max-width: 410px;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  margin: 12px 0;
+}
+.invitation p {
+  max-width: 420px;
+  margin-bottom: 20px;
+}
+.invitePaths {
+  align-self: center;
+}
+.invitePaths > button {
+  display: flex;
+  text-align: left;
+  align-items: center;
+  gap: 15px;
+  background: #fffefa;
+  padding: 17px;
+  border: 1px solid #d2daca;
+  border-radius: 7px;
+  width: 100%;
+  margin-top: 12px;
+}
+.invitePaths > button > span {
+  flex: 1;
+}
+.invitePaths strong,
+.invitePaths small {
+  display: block;
+}
+.invitePaths small {
+  margin-top: 4px;
+  color: #617064;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.miniLoop {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.searchBar {
+  display: flex;
+  gap: 15px;
+  margin: 6px 0 26px;
+}
+.searchBar label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding-left: 16px;
+  border: 1px solid #d6dccf;
+  border-radius: 7px;
+  background: #fffefa;
+}
+.searchBar input {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 15px;
+}
+.searchBar select {
+  max-width: 240px;
+}
+.section {
+  margin-top: 36px;
+}
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.sectionHeading > span {
+  color: #667363;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.sectionHeading .eyebrow {
+  margin-bottom: 8px;
+}
+.marketGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+.workflowCard {
+  border: 1px solid #d9ddd2;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #fffefa;
+  display: flex;
+  flex-direction: column;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.workflowCard:hover {
+  border-color: #9daf96;
+  transform: translateY(-3px);
+}
+.art {
+  width: 100%;
+  display: block;
+  background: #eeeee4;
+}
+.art text {
+  fill: currentColor;
+  font:
+    9px "DM Sans",
+    sans-serif;
+  letter-spacing: 1.5px;
+}
+.cardBody {
+  padding: 23px 23px 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.cardMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #6b7569;
+  margin-bottom: 13px;
+}
+.cardBody h2 {
+  font-size: 21px;
+  margin-bottom: 12px;
+}
+.cardBody > p {
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: auto;
+}
+.tags span {
+  background: #eff1e9;
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: #53694f;
+  font-size: 10px;
+}
+.cardBody button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  padding: 17px 0;
+  margin-top: 20px;
+  border: 0;
+  border-top: 1px solid #dfe3d8;
+  background: transparent;
+  font-weight: 600;
+  font-size: 13px;
+}
+.note {
+  margin: 24px 0 0;
+  font-size: 13px;
+  max-width: 850px;
+}
+.empty {
+  text-align: center;
+  border: 1px dashed #adbda7;
+  padding: 50px 20px;
+  border-radius: 8px;
+}
+.empty p {
+  margin: 15px 0;
+}
+.detailHero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: center;
+  gap: 35px;
+  margin: 24px 0 28px;
+}
+.detailHero p {
+  font-size: 20px;
+  margin-bottom: 22px;
+}
+.detailHero .art {
+  border-radius: 12px;
+}
+.source {
+  display: flex;
+  gap: 18px;
+  padding: 25px;
+  background: #fffefa;
+  border: 1px solid #d9ddd2;
+  border-radius: 8px;
+}
+.source h2 {
+  font-size: 18px;
+}
+.source p {
+  margin: 10px 0;
+  font-size: 13px;
+}
+.source a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+}
+.source small {
+  display: block;
+  margin-top: 9px;
+}
+.phases {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.phases article {
+  border-top: 3px solid #b8c4ad;
+  padding-top: 18px;
+}
+.phases article > span {
+  color: #8c9b80;
+  font-size: 30px;
+  font-weight: 300;
+}
+.phases h3 {
+  margin: 15px 0 10px;
+}
+.phases p {
+  font-size: 14px;
+}
+.adaptation {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 36px;
+  margin-top: 40px;
+  background: #e9ede3;
+  border-radius: 10px;
+  padding: 32px;
+}
+.adaptation h2 {
+  margin: 9px 0 16px;
+}
+.adaptation h3 {
+  margin: 20px 0 9px;
+}
+.adaptation p {
+  font-size: 14px;
+}
+.adaptation aside {
+  border-left: 1px solid #c9d2bf;
+  padding-left: 32px;
+}
+.adaptation aside h3 {
+  margin-top: 0;
+}
+.adaptation button {
+  margin: 20px 0 12px;
+}
+.adaptation small {
+  display: block;
+}
+.loopLesson {
+  background: #fffefa;
+  border: 1px solid #d6dccf;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.stageNav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.stageNav button {
+  border: 0;
+  border-right: 1px solid #d6dccf;
+  background: #edf0e7;
+  padding: 21px 18px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 13px;
+  text-align: left;
+}
+.stageNav button > span {
+  color: #879878;
+  font-size: 19px;
+}
+.stageNav button > svg {
+  margin-left: auto;
+}
+.stageNav button.active {
+  background: #365445;
+  color: #fffefa;
+}
+.stageNav button.active > span {
+  color: #d4dab8;
+}
+.loopBody {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 35px;
+  padding: 32px;
+}
+.loopBody h2 {
+  margin: 13px 0;
+}
+.loopBody p {
+  font-size: 14px;
+}
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #dce0d5;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.identity strong {
+  width: 100%;
+}
+.sampleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  align-self: center;
+}
+.sampleGrid > div {
+  text-align: center;
+}
+.sampleGrid strong {
+  font-size: 12px;
+}
+.sampleGrid span,
+.sampleGrid small {
+  display: block;
+  font-size: 10px;
+  margin-top: 8px;
+}
+.sampleGrid > p {
+  grid-column: 1/-1;
+  font-size: 11px;
+}
+.sample {
+  width: 56px;
+  height: 90px;
+  background: #e3ddc3;
+  border: 2px solid #71927f;
+  border-top: 7px solid #557261;
+  margin: 15px auto;
+  border-radius: 4px 4px 14px 14px;
+  position: relative;
+  overflow: hidden;
+}
+.sample i {
+  width: 100%;
+  background: #80a790;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+.observations table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0 14px;
+  font-size: 14px;
+}
+.observations th,
+.observations td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #d9dfd1;
+}
+.observations p {
+  font-size: 12px;
+}
+.question {
+  border: 1px solid #d0d9c7;
+  border-radius: 6px;
+  padding: 16px;
+  min-width: 0;
+}
+.question legend {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.question label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.question input {
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.question p {
+  background: #edf1e7;
+  padding: 12px;
+  font-size: 12px;
+}
+.sourceNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #e9eee0;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.sourceNote strong {
+  font-weight: 500;
+}
+.methodGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 13px;
+}
+.methodGrid > button {
+  position: relative;
+  text-align: left;
+  background: #fffefa;
+  border: 1px solid #d6dccf;
+  padding: 19px 17px;
+  border-radius: 7px;
+}
+.methodGrid > button.selectedMethod {
+  border: 1px solid #557858;
+  background: #eaf0e3;
+  box-shadow: inset 0 0 0 1px #557858;
+}
+.methodGrid small {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  min-height: 36px;
+  padding-right: 18px;
+}
+.methodGrid h3 {
+  font-size: 15px;
+  margin: 12px 0 8px;
+}
+.methodGrid p {
+  font-size: 12px;
+}
+.methodCheck {
+  position: absolute;
+  top: 15px;
+  right: 12px;
+  color: #365b40;
+}
+.route {
+  margin-top: 22px;
+  padding: 25px;
+  background: #fffefa;
+  border: 1px solid #d6dccf;
+  border-radius: 8px;
+}
+.route ol {
+  list-style: none;
+  margin: 15px 0 0;
+  padding: 0;
+}
+.route li {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+  padding: 15px 0;
+  border-bottom: 1px solid #e0e4d9;
+}
+.order {
+  background: #e6ecdf;
+  color: #4c6747;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.route li > div:first-of-type {
+  flex: 1;
+}
+.route strong {
+  font-size: 14px;
+}
+.route p {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.reorder {
+  display: flex;
+  gap: 3px;
+}
+.reorder button {
+  display: grid;
+  place-items: center;
+  border: 1px solid #d9dfd0;
+  border-radius: 4px;
+  background: transparent;
+  width: 32px;
+  height: 34px;
+}
+.gantry {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr 1fr;
+  gap: 24px;
+  background: #e9ede3;
+  padding: 28px;
+  border-radius: 10px;
+}
+.gantryOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.gantryOptions button {
+  padding: 13px;
+  border: 1px solid #cad5c2;
+  border-radius: 6px;
+  background: #f8f8f2;
+  text-align: left;
+}
+.gantryOptions button.active {
+  background: #365445;
+  color: #fffefa;
+  border-color: #365445;
+}
+.gantryOptions strong {
+  font-size: 12px;
+}
+.gantryOptions small {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+}
+.gantryOptions .active small {
+  color: #dce4d3;
+}
+.gantryBoard {
+  align-self: center;
+  text-align: center;
+  min-width: 0;
+}
+.gantryBoard svg {
+  width: 100%;
+}
+.gantryBoard svg text {
+  fill: #305340;
+  font:
+    10px "DM Sans",
+    sans-serif;
+}
+.gantryBoard small {
+  display: block;
+  font-size: 10px;
+  margin-top: 8px;
+}
+.gantryExplanation h3 {
+  margin: 10px 0;
+}
+.gantryExplanation p {
+  font-size: 12px;
+}
+.gantryExplanation h4 {
+  font-size: 12px;
+  margin: 20px 0 8px;
+}
+.gantryExplanation a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 11px;
+}
+.briefSection {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 40px;
+  margin-top: 44px;
+  border-top: 1px solid #d0d8c7;
+  padding-top: 35px;
+}
+.briefSection h2 {
+  margin: 12px 0;
+}
+.briefSection p {
+  font-size: 14px;
+}
+.briefForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.briefForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.briefForm input,
+.briefForm textarea {
+  font:
+    14px "DM Sans",
+    sans-serif;
+  font-weight: 400;
+  width: 100%;
+  border: 1px solid #cdd6c4;
+  border-radius: 5px;
+  padding: 12px;
+  background: #fffefa;
+  color: #25332d;
+}
+.briefForm textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+.briefForm textarea:focus-visible {
+  outline: 3px solid #b94825;
+  outline-offset: 3px;
+}
+.saveBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+}
+.saveBar small {
+  font-size: 11px;
+}
+.success {
+  color: #305b3c !important;
+  background: #e4eedc;
+  padding: 12px 15px;
+  border-radius: 6px;
+}
+.error {
+  border: 1px solid #d39874;
+  padding: 15px;
+  border-radius: 6px;
+}
+.error button {
+  margin-top: 12px;
+}
+.practice {
+  margin-top: 28px;
+  padding: 23px;
+  border: 1px solid #d4dccb;
+  border-radius: 8px;
+}
+.practice h3 {
+  margin: 12px 0;
+}
+.practice p {
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.notebook {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.notebook button {
+  border: 1px solid #d4dccb;
+  border-radius: 6px;
+  padding: 18px;
+  background: #fffefa;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  text-align: left;
+}
+.notebook span {
+  flex: 1;
+  min-width: 0;
+}
+.notebook strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.notebook small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+}
+@media (max-width: 1250px) {
+  .page {
+    padding: 30px 26px 50px;
+  }
+  .marketGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .methodGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .gantry {
+    grid-template-columns: 1fr 1.3fr;
+  }
+  .gantryExplanation {
+    grid-column: 1/-1;
+  }
+  .invitation {
+    gap: 24px;
+    padding: 25px;
+  }
+  .stageNav button {
+    padding: 17px 12px;
+    font-size: 12px;
+  }
+  .stageNav svg {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .loopBody,
+  .briefSection,
+  .detailHero,
+  .adaptation,
+  .invitation {
+    grid-template-columns: 1fr;
+  }
+  .adaptation aside {
+    border-left: 0;
+    border-top: 1px solid #c9d2bf;
+    padding: 23px 0 0;
+  }
+  .detailHero .art {
+    max-width: 420px;
+  }
+  .phases {
+    gap: 15px;
+  }
+}
+@media (max-width: 600px) {
+  .page {
+    padding: 25px 18px 40px;
+  }
+  .page h1 {
+    font-size: 33px;
+    letter-spacing: -1px;
+  }
+  .hero > p {
+    font-size: 17px;
+  }
+  .marketGrid,
+  .notebook {
+    grid-template-columns: 1fr;
+  }
+  .searchBar {
+    flex-direction: column;
+  }
+  .searchBar select {
+    max-width: none;
+  }
+  .sectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .detailHero,
+  .adaptation {
+    gap: 22px;
+  }
+  .source {
+    padding: 19px;
+    gap: 10px;
+  }
+  .source h2 {
+    font-size: 16px;
+  }
+  .phases {
+    grid-template-columns: 1fr;
+  }
+  .phases article > span {
+    float: left;
+    padding-right: 15px;
+  }
+  .phases h3 {
+    margin-top: 3px;
+  }
+  .adaptation {
+    padding: 23px;
+  }
+  .stageNav button {
+    flex-direction: column;
+    align-items: flex-start;
+    font-size: 11px;
+    padding: 13px 10px;
+    line-height: 1.5;
+  }
+  .loopBody {
+    padding: 22px 18px;
+    gap: 22px;
+  }
+  .methodGrid {
+    gap: 9px;
+  }
+  .methodGrid > button {
+    padding: 16px 12px;
+  }
+  .methodGrid small {
+    font-size: 8px;
+    min-height: 44px;
+  }
+  .methodGrid h3 {
+    font-size: 14px;
+  }
+  .route {
+    padding: 20px 14px;
+  }
+  .route li {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .route li > div:first-of-type {
+    flex-basis: calc(100% - 40px);
+  }
+  .reorder {
+    margin-left: 35px;
+  }
+  .gantry {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    gap: 20px;
+  }
+  .gantryOptions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .gantryExplanation {
+    grid-column: auto;
+  }
+  .briefSection {
+    gap: 25px;
+  }
+  .invitation {
+    padding: 23px;
+  }
+  .invitation h2 {
+    font-size: 27px;
+  }
+  .miniLoop {
+    gap: 6px;
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workflowCard {
+    transition: none;
+  }
+  .workflowCard:hover {
+    transform: none;
+  }
+}
+
+.studioBody {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}

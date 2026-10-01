@@ -1,0 +1,577 @@
+.developer {
+  color: #254d3f;
+  min-width: 0;
+}
+.developer h2 {
+  font-size: clamp(26px, 3vw, 36px);
+  letter-spacing: -1px;
+  margin: 10px 0 14px;
+}
+.developer h3 {
+  font-size: 21px;
+  line-height: 1.4;
+  letter-spacing: -0.4px;
+}
+.developer p {
+  color: #617064;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.developer button {
+  font: inherit;
+}
+.developer a {
+  color: #365e46;
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+.eyebrow {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  font-weight: 700;
+  line-height: 1.7;
+  text-transform: uppercase;
+  color: #50634f;
+}
+.heading {
+  max-width: 790px;
+  margin: 30px 0;
+}
+.direction {
+  display: flex;
+  align-items: flex-start;
+  gap: 17px;
+  padding: 22px 24px;
+  background: #edf0e7;
+  border: 1px solid #d4ddcc;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+.direction > svg {
+  flex-shrink: 0;
+}
+.direction strong {
+  font-size: 14px;
+}
+.direction p {
+  font-size: 13px;
+  margin-top: 5px;
+}
+.capabilities {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 25px;
+}
+.capabilities button {
+  padding: 17px 18px;
+  border: 1px solid #d6ddcf;
+  background: #fffef9;
+  border-radius: 6px;
+  text-align: left;
+}
+.capabilities button[aria-pressed="true"] {
+  background: #365445;
+  color: #fffef9;
+  border-color: #365445;
+}
+.capabilities strong {
+  display: block;
+  font-size: 14px;
+}
+.capabilities small {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.detail {
+  border: 1px solid #d6ddcf;
+  border-radius: 10px;
+  background: #fffef9;
+  padding: 28px;
+}
+.detailHeading {
+  max-width: 790px;
+}
+.detailHeading h3 {
+  margin: 7px 0 10px;
+}
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 22px 0;
+}
+.fields button {
+  border: 1px solid #d4ddcc;
+  border-radius: 5px;
+  padding: 9px 13px;
+  font-size: 12px;
+  background: transparent;
+}
+.fields button[aria-pressed="true"] {
+  background: #e7ecde;
+  border-color: #71866a;
+  color: #264c33;
+  font-weight: 700;
+}
+.mappingGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr);
+  gap: 9px;
+}
+.mappingGrid article {
+  padding: 21px 18px;
+  background: #f1f2e9;
+  border: 1px solid #d8dfd0;
+  border-radius: 7px;
+}
+.mappingGrid article.adapter {
+  background: #f2e9d9;
+  border-color: #e2cfb4;
+}
+.mappingGrid h4 {
+  overflow-wrap: anywhere;
+  font:
+    600 14px/1.6 "DM Sans",
+    sans-serif;
+  margin: 15px 0;
+  min-height: 46px;
+}
+.mappingGrid p {
+  font-size: 13px;
+}
+.arrow {
+  display: grid;
+  align-content: center;
+  color: #8a9c7a;
+}
+.meaning {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border-left: 3px solid #b78a47;
+  background: #f7f3e9;
+}
+.meaning strong {
+  font-size: 13px;
+}
+.meaning p {
+  margin-top: 7px;
+  font-size: 13px;
+}
+.implementation {
+  margin: 25px 0;
+  border: 1px solid #d8dfd0;
+  border-radius: 7px;
+  padding: 17px;
+}
+.implementation summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.implementation > p {
+  margin-top: 13px;
+  font-size: 12px;
+}
+.source {
+  min-width: 0;
+}
+.source > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.source svg {
+  flex-shrink: 0;
+}
+.source pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #253c32;
+  color: #e9efdc;
+  padding: 18px;
+  font-size: 12px;
+  line-height: 1.7;
+  border-radius: 5px;
+  tab-size: 4;
+}
+.source a,
+.reference a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+.scenario {
+  border: 0;
+  border-top: 1px solid #d5decd;
+  margin: 28px 0 0;
+  padding: 18px 0 0;
+  min-width: 0;
+}
+.scenario legend {
+  font-size: 11px;
+  color: #6c7d62;
+  padding-right: 12px;
+}
+.scenario h3 {
+  font-size: 17px;
+  margin: 10px 0 18px;
+}
+.scenario label,
+.recipe label {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin: 13px 0;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.scenario input,
+.recipe input {
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d0dac7;
+  border-radius: 5px;
+  padding: 12px 16px;
+  min-height: 44px;
+  font-size: 12px !important;
+}
+.primary {
+  background: #365445;
+  border-color: #365445;
+  color: #fffef9;
+}
+.secondary {
+  background: #fffef9;
+  color: #365445;
+}
+.feedback {
+  margin-top: 17px;
+  padding: 15px 18px;
+  background: #e9efdf;
+  border-radius: 5px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.feedback p {
+  font-size: 13px;
+  margin-top: 6px;
+}
+.reference {
+  margin: 25px 0;
+  padding: 22px;
+  background: #edf0e6;
+  border-radius: 8px;
+}
+.reference a {
+  margin-top: 13px;
+}
+.interface {
+  padding: 25px;
+  background: #fffef9;
+  border: 1px solid #d5ddcd;
+  border-radius: 8px;
+  margin-bottom: 32px;
+}
+.interface .fields {
+  margin-top: 0;
+}
+.interface > p {
+  max-width: 790px;
+  margin-top: 12px;
+}
+.interface small {
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #6b7a63;
+  line-height: 1.7;
+}
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 23px 0;
+}
+.transport span,
+.transport strong {
+  border: 1px solid #cad6bd;
+  border-radius: 6px;
+  padding: 15px;
+  font-size: 13px;
+  text-align: center;
+  flex: 1;
+  background: #f1f4e9;
+}
+.transport strong {
+  background: #e5ebda;
+}
+.transport svg {
+  flex-shrink: 0;
+}
+.packet {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  background: #f3e9d8;
+  border-radius: 5px;
+}
+.packet > span {
+  font-size: 12px;
+  flex-shrink: 0;
+  color: #8a6639;
+}
+.packet strong {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.linkButton {
+  border: 0;
+  padding: 13px;
+  font-size: 12px !important;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.sequence {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 30px 0 20px;
+}
+.sequence button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  border: 1px solid #d1dbc7;
+  border-radius: 5px;
+  padding: 15px 13px;
+  background: #f0f2e8;
+}
+.sequence button[aria-current="step"] {
+  background: #365445;
+  color: #fffef9;
+  border-color: #365445;
+}
+.sequence button > span {
+  font-size: 22px;
+  opacity: 0.65;
+  font-weight: 300;
+}
+.sequence strong {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.sequence svg {
+  flex-shrink: 0;
+}
+.stage {
+  display: grid;
+  grid-template-columns: 0.85fr 1.4fr;
+  gap: 28px;
+  padding: 30px;
+  border: 1px solid #d1dbc7;
+  border-radius: 8px;
+  background: #fffef9;
+}
+.stageIntro h3 {
+  margin: 15px 0 24px;
+  font-size: 23px;
+}
+.artifact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 21px;
+  background: #edf1e5;
+  border: 1px solid #d1dbc7;
+  border-radius: 6px;
+}
+.artifact > span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 8px;
+}
+.artifact > strong {
+  font-size: 16px;
+  line-height: 1.55;
+}
+.stageWork {
+  min-width: 0;
+}
+.stageWork ol {
+  margin: 0 0 20px;
+  padding-left: 20px;
+}
+.stageWork li {
+  padding-left: 6px;
+  margin: 0 0 13px;
+  color: #617064;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.evidence {
+  border-top: 1px solid #d5decb;
+  padding-top: 20px;
+}
+.evidence p {
+  font-size: 13px;
+  margin: 9px 0;
+}
+.evidence a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.evidence svg {
+  flex-shrink: 0;
+}
+.stageActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 20px 0 32px;
+}
+.recipe {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  background: #edf0e6;
+  border: 1px solid #d2dbca;
+  border-radius: 8px;
+  padding: 25px;
+}
+.recipe h3 {
+  margin: 9px 0;
+}
+.recipe p {
+  font-size: 13px;
+}
+.recipe fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.recipe legend {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.references {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 24px 0;
+}
+.references a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.note {
+  font-size: 12px !important;
+  margin: 17px 0;
+}
+@media (max-width: 1100px) {
+  .mappingGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .mappingGrid h4 {
+    min-height: 0;
+    margin: 10px 0;
+  }
+  .arrow {
+    justify-content: center;
+    transform: rotate(90deg);
+  }
+  .stage {
+    grid-template-columns: 1fr;
+  }
+  .artifact {
+    max-width: 500px;
+  }
+}
+@media (max-width: 650px) {
+  .capabilities,
+  .sequence {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .detail,
+  .interface,
+  .stage,
+  .recipe {
+    padding: 20px 16px;
+  }
+  .capabilities button {
+    padding: 14px 11px;
+  }
+  .capabilities strong {
+    font-size: 12px;
+  }
+  .capabilities small {
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .direction {
+    padding: 18px 15px;
+  }
+  .transport {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .transport span,
+  .transport strong {
+    width: 100%;
+  }
+  .transport svg {
+    transform: rotate(90deg);
+  }
+  .sequence button {
+    gap: 7px;
+    padding: 13px 10px;
+  }
+  .sequence svg {
+    display: none;
+  }
+  .stageActions {
+    flex-direction: column;
+  }
+  .stageActions button {
+    justify-content: center;
+  }
+  .recipe {
+    grid-template-columns: 1fr;
+  }
+  .source pre {
+    padding: 13px;
+    font-size: 11px;
+  }
+  .implementation {
+    padding: 13px;
+  }
+}

@@ -1,5 +1,13 @@
 # Architecture and boundaries
 
+**Product:** Lab Onboarding covers simulation training and supervised physical-device training. Matterix is the digital-twin engine. The real-device path is planned and must use its own device authority and acceptance evidence; it is not enabled by qualifying a simulator worker. See [PRODUCT-SCOPE.md](PRODUCT-SCOPE.md).
+
+## Current deployment direction — 2026-10-01
+
+The next integration targets an existing remote Ubuntu GPU server. Student access stays in the browser; students do not receive Ubuntu accounts or a general-purpose remote desktop. The Lab Onboarding web/API layer is deployed to the AC development account; provisioning an AWS GPU host is not a prerequisite. Start with one active learner session and a queue, with confirmed reset between learners, before qualifying classroom concurrency.
+
+The novice curriculum, implemented first-transfer workspace and remaining remote-session acceptance criteria are specified in [LEARNING-EXPERIENCE.md](LEARNING-EXPERIENCE.md). The browser now supports equipment exploration, preparation, prediction, step-by-step transfer and reflection, including a 50 µL retry. The runtime diagram below shows the deployed AWS control plane and the still-unqualified native host boundary. Operator setup and unresolved Ubuntu integration work are listed in [REMOTE-UBUNTU.md](REMOTE-UBUNTU.md).
+
 ## Runtime
 
 ```mermaid
@@ -10,19 +18,27 @@ flowchart LR
   CDN --> API[API Gateway JWT authorizer]
   API --> Backend[FastAPI on Lambda]
   Backend --> DB[DynamoDB learner records]
-  Backend -. future qualified adapter .-> Gateway[Ubuntu gateway]
+  Worker[Ubuntu outbound worker] -. HTTPS claim and reports .-> MachineAPI[Worker HTTP API and machine authorizer]
+  MachineAPI --> Runner[Worker Lambda]
+  Runner --> DB
+  Reaper[Scheduled lease reaper] --> DB
+  Worker -. native qualification pending .-> Gateway[Ubuntu gateway]
   Gateway -.-> Engine[Matterix / Isaac Sim]
 ```
 
-Academy owns identity, curriculum, learner work, teaching attempts and session allocation. Matterix will own the physical simulation state, device actions and scene changes. A thin adapter maps the versioned contract; it must not introduce a second physics state or independently choose retries and recovery for uncertain remote execution.
+Lab Onboarding owns identity, curriculum, learner work, teaching attempts and session allocation. Matterix will own the physical simulation state, device actions and scene changes. A thin adapter maps the versioned contract; it must not introduce a second physics state or independently choose retries and recovery for uncertain remote execution.
 
 The teaching runner is an isolated educational model, not a compatibility implementation of Matterix. Its evidence source is always `synthetic`. The UI never converts a gateway error into a teaching result or a synthetic result into a GPU claim.
 
+The required next execution path is a [synchronized run](SYNCHRONIZED-RUNS.md): Lab Onboarding persists the student's complete plan, Matterix executes it in an isolated lease, and Lab Onboarding renders the same run's confirmed step outcomes and native observations. Browser timers may poll for updates but never execute or complete remote steps. The typed workflow/progress client, durable queue and single-worker leases, separate machine API, journaled outbound worker and learner snapshot UI are implemented. Native execution remains disabled until the installed Ubuntu endpoints and scene/observation/reset adapter pass qualification. See [WORKER-CONTROL.md](WORKER-CONTROL.md) and [deployment evidence](DEPLOYMENT-2026-10-01.md).
+
 ## Teaching semantics
 
-The available experiment begins with stock at 100% and three wells containing diluent. Each dispense uses ideal instantaneous mixing. The pipette holds at most 300 µL; modeled containers hold at most 1,500 µL. A new tip is required after dispensing before the next aspiration. This is a lesson policy, not a quantitative contamination or vendor sensor model. Discarded liquid and solute are accounted for in waste. Rejecting an invalid operation leaves the liquid state unchanged and records the failed step.
+The introductory lesson transfers 100 µL (or 50 µL in the retry challenge) from a source containing 1,000 µL into empty well A1. Equipment exploration, preparation checks and a correct prediction are required before starting or resuming. Learning checkpoints are learner-owned, versioned and persisted alongside execution state. Editing the experiment invalidates preparation and prediction; reset preserves a copy of learning answers in the previous attempt. Practical completion and conceptual understanding are assessed separately.
 
-An action sequence completes independently of course success. The assessment checks the three target concentrations and that the tip is discarded with no remaining pipette liquid. The visual deck is a placement exercise; layout does not change motion or liquid semantics in this release.
+The existing dilution experiment begins with stock at 100% and three wells containing diluent. Each dispense uses ideal instantaneous mixing. Both courses limit the pipette to 300 µL and modeled containers to 1,500 µL. A new tip is required after dispensing before the next aspiration. This is a lesson policy, not a quantitative contamination or vendor sensor model. Discarded liquid and solute are accounted for in waste. Rejecting an invalid operation leaves the liquid state unchanged and records the failed step.
+
+An action sequence completes independently of course success. First-transfer assessment checks the requested liquid transfer and empty discarded tip; dilution assessment checks the three target concentrations and discarded tip. The visual deck is a placement exercise; layout does not change motion or liquid semantics in this release. The waste chute is fixed at D3. Older saved A3 layouts require explicit correction and saving before running.
 
 Browser auto-run advances the teaching model one step per request. Closing the page stops those requests; reopening offers Continue or single-step. It is not a background robot runner. Every mutation has an expected version and writes atomically. A duplicate or stale advance returns 409. A reset also advances the version, so a pre-reset request cannot execute against a restored world.
 
@@ -40,4 +56,6 @@ Local guest access requires an explicit environment flag, loopback hosting and a
 
 ## Next integration slice
 
-Build and qualify the Ubuntu gateway against the documented contract, including scoped scene control and authenticated streaming. Then add remote session leasing, expiration and reconnection to the platform. Test GPU memory and single-client streaming limits before selecting classroom concurrency. Teacher authoring, cohort administration, multiple devices, realistic collision physics and certification are not included in v0.1.
+The platform’s HTTPS client implements allocation, revision-bound commands, observations, reset, release and read-only recovery using caller-known request IDs. It never retries uncertain mutations automatically. The authenticated connection-status route reports configuration and capability checks but cannot enable remote execution by itself.
+
+Build and qualify the Ubuntu gateway against the documented contract, including scoped scene control and verified reset/release. Persistent run records, leases, expiration and reconnection are already implemented behind a default-off flag. Add and independently qualify authenticated streaming. Test GPU memory and single-client streaming limits before selecting classroom concurrency. Teacher authoring, cohort administration, multiple devices, realistic collision physics and certification remain unimplemented.

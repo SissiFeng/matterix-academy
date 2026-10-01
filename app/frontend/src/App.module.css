@@ -584,6 +584,7 @@
 }
 .sidebar {
   width: 225px;
+  overflow-y: auto;
   flex-shrink: 0;
   position: fixed;
   inset: 0 auto 0 0;

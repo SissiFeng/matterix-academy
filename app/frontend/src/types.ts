@@ -18,7 +18,8 @@ export type Action = {
 };
 export type Experiment = {
   title: string;
-  course_id: "flex-foundations";
+  course_id: "flex-foundations" | "flex-first-transfer";
+  transfer_volume?: number;
   layout: Record<string, string>;
   source_volume: number;
   diluent_volume: number;
@@ -37,6 +38,7 @@ export type RunEvent = {
   hint: string;
 };
 export type Session = {
+  remote_active_run?: string | null;
   id: string;
   version: number;
   created_at: string;
@@ -60,6 +62,24 @@ export type Session = {
     assessment: Assessment | null;
     last_event: RunEvent | null;
   }[];
+  learning?: LearningProgress;
+  readiness?: {
+    ready: boolean;
+    checks: { id: string; label: string; passed: boolean }[];
+  };
+  lesson_outcome?: {
+    practice_completed: boolean;
+    understanding_demonstrated: boolean;
+    evidence: "synthetic";
+  };
+};
+export type LearningProgress = {
+  phase: "orient" | "prepare" | "predict" | "run" | "reflect";
+  visited: string[];
+  checks: string[];
+  location_answer: "" | "slot" | "well";
+  prediction: { source: number; tip: number; target: number } | null;
+  reflection: "" | "source_to_tip" | "source_to_target" | "target_to_tip";
 };
 export type Course = {
   id: string;

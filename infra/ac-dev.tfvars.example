@@ -1,0 +1,9 @@
+region                   = "ca-central-1"
+environment              = "dev"
+expected_account_id      = "247893369214"
+remote_execution_enabled = false
+# Account quota is currently 10 total: reservations require unreserved headroom.
+reserve_lambda_concurrency = false
+learner_request_rate       = 5
+github_oidc_provider_arn   = "arn:aws:iam::247893369214:oidc-provider/token.actions.githubusercontent.com"
+github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@1393332016"

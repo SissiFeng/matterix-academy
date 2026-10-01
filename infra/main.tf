@@ -96,6 +96,8 @@ resource "aws_cognito_user_pool_client" "web" {
   name                                 = "${local.name}-web"
   user_pool_id                         = aws_cognito_user_pool.learners.id
   generate_secret                      = false
+  read_attributes                      = ["email", "email_verified", "name"]
+  write_attributes                     = ["email", "name"]
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_scopes                 = ["openid", "email", "profile", "academy/learn"]
@@ -125,11 +127,13 @@ resource "aws_iam_role" "api" {
 resource "aws_iam_role_policy" "api" {
   role = aws_iam_role.api.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query"], Resource = [aws_dynamodb_table.records.arn, "${aws_dynamodb_table.records.arn}/index/created_at"] },
+    { Effect = "Allow", Action = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:Query"], Resource = [aws_dynamodb_table.records.arn, "${aws_dynamodb_table.records.arn}/index/created_at"] },
     { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.api.arn}:*" }
   ] })
 }
 resource "aws_lambda_function" "api" {
+  # Terraform bootstraps code; the tested GitHub release owns later code updates.
+  lifecycle { ignore_changes = [filename, source_code_hash] }
   function_name                  = local.name
   role                           = aws_iam_role.api.arn
   runtime                        = "python3.12"
@@ -139,7 +143,7 @@ resource "aws_lambda_function" "api" {
   source_code_hash               = filebase64sha256(var.lambda_zip)
   timeout                        = 15
   memory_size                    = 512
-  reserved_concurrent_executions = 10
+  reserved_concurrent_executions = var.reserve_lambda_concurrency ? 10 : -1
   environment {
     variables = {
       ACADEMY_RUNTIME        = "aws"
@@ -149,6 +153,7 @@ resource "aws_lambda_function" "api" {
       ACADEMY_CLIENT_ID      = aws_cognito_user_pool_client.web.id
       ACADEMY_COGNITO_DOMAIN = "https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com"
       ACADEMY_APP_URL        = "https://${aws_cloudfront_distribution.web.domain_name}"
+      ACADEMY_REMOTE_ENABLED = tostring(var.remote_execution_enabled)
     }
   }
   depends_on = [aws_iam_role_policy.api, aws_cloudwatch_log_group.api]
@@ -196,8 +201,8 @@ resource "aws_apigatewayv2_stage" "api" {
   name        = "$default"
   auto_deploy = true
   default_route_settings {
-    throttling_burst_limit = 30
-    throttling_rate_limit  = 15
+    throttling_burst_limit = min(100, var.learner_request_rate * 2)
+    throttling_rate_limit  = var.learner_request_rate
   }
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.gateway.arn

@@ -1,8 +1,10 @@
 # Ubuntu integration contract — proposed v1
 
-This is a **new gateway contract**, not a claim that these endpoints exist in the current Matterix repository. No commands in this release are sent to Ubuntu. `gateway.py` implements only read-only capability qualification; the student platform deliberately reports Matterix unavailable.
+This is a **new gateway contract**, not a claim that these endpoints exist in the current Matterix repository. The typed client in `gateway.py` implements capability qualification, allocation, snapshot, command, reconciliation, reset and release requests. The outbound worker uses its mutation methods behind durable Academy dispatch records. These methods are verified with synthetic HTTP fixtures; native server acceptance remains pending. The student platform deliberately reports Matterix unavailable until an Ubuntu implementation is connected and qualified.
 
-The gateway runs next to Matterix on a managed Ubuntu GPU host. The operator supplies its HTTPS base URL and service credential through deployment configuration/Secrets Manager. A student cannot supply gateway URLs, executable code, shell commands, asset paths or credentials. Streaming and service access need authenticated, expiring session grants; students receive no Linux accounts.
+The gateway runs next to Matterix on a managed Ubuntu GPU host. The operator supplies its HTTPS base URL and service credential through protected worker configuration and systemd credentials. A student cannot supply gateway URLs, executable code, shell commands, asset paths or credentials. Streaming and service access need authenticated, expiring session grants; students receive no Linux accounts.
+
+The required student execution flow is specified in [SYNCHRONIZED-RUNS.md](SYNCHRONIZED-RUNS.md): submitting the saved workflow to Matterix and reflecting that same run's confirmed progress and native observations. `remote_run.py` and the client now support the proposed whole-workflow request/snapshot contract. The Ubuntu server implementation and media binding remain pending. Durable Academy orchestration and student remote routes are implemented but disabled by default; see [WORKER-CONTROL.md](WORKER-CONTROL.md) for qualification, run controls and reset-verification extensions. The existing teaching runner is separate.
 
 ## Qualification endpoint implemented by the client
 
@@ -20,18 +22,30 @@ The gateway runs next to Matterix on a managed Ubuntu GPU host. The operator sup
 
 The client rejects redirects, unknown contract versions, non-Matterix evidence, hardware-enabled backends, missing session isolation and malformed responses. Capability acceptance alone is not sufficient to enable student access.
 
-## Session endpoints to implement in the next slice
+## Session endpoints implemented by the client; Ubuntu server implementation pending
 
 | Endpoint | Semantics |
 |---|---|
 | `POST /v1/sessions` | Allocate an isolated simulation lease from an operator-controlled scene catalog; include caller-generated allocation idempotency key. |
+| `GET /v1/allocations/{allocation_id}` | Recover the allocation result using an ID known before sending the request. Return allocation ID, pending/allocated/failed/unknown status, and session ID when allocated. |
 | `GET /v1/sessions/{id}` | Return authoritative state, revision, engine/asset versions, lease expiry and observation timestamps. |
+| `POST /v1/sessions/{id}/runs` | Submit the complete immutable experiment with original run ID, plan hash and expected revision. A receipt does not confirm any steps. |
+| `GET /v1/sessions/{id}/runs/{run_id}` | Recover cumulative native progress for that exact workflow without re-executing it. |
 | `POST /v1/sessions/{id}/commands` | Submit an allowlisted action with expected revision and command ID; return accepted operation ID. |
+| `GET /v1/sessions/{id}/commands/{command_id}` | Recover a command/reset/release result when its acknowledgement, including the operation ID, was lost. |
 | `GET /v1/sessions/{id}/operations/{operation_id}` | Resolve accepted/completed/failed/unknown without replaying an uncertain command. |
 | `POST /v1/sessions/{id}/reset` | Reset physics, liquid, consumables and controller state as one acknowledged operation. |
 | `DELETE /v1/sessions/{id}` | Release only that session's resources. |
 
 A command timeout produces `unknown`, followed by operation-status reconciliation. It must never produce an automatic duplicate transfer. Do not forward credentials to browser-controlled destinations or another gateway on redirect. Issue media grants independently of the service credential; do not embed a raw unauthenticated Isaac editor.
+
+The allocation request uses `{allocation_id, scene_id: "flex-first-transfer-v1"}`. Scene IDs are an operator-controlled catalog, never asset paths supplied by students. Snapshot responses require `id`, positive `revision`, `status`, `engine: "matterix"`, `simulation_only: true`, nonempty `engine_version`/`asset_version`, and timezone-aware `lease_expires_at`/`observed_at`. The current snapshot model covers session metadata; native liquid/object observations and media grants require a separately agreed extension before live learner operation.
+
+Every operation response includes the original `command_id`, an `operation_id`, and a status from `accepted/running/completed/failed/unknown`. Reset and release requests also carry unique caller-generated `command_id` and `expected_revision`. The gateway must durably register IDs before execution, associate them with the session and exact payload, and retain lookup records after release. A repeated ID must not execute twice; the same ID with a different payload is rejected. A lookup returning no record does not by itself prove the command never ran. Unknown outcomes remain blocked for reconciliation or operator recovery, with no automatic replay.
+
+The client checks response identities, rejects redirects, does not retry mutations, and classifies network failures, 5xx responses and malformed successful mutation responses as unknown. This behavior is verified using mock transport, not a native Matterix server.
+
+For a whole workflow, the gateway must durably bind `run_id` to the owning session and exact plan before dispatch. Reusing an ID with a different plan fails; looking up a missing run never authorizes automatic resubmission. Apply the command idempotency and retention rules above to run IDs as well. A whole-workflow runner and individual command submission must not execute concurrently in the same session.
 
 ## Required acceptance evidence
 
@@ -44,4 +58,4 @@ A command timeout produces `unknown`, followed by operation-status reconciliatio
 7. Streaming access is session-scoped and expiring; neither OS nor general script-editor access is exposed.
 8. No hardware connector or physical device command path is reachable.
 
-The Academy API can remain on AWS while the GPU host is on-premises. The HTTPS command path and WebRTC media path are separate network concerns; CloudFront/API Gateway do not proxy arbitrary WebRTC UDP traffic. Choose private connectivity and a secured media gateway during deployment, then test the actual installed Isaac version.
+The Academy API can remain on AWS while the GPU host is on-premises. The HTTPS command path and WebRTC media path are separate network concerns; CloudFront/API Gateway do not proxy arbitrary WebRTC UDP traffic. The outbound worker reaches AWS through HTTPS; Lambda does not dial the Ubuntu gateway. Configure a separately secured media gateway and test the actual installed Isaac version before enabling video.

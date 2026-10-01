@@ -29,6 +29,9 @@ import {
   Circle,
   Pipette,
   Layers3,
+  Compass,
+  Store,
+  GitBranch,
 } from "lucide-react";
 import { api, ApiError, configureAuth, json, signIn, signOut } from "./api";
 import type {
@@ -41,6 +44,15 @@ import type {
 } from "./types";
 import s from "./App.module.css";
 import { useDialog } from "./useDialog";
+import LearningLab, { FirstLessonCard } from "./LearningLab";
+import { firstTransfer } from "./learningContent";
+import {
+  DiscoveryInvitation,
+  DiscoveryStudio,
+  WorkflowMarketplace,
+} from "./Discovery";
+import { workflows, type Workflow } from "./discoveryContent";
+import ConnectorExplorer from "./ConnectorExplorer";
 
 const LABWARE: Record<string, { name: string; detail: string }> = {
   stock: { name: "Stock solution", detail: "1,500 µL vial" },
@@ -69,7 +81,7 @@ function Brand({ small = false }: { small?: boolean }) {
         <span />
       </span>
       <span>
-        matterix<span className={s.brandSub}>academy</span>
+        Lab<span className={s.brandSub}>Onboarding</span>
       </span>
     </div>
   );
@@ -195,7 +207,7 @@ function Welcome({
           <p>
             Build a workflow. Make a mistake. Try again.
             <br />
-            Get comfortable in the lab, before you step into one.
+            Build skills for simulation and supervised lab practice.
           </p>
           <form
             onSubmit={(e) => {
@@ -222,7 +234,7 @@ function Welcome({
               {busy
                 ? "Opening your workspace…"
                 : config.auth === "cognito"
-                  ? "Sign in to your academy"
+                  ? "Sign in to Lab Onboarding"
                   : "Enter the learning lab"}
               <ArrowRight size={18} />
             </button>
@@ -232,7 +244,7 @@ function Welcome({
               ? "Local preview · your progress stays on this computer"
               : config.auth === "disabled"
                 ? "Sign-in has not been configured. Ask your administrator."
-                : "Use your academy account to save your progress."}
+                : "Use your training account to save your progress."}
           </span>
         </section>
         <section className={s.welcomeVisual}>
@@ -241,7 +253,7 @@ function Welcome({
             <span>01 / FLEX FOUNDATIONS</span>
           </div>
           <Deck
-            layout={{ stock: "D1", plate: "C2", tips: "B1", waste: "A3" }}
+            layout={{ stock: "D1", plate: "C2", tips: "B1", waste: "D3" }}
             locked
             large
           />
@@ -367,17 +379,27 @@ function Onboarding({
               Try differently.
             </h1>
             <p>
-              This workspace begins with a teaching model. It tracks liquid
-              volumes, ideal dilution and tip use. Realistic robot motion comes
-              with a connected Matterix lab.
+              Lab Onboarding connects simulation training with supervised
+              practice on real devices. Start here with liquid volumes, ideal
+              dilution and tip use in a teaching model.
             </p>
             <div className={s.safetyNote}>
               <ShieldCheck size={25} />
               <div>
-                <strong>Your work stays in simulation.</strong>
+                <strong>Simulation · Teaching practice available</strong>
                 <p>
-                  No physical robot is connected. A successful exercise is
-                  practice, not certification for a real machine.
+                  Matterix will provide the connected digital twin once its
+                  Ubuntu runtime is qualified.
+                </p>
+              </div>
+            </div>
+            <div className={s.safetyNote}>
+              <Pipette size={25} />
+              <div>
+                <strong>Real devices · Not connected</strong>
+                <p>
+                  Supervised hardware training is a planned path. Simulation
+                  practice does not grant permission to operate a real device.
                 </p>
               </div>
             </div>
@@ -413,14 +435,18 @@ function Dashboard({
   courses,
   sessions,
   onCreate,
+  onFirstLesson,
   onOpen,
+  onNavigate,
   view,
 }: {
   profile: Profile;
   courses: Course[];
   sessions: Session[];
   onCreate: () => void;
+  onFirstLesson: () => void;
   onOpen: (run: Session) => void;
+  onNavigate: (view: string) => void;
   view: string;
 }) {
   const completed = sessions.filter((run) => run.assessment?.passed).length;
@@ -446,10 +472,20 @@ function Dashboard({
       </div>
       {view !== "history" && (
         <>
+          <DiscoveryInvitation onNavigate={onNavigate} />
+          <FirstLessonCard
+            onStart={onFirstLesson}
+            resume={sessions.some(
+              (run) => run.experiment.course_id === "flex-first-transfer",
+            )}
+          />
           <div className={s.courseFeature}>
             <section>
               <span className={s.courseTag}>01 · FLEX FOUNDATIONS</span>
-              <h2>{courses[0]?.title ?? "A little less, each time."}</h2>
+              <h2>
+                {courses.find((course) => course.id === "flex-foundations")
+                  ?.title ?? "A little less, each time."}
+              </h2>
               <p>
                 Turn one stock solution into three dilutions.
                 <br />A small experiment with a lot to teach you.
@@ -707,6 +743,12 @@ function Workspace({
   const place = (slot: string, asset?: string) => {
     const target = asset || selected;
     if (!editable || !target || !LABWARE[target]) return;
+    if (target === "waste" || slot === "D3") {
+      onError(
+        "The Flex waste chute is fixed at D3; choose another slot for movable labware.",
+      );
+      return;
+    }
     const layout = { ...draft.layout };
     const previous = layout[target];
     const occupant = Object.keys(layout).find((key) => layout[key] === slot);
@@ -799,8 +841,25 @@ function Workspace({
                   <strong>A place for everything.</strong>
                   <p>
                     Select a piece of labware, then choose a slot. Occupied
-                    slots swap.
+                    slots swap. The waste chute is fixed at D3.
                   </p>
+                  {draft.layout.waste !== "D3" && (
+                    <button
+                      className={s.secondary}
+                      disabled={!editable}
+                      onClick={() => {
+                        const layout = { ...draft.layout };
+                        const occupant = Object.keys(layout).find(
+                          (key) => layout[key] === "D3",
+                        );
+                        if (occupant) layout[occupant] = layout.waste;
+                        layout.waste = "D3";
+                        setDraft({ ...draft, layout });
+                      }}
+                    >
+                      Correct legacy waste chute position
+                    </button>
+                  )}
                 </div>
                 <button className={s.secondary} onClick={() => setViewer(true)}>
                   <Monitor size={15} /> Matterix 3D
@@ -816,12 +875,12 @@ function Workspace({
                 {Object.entries(LABWARE).map(([id, item]) => (
                   <button
                     key={id}
-                    draggable={editable}
+                    draggable={editable && id !== "waste"}
                     onDragStart={(e) =>
                       e.dataTransfer.setData("text/plain", id)
                     }
                     className={selected === id ? s.selectedAsset : ""}
-                    disabled={!editable}
+                    disabled={!editable || id === "waste"}
                     onClick={() => setSelected(id)}
                   >
                     <LabwareDrawing kind={id} />
@@ -1306,6 +1365,7 @@ export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [view, setView] = useState("learn");
+  const [discoverySeed, setDiscoverySeed] = useState<Workflow | undefined>();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1313,6 +1373,8 @@ export default function App() {
   const closeHelp = useCallback(() => setHelp(false), []);
   useDialog(help, closeHelp);
   const leaveGuard = useRef<(() => boolean) | null>(null);
+  const navigationEpoch = useRef(0);
+  const identityEpoch = useRef(0);
   const registerLeaveGuard = useCallback((guard: (() => boolean) | null) => {
     leaveGuard.current = guard;
   }, []);
@@ -1329,6 +1391,15 @@ export default function App() {
     if (id) {
       setSession(await api<Session>(`/sessions/${id}`));
       setView("lab");
+    } else {
+      const route = window.location.hash.match(
+        /^#\/(marketplace|discovery|connector|history)(?:\/([a-z]+))?$/,
+      );
+      if (route) {
+        setView(route[1]);
+        if (route[1] === "discovery")
+          setDiscoverySeed(workflows.find((w) => w.id === route[2]));
+      }
     }
   }, []);
   useEffect(() => {
@@ -1353,6 +1424,8 @@ export default function App() {
       }
     })();
     const unauthorized = () => {
+      identityEpoch.current += 1;
+      navigationEpoch.current += 1;
       setProfile(null);
       setSession(null);
     };
@@ -1367,26 +1440,46 @@ export default function App() {
     setSession((current) => (current?.id === next.id ? next : current));
     setSessions((list) => [next, ...list.filter((r) => r.id !== next.id)]);
   }, []);
-  const open = (run: Session) => {
-    if (leaveGuard.current && !leaveGuard.current()) return;
+  const open = (run: Session, checkLeave = true) => {
+    if (checkLeave && leaveGuard.current && !leaveGuard.current()) return;
+    navigationEpoch.current += 1;
     setSession(run);
     setView("lab");
     window.location.hash = `/lab/${run.id}`;
     window.scrollTo(0, 0);
   };
   const nav = (target: string) => {
+    // Keep the active connector subpage when reselecting its sidebar section.
+    if (target === "connector" && view === "connector") return;
     if (leaveGuard.current && !leaveGuard.current()) return;
+    navigationEpoch.current += 1;
     setView(target);
     setSession(null);
-    window.history.replaceState({}, "", "/");
+    window.history.replaceState(
+      {},
+      "",
+      target === "learn" ? "/" : `/#/${target}`,
+    );
+    if (target === "discovery") setDiscoverySeed(undefined);
     window.scrollTo(0, 0);
   };
-  const create = async () => {
+  const create = async (first = false) => {
+    if (leaveGuard.current && !leaveGuard.current()) return;
+    const originEpoch = navigationEpoch.current;
+    const originIdentity = identityEpoch.current;
     setBusy(true);
     try {
-      const run = await api<Session>("/sessions", json({}));
-      setSessions([run, ...sessions]);
-      open(run);
+      const run = await api<Session>(
+        "/sessions",
+        json(first ? firstTransfer() : {}),
+      );
+      if (originIdentity !== identityEpoch.current) return;
+      setSessions((list) => [
+        run,
+        ...list.filter((item) => item.id !== run.id),
+      ]);
+      if (originEpoch !== navigationEpoch.current) return;
+      open(run, false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1394,6 +1487,7 @@ export default function App() {
     }
   };
   const enter = async (name: string) => {
+    identityEpoch.current += 1;
     setBusy(true);
     try {
       if (config?.auth === "cognito") await signIn();
@@ -1455,13 +1549,31 @@ export default function App() {
         <div className={s.shell}>
           <aside className={s.sidebar}>
             <Brand small />
-            <div className={s.sidebarLabel}>YOUR ACADEMY</div>
+            <div className={s.sidebarLabel}>YOUR TRAINING</div>
             <nav>
               <button
                 className={view === "learn" ? s.activeNav : ""}
                 onClick={() => nav("learn")}
               >
                 <BookOpen size={18} /> Learning lab
+              </button>
+              <button
+                className={view === "discovery" ? s.activeNav : ""}
+                onClick={() => nav("discovery")}
+              >
+                <Compass size={18} /> Discovery studio
+              </button>
+              <button
+                className={view === "marketplace" ? s.activeNav : ""}
+                onClick={() => nav("marketplace")}
+              >
+                <Store size={18} /> Workflow marketplace
+              </button>
+              <button
+                className={view === "connector" ? s.activeNav : ""}
+                onClick={() => nav("connector")}
+              >
+                <GitBranch size={18} /> Connector explorer
               </button>
               <button
                 className={view === "history" ? s.activeNav : ""}
@@ -1498,6 +1610,8 @@ export default function App() {
                   onClick={async () => {
                     if (leaveGuard.current && !leaveGuard.current()) return;
                     try {
+                      identityEpoch.current += 1;
+                      navigationEpoch.current += 1;
                       await signOut(config);
                       setProfile(null);
                       setSession(null);
@@ -1516,21 +1630,66 @@ export default function App() {
           <main className={s.content}>
             <header className={s.topbar}>
               <span>
-                <LayoutGrid size={15} /> Academy <ChevronRight size={13} />{" "}
+                <LayoutGrid size={15} /> Lab Onboarding{" "}
+                <ChevronRight size={13} />{" "}
                 {view === "lab"
                   ? "Flex foundations"
                   : view === "history"
                     ? "My experiments"
-                    : "Learning lab"}
+                    : view === "discovery"
+                      ? "Discovery studio"
+                      : view === "marketplace"
+                        ? "Workflow marketplace"
+                        : view === "connector"
+                          ? "Connector explorer"
+                          : "Learning lab"}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
                 {config.auth === "local"
                   ? "Local learning preview"
-                  : "Academy workspace"}
+                  : "Training workspace"}
               </span>
             </header>
-            {view === "lab" && session ? (
+            {view === "marketplace" ? (
+              <WorkflowMarketplace
+                onAdapt={(item) => {
+                  if (leaveGuard.current && !leaveGuard.current()) return;
+                  navigationEpoch.current += 1;
+                  setDiscoverySeed(item);
+                  setSession(null);
+                  setView("discovery");
+                  window.history.replaceState(
+                    {},
+                    "",
+                    `/#/discovery/${item.id}`,
+                  );
+                  window.scrollTo(0, 0);
+                }}
+              />
+            ) : view === "discovery" ? (
+              <DiscoveryStudio
+                key={discoverySeed?.id ?? "blank"}
+                seed={discoverySeed}
+                navigationPending={busy}
+                registerLeaveGuard={registerLeaveGuard}
+                onPractice={() => {
+                  if (!busy) create();
+                }}
+              />
+            ) : view === "connector" ? (
+              <ConnectorExplorer />
+            ) : view === "lab" &&
+              session?.experiment.course_id === "flex-first-transfer" ? (
+              <LearningLab
+                key={session.id}
+                session={session}
+                onChange={updateSession}
+                onBack={() => nav("learn")}
+                onError={showError}
+                registerLeaveGuard={registerLeaveGuard}
+              />
+            ) : view === "lab" && session ? (
               <Workspace
                 key={session.id}
                 session={session}
@@ -1547,12 +1706,21 @@ export default function App() {
                 onCreate={() => {
                   if (!busy) create();
                 }}
+                onFirstLesson={() => {
+                  if (busy) return;
+                  const existing = sessions.find(
+                    (run) => run.experiment.course_id === "flex-first-transfer",
+                  );
+                  if (existing) open(existing);
+                  else create(true);
+                }}
                 onOpen={open}
+                onNavigate={nav}
                 view={view}
               />
             )}
             <footer className={s.appFooter}>
-              <span>MATTERIX ACADEMY</span>
+              <span>LAB ONBOARDING</span>
               <span>Explore freely. Learn deliberately.</span>
               <span>Teaching model · v0.1</span>
             </footer>
@@ -1576,7 +1744,12 @@ export default function App() {
               <X size={20} />
             </button>
             <Maximize2 size={28} />
-            <h2 id="help-title">Room to experiment.</h2>
+            <h2 id="help-title">About Lab Onboarding</h2>
+            <p>
+              Learn laboratory automation, explore workflows and understand
+              connectors. Training spans simulation and supervised work on real
+              devices.
+            </p>
             <p>
               Choose a lesson, arrange the deck and edit the action sequence.
               Run automatically or advance one step at a time. Review your
@@ -1585,7 +1758,9 @@ export default function App() {
             <p>
               The current teaching model checks volume, capacity and tip-use
               rules. Deck placement is schematic; reachability, collisions and
-              chemical outcomes are not evaluated.
+              chemical outcomes are not evaluated. Matterix is the digital twin
+              engine for the connected simulation path. Real-device training is
+              planned; no physical robot is connected here.
             </p>
             <button className={s.primary} onClick={() => setHelp(false)}>
               Got it

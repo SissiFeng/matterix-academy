@@ -1,0 +1,31 @@
+[Unit]
+Description=Matterix Academy outbound simulation worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=matterix-worker
+Group=matterix-worker
+WorkingDirectory=/opt/matterix-academy
+EnvironmentFile=/etc/matterix-worker/worker.env
+# Install source tokens root:root 0600 in a root:root 0700 directory.
+# PID 1 supplies read-only copies; do not grant the service direct source access.
+LoadCredential=worker.token:/etc/matterix-worker/worker.token
+LoadCredential=gateway.token:/etc/matterix-worker/gateway.token
+Environment=ACADEMY_WORKER_CREDENTIAL_FILE=%d/worker.token
+Environment=ACADEMY_GATEWAY_CREDENTIAL_FILE=%d/gateway.token
+ExecStart=/opt/matterix-academy/.venv/bin/python -m academy.worker --journal /var/lib/matterix-worker/journal.sqlite
+Restart=on-failure
+RestartSec=10
+StateDirectory=matterix-worker
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/matterix-worker
+
+[Install]
+WantedBy=multi-user.target

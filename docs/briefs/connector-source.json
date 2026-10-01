@@ -1,0 +1,45 @@
+{
+  "commit": "2a9c3004400325d7816c80065a2282a4ad6b5b70",
+  "excerpts": [
+    {
+      "id": "request",
+      "path": "src/unitelabs/opentrons_flex/features/motion_control.py",
+      "start": 355,
+      "end": 364,
+      "code": "    @sila.ObservableCommand(errors=_LIQUID_ERRORS)\n    async def aspirate(\n        self,\n        mount: Mount,\n        volume: _LiquidVolume,\n        rate: _FlowRateMultiplier,\n        *,\n        status: sila.Status,\n        intermediate: sila.Intermediate[OperationProgress],\n    ) -> None:",
+      "url": "https://github.com/AccelerationConsortium/opentrons-flex/blob/2a9c3004400325d7816c80065a2282a4ad6b5b70/src/unitelabs/opentrons_flex/features/motion_control.py#L355-L364"
+    },
+    {
+      "id": "progress",
+      "path": "src/unitelabs/opentrons_flex/features/motion_control.py",
+      "start": 376,
+      "end": 382,
+      "code": "        report_progress(status, intermediate, 0.0, OperationPhase.STARTING, f\"Starting {mount.value} aspiration.\")\n        try:\n            await self._controller.aspirate(_ot3_mount(mount), volume=volume, rate=rate)\n        except asyncio.CancelledError:\n            report_progress(status, intermediate, 1.0, OperationPhase.CANCELLED, f\"{mount.value} aspiration cancelled.\")\n            raise\n        report_progress(status, intermediate, 1.0, OperationPhase.COMPLETED, f\"{mount.value} aspiration completed.\")",
+      "url": "https://github.com/AccelerationConsortium/opentrons-flex/blob/2a9c3004400325d7816c80065a2282a4ad6b5b70/src/unitelabs/opentrons_flex/features/motion_control.py#L376-L382"
+    },
+    {
+      "id": "controller",
+      "path": "src/unitelabs/opentrons_flex/io/flex_motion.py",
+      "start": 399,
+      "end": 408,
+      "code": "    @translate_liquid_errors\n    async def aspirate(self, mount: OT3Mount, volume: float, rate: float = 1.0) -> None:\n        \"\"\"Aspirate an explicit ``volume`` in \u00b5L on ``mount``.\"\"\"\n        async with self._lock:\n            self._assert_operation_ready()\n            self._assert_liquid_action_ready(mount, volume=volume, aspirating=True)\n            async with self._active_operation() as generation:\n                await self._api.aspirate(mount=mount, volume=volume, rate=rate)\n                self._assert_operation_generation(generation)\n                self._assert_machine_ok()",
+      "url": "https://github.com/AccelerationConsortium/opentrons-flex/blob/2a9c3004400325d7816c80065a2282a4ad6b5b70/src/unitelabs/opentrons_flex/io/flex_motion.py#L399-L408"
+    },
+    {
+      "id": "authority",
+      "path": "src/unitelabs/opentrons_flex/io/run_authority.py",
+      "start": 69,
+      "end": 78,
+      "code": "    def assert_direct_control_allowed(self) -> None:\n        \"\"\"Reject uncoordinated SiLA hardware control while PE owns the Flex.\"\"\"\n        state = self.current()\n        if state.owns_hardware:\n            message = (\n                f\"Protocol Engine run {state.run_id} owns the Flex in state {state.status!r}. \"\n                \"Stop that run, or use a controlled UNITELABS mutation checkpoint; \"\n                \"independent SiLA actuation is disabled.\"\n            )\n            raise RunOwnershipError(message)",
+      "url": "https://github.com/AccelerationConsortium/opentrons-flex/blob/2a9c3004400325d7816c80065a2282a4ad6b5b70/src/unitelabs/opentrons_flex/io/run_authority.py#L69-L78"
+    },
+    {
+      "id": "backend",
+      "path": "src/unitelabs/opentrons_flex/__init__.py",
+      "start": 420,
+      "end": 428,
+      "code": "    if config.use_simulator:\n        log.info(\"Building OT3API simulator backend\")\n        api = await OT3API.build_hardware_simulator(\n            attached_instruments=_simulator_attached_instruments(config),\n            attached_modules=_simulator_attached_modules(config),\n        )\n    else:\n        log.info(\"Building OT3API for real Flex hardware (CAN)\")\n        api = await OT3API.build_hardware_controller()",
+      "url": "https://github.com/AccelerationConsortium/opentrons-flex/blob/2a9c3004400325d7816c80065a2282a4ad6b5b70/src/unitelabs/opentrons_flex/__init__.py#L420-L428"
+    }
+  ]
+}

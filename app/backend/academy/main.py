@@ -7,7 +7,11 @@ from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .auth import identify, local_signer
-from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment
+from .discovery import NotebookUpdate
+from .gateway import GatewayUnavailable, MatterixGateway
+from .learning import present, readiness
+from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
+from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
 from .store import Conflict, DynamoStore, SQLiteStore
 from .teaching import InvalidTransition, control, execute_step, initial_state, new_session
@@ -16,7 +20,7 @@ from .teaching import InvalidTransition, control, execute_step, initial_state, n
 def create_app(settings: Settings | None = None, store=None):
     settings = settings or Settings.from_env()
     app = FastAPI(
-        title="Matterix Academy",
+        title="Lab Onboarding",
         version="0.1.0",
         docs_url="/api/docs" if settings.runtime == "local" else None,
         redoc_url=None,
@@ -28,6 +32,7 @@ def create_app(settings: Settings | None = None, store=None):
         if settings.runtime == "aws"
         else SQLiteStore(settings.data_path)
     )
+    app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
     if settings.runtime == "local":
         app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
@@ -55,7 +60,7 @@ def create_app(settings: Settings | None = None, store=None):
     @app.exception_handler(Conflict)
     async def conflict_handler(request, exc):
         return JSONResponse(
-            {"detail": "This experiment changed in another request. Reload its latest state."},
+            {"detail": "This record changed in another request. Reload its latest state."},
             status_code=409,
         )
 
@@ -136,19 +141,85 @@ def create_app(settings: Settings | None = None, store=None):
         app.state.store.put(owner, "profile", profile, version)
         return profile
 
+    @app.get("/api/discovery")
+    def discovery_notebook(owner: str = Depends(identify)):
+        return app.state.store.get(owner, "discovery") or {"version": 0, "briefs": []}
+
+    @app.put("/api/discovery")
+    def update_discovery(data: NotebookUpdate, owner: str = Depends(identify)):
+        notebook = {
+            "version": data.expected_version + 1,
+            "briefs": [brief.model_dump(mode="json") for brief in data.briefs],
+        }
+        app.state.store.put(owner, "discovery", notebook, data.expected_version or None)
+        return notebook
+
     @app.get("/api/courses")
     def courses(owner: str = Depends(identify)):
         return COURSES
 
+    @app.get("/api/remote/status")
+    def remote_status(owner: str = Depends(identify)):
+        if not settings.gateway_url or not settings.gateway_token:
+            return {
+                "state": "not_configured",
+                "available": False,
+                "message": "The Ubuntu simulation connection is not configured yet. Lessons and teaching exercises are still available.",
+            }
+        try:
+            gateway = MatterixGateway(settings.gateway_url, settings.gateway_token)
+            try:
+                capabilities = gateway.capabilities()
+            finally:
+                gateway.close()
+        except (ValueError, GatewayUnavailable):
+            return {
+                "state": "unreachable",
+                "available": False,
+                "message": "The Ubuntu simulation connection could not be verified. Contact your lab administrator. Teaching exercises do not replace remote results.",
+            }
+        missing = sorted({"pickup", "aspirate", "dispense", "drop"} - set(capabilities.actions))
+        return {
+            "state": "awaiting_qualification",
+            "available": False,
+            "message": "The simulator responded, but session isolation, reset and authenticated streaming still need verification. Remote execution is not available yet.",
+            "missing_actions": missing,
+        }
+
+    @app.get("/api/runs/status")
+    def run_status(owner: str = Depends(identify)):
+        return {
+            "enabled": settings.remote_enabled,
+            "message": "Native execution is enabled for qualified workers."
+            if settings.remote_enabled
+            else "Remote execution is awaiting Ubuntu qualification. Your teaching exercises remain available.",
+        }
+
+    @app.post("/api/runs", status_code=201)
+    def submit_run(data: SubmitRun, owner: str = Depends(identify)):
+        return app.state.runs.submit(owner, data)
+
+    @app.get("/api/runs/{run_id}")
+    def read_run(run_id: UUID, owner: str = Depends(identify)):
+        return app.state.runs.get(owner, run_id)
+
+    @app.post("/api/runs/{run_id}/control")
+    def control_run(run_id: UUID, data: RunControl, owner: str = Depends(identify)):
+        return app.state.runs.control(owner, run_id, data)
+
+    @app.get("/api/sessions/{session_id}/remote-run")
+    def session_run(session_id: UUID, owner: str = Depends(identify)):
+        return app.state.runs.for_session(owner, session_id)
+
     @app.get("/api/sessions")
     def sessions(owner: str = Depends(identify)):
-        return app.state.store.list(owner)
+        return [present(session) for session in app.state.store.list(owner)]
 
     @app.post("/api/sessions", status_code=201)
     def create_session(experiment: Experiment, owner: str = Depends(identify)):
         session = new_session(experiment)
         app.state.store.put(owner, f"session#{session['id']}", session, None)
-        return session
+        return present(session)
 
     def get_session(owner: str, session_id: UUID):
         session = app.state.store.get(owner, f"session#{session_id}")
@@ -157,23 +228,41 @@ def create_app(settings: Settings | None = None, store=None):
         return session
 
     def save(owner, session, expected):
+        if session.get("remote_active_run"):
+            raise HTTPException(
+                409, "Remote run cleanup must finish before changing this experiment"
+            )
         if session["version"] != expected:
             raise Conflict
         session["version"] += 1
         app.state.store.put(owner, f"session#{session['id']}", session, expected)
-        return session
+        return present(session)
 
     @app.get("/api/sessions/{session_id}")
     def session_detail(session_id: UUID, owner: str = Depends(identify)):
-        return get_session(owner, session_id)
+        return present(get_session(owner, session_id))
 
     @app.put("/api/sessions/{session_id}")
     def update_session(session_id: UUID, data: UpdateExperiment, owner: str = Depends(identify)):
         session = get_session(owner, session_id)
         if session["status"] != "draft":
             raise InvalidTransition("Reset the experiment before editing it")
+        if data.experiment.course_id != session["experiment"]["course_id"]:
+            raise InvalidTransition("Create a new experiment to change courses")
         session["experiment"] = data.experiment.model_dump()
         session["state"] = initial_state(session["experiment"])
+        if data.experiment.course_id == "flex-first-transfer":
+            session["learning"].update(phase="prepare", checks=[], prediction=None, reflection="")
+        return save(owner, session, data.version)
+
+    @app.put("/api/sessions/{session_id}/learning")
+    def update_learning(session_id: UUID, data: UpdateLearning, owner: str = Depends(identify)):
+        session = get_session(owner, session_id)
+        if session["experiment"]["course_id"] != "flex-first-transfer":
+            raise InvalidTransition("Learning checkpoints belong to the first-transfer lesson")
+        if session["status"] == "running":
+            raise InvalidTransition("Pause the experiment before changing learning checkpoints")
+        session["learning"] = data.learning.model_dump()
         return save(owner, session, data.version)
 
     @app.post("/api/sessions/{session_id}/advance")
@@ -191,6 +280,21 @@ def create_app(settings: Settings | None = None, store=None):
         owner: str = Depends(identify),
     ):
         session = get_session(owner, session_id)
+        if command in {"start", "resume"}:
+            # Legacy draft layouts must be corrected explicitly, never moved silently.
+            try:
+                Experiment.model_validate(session["experiment"])
+            except ValueError as exc:
+                raise InvalidTransition(
+                    "Review the deck: the Flex waste chute must be fixed at D3, then save the experiment"
+                ) from exc
+            if (
+                session["experiment"]["course_id"] == "flex-first-transfer"
+                and not readiness(session)["ready"]
+            ):
+                raise InvalidTransition(
+                    "Complete the equipment tour, preparation checks and liquid prediction before running"
+                )
         return save(owner, control(session, command), data.version)
 
     return app
