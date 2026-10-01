@@ -19,11 +19,21 @@ test("connector learner follows actors, inspects pinned code and applies each re
   page,
 }) => {
   const errors: string[] = [];
+  let entered = false;
   page.on("pageerror", (error) => errors.push(error.message));
-  await enterExplorer(page);
   page.on("console", (message) => {
+    // Bootstrap probes are expected to reject the visitor before guest login.
+    const url = message.location().url;
+    if (
+      !entered &&
+      message.text().includes("401 (Unauthorized)") &&
+      /\/api\/(me|courses|sessions)$/.test(url)
+    )
+      return;
     if (message.type() === "error") errors.push(message.text());
   });
+  await enterExplorer(page);
+  entered = true;
   await page.getByRole("button", { name: "API", exact: true }).click();
   await expect(
     page.getByText(
@@ -130,7 +140,7 @@ test("connector source map explains mode boundaries and reload preserves the pag
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: /From an idea/ }),
+    page.getByRole("heading", { name: "Curated source map" }),
   ).toBeVisible();
 });
 

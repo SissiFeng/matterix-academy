@@ -20,7 +20,7 @@ variable "remote_execution_enabled" {
 variable "reserve_lambda_concurrency" {
   description = "Enable per-function reservations only when the account quota leaves AWS's required unreserved capacity."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "learner_request_rate" {

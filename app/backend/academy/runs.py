@@ -412,7 +412,10 @@ class RunService:
                 if status not in {"paused", "completed", "failed"}:
                     raise Conflict
                 status = "cancelled" if status == "paused" else status
-            elif (control["action"], status) not in {("pause", "paused"), ("resume", "running")}:
+            elif status not in {"completed", "failed"} and (control["action"], status) not in {
+                ("pause", "paused"),
+                ("resume", "running"),
+            }:
                 raise Conflict
             control = {**control, "acknowledged": True}
         elif control and not control["acknowledged"] and status not in TERMINAL:
@@ -494,7 +497,13 @@ class RunService:
         owner, session_id = run["owner"], run["session_id"]
         lock = self.store.get(owner, f"remote#{session_id}")
         session = self.store.get(owner, f"session#{session_id}")
-        if not lock or lock["run_id"] != run["run_id"] or not session:
+        if (
+            not lock
+            or lock["run_id"] != run["run_id"]
+            or lock["released"]
+            or not session
+            or session.get("remote_active_run") != run["run_id"]
+        ):
             raise Conflict
         return [
             Write(owner, f"remote#{session_id}", revised(lock, released=True), lock["version"]),

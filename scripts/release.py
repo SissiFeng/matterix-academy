@@ -67,13 +67,16 @@ def verify():
 
 def publish():
     release = verify()
-    names = [os.environ["LAMBDA_FUNCTION"], *json.loads(os.environ["WORKER_LAMBDA_FUNCTIONS"])]
+    workers = json.loads(os.environ["WORKER_LAMBDA_FUNCTIONS"])
+    if not isinstance(workers, list):
+        raise ValueError("WORKER_LAMBDA_FUNCTIONS must be a JSON array")
+    names = [os.environ["LAMBDA_FUNCTION"], *workers]
     if (
         len(names) != 4
-        or len(set(names)) != 4
         or not all(
             isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9_-]+", name) for name in names
         )
+        or len(set(names)) != 4
     ):
         raise ValueError("Exactly four distinct Lambda names are required")
     expected_account = os.environ["AWS_ACCOUNT_ID"]

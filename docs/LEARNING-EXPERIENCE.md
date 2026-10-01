@@ -30,12 +30,12 @@
 
 ### 在学生试用前必须修正的教学准确性问题
 
-1. `models.py` 默认把 waste chute 放在 A3，前端允许像普通耗材一样交换其位置。Flex waste chute 实际只安装在 D3；trash bin 是另一种 fixture，不应混为一谈。[设备说明](https://docs.opentrons.com/flex/system-description/robot/)
+1. 已修复：waste chute 固定在 D3，模型拒绝其他位置，前端布局选择排除 D3。trash bin 仍须与 waste chute 区分。[设备说明](https://docs.opentrons.com/flex/system-description/robot/)
 2. 台面位置目前不影响动作结果。后续每个动作须绑定 labware ID、well ID 和当前场景位置，由 Matterix 验证可执行性；不能只把图片摆放当作完成布台。
 3. 现在的 300 µL 移液器上限与 1,500 µL 容器容量是教学模型常量，不是整个 Flex 产品线的规格。课程所选真实型号、吸头和 labware definition 必须明确，范围从版本化设备清单读取。
 4. 当前只有 `pickup/aspirate/dispense/drop` 四种动作，默认瞬时混匀。稀释课必须明确混匀步骤及其假设；没有经验证的混匀能力时，不把“浓度达标”解释成实际物理混匀成功。
 5. 课程的“每次转移换新吸头”是本课策略，不能作为全部 Opentrons 实验的通用换头规则。
-6. “台面 A1 槽位”和“孔板 A1 孔”属于不同层级。所有初学者界面写成“D2 槽位 → 孔板 → A1 孔”，避免只显示 A1。
+6. 已修复：界面明确区分台面 Slot 与微孔板 Well A1，以 “Slot → Target plate → Well A1” 展示地址。
 
 ## 学生先要学什么
 

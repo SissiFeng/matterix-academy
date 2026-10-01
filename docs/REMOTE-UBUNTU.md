@@ -26,7 +26,7 @@ Follow [WORKER-CONTROL.md](WORKER-CONTROL.md) and `ops/matterix-worker.service` 
 2. Cloud queue plus gateway-side single active native lease. An existing desktop session is never taken over silently.
 3. Allocate a clean first-transfer scene, verify object identities and return versioned observations.
 4. Execute one 100 µL transfer with acknowledgements and native observations; explicitly mark absent observations instead of deriving them from video.
-5. Lose a response deliberately, resolve it through the original command ID, and prove the liquid transfer occurred at most once.
+5. Lose a start response deliberately, resolve it through the original run ID, and prove the liquid transfer occurred at most once.
 6. Pause/reconnect, reset all participating state, release, and verify a subsequent learner starts clean. Failed cleanup must prevent reassignment.
 7. Add session-scoped, expiring, authenticated streaming with controlled camera/object interaction. No general-purpose Isaac editor or shell is exposed.
 8. Record the engine/assets, test results and installed-version-specific media configuration. Only then enable the implemented remote route; media requires its own acceptance.

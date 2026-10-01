@@ -13,6 +13,8 @@ from pydantic import AwareDatetime, Field, model_validator
 
 from .models import Experiment, StrictModel
 
+TERMINAL_SNAPSHOT_STATUSES = frozenset({"completed", "failed", "unknown"})
+
 
 def workflow_digest(experiment: Experiment) -> str:
     """Bind the complete normalized plan, including layout and starting volumes."""
@@ -193,6 +195,8 @@ def check_run_snapshot(
     if previous is None:
         return
     check_run_snapshot(previous, session_id, request)
+    if previous.status in TERMINAL_SNAPSHOT_STATUSES and snapshot != previous:
+        raise ValueError("Terminal evidence is immutable; reconcile before creating another run")
     if snapshot.sequence < previous.sequence:
         raise ValueError("Progress snapshot is out of order")
     if snapshot.sequence == previous.sequence and snapshot != previous:
@@ -220,7 +224,3 @@ def check_run_snapshot(
         and snapshot.native_state != previous.native_state
     ):
         raise ValueError("The same native observation revision cannot describe different state")
-    if previous.status in {"completed", "failed"} and (
-        snapshot.status != previous.status or snapshot.steps != previous.steps
-    ):
-        raise ValueError("A terminal run cannot advance; use a new run after confirmed reset")

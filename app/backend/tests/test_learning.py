@@ -103,6 +103,7 @@ def test_first_lesson_requires_understanding_and_records_transfer(client, volume
     assert run["attempts"][-1]["learning"] == previous["learning"]
     assert not run["readiness"]["ready"]
     assert run["learning"]["prediction"] is None
+    assert run["learning"]["phase"] == "prepare"
     assert run["state"]["wells"]["stock"]["volume"] == 1000
 
 

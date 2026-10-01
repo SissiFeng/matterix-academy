@@ -239,7 +239,7 @@ def control(session: dict, command: str) -> dict:
             assessment=None,
         )
         if result["experiment"]["course_id"] == "flex-first-transfer":
-            result["learning"].update(phase="predict", checks=[], prediction=None, reflection="")
+            result["learning"].update(phase="prepare", checks=[], prediction=None, reflection="")
     else:
         raise InvalidTransition(f"Cannot {command} an experiment that is {status}")
     return result

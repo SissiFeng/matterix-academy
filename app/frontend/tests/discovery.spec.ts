@@ -303,3 +303,41 @@ test("pending sandbox creation freezes the design and cannot redirect a later pa
     page.getByRole("button", { name: /My serial dilution/ }),
   ).toBeVisible();
 });
+
+test("saving a design disables method and gantry edits until acknowledged", async ({
+  page,
+}) => {
+  await enter(page);
+  await page
+    .getByRole("button", { name: "Discovery studio", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: "New design" })).toBeEnabled();
+  await fillBrief(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/discovery", async (route) => {
+    if (route.request().method() === "PUT") await held;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Save design brief" }).click();
+  try {
+    await expect(
+      page.getByRole("button", { name: /Imagine a measurement raster/ }),
+    ).toBeDisabled();
+    await expect(
+      page.getByLabel("Design title", { exact: true }),
+    ).toBeDisabled();
+  } finally {
+    release();
+  }
+  await expect(
+    page.getByText(
+      "Design saved to your notebook. It is not an executable protocol.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Imagine a measurement raster/ }),
+  ).toBeEnabled();
+});

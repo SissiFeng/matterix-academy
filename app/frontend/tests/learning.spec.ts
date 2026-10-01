@@ -268,3 +268,34 @@ test("a lost step response reloads its saved result without replaying it", async
     page.getByRole("heading", { name: "Dispense 100 µL", exact: true }),
   ).toBeVisible();
 });
+
+test("equipment selection waits for the orientation save receipt", async ({
+  page,
+}) => {
+  await startLesson(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/sessions/*/learning", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Tip rack", exact: true }).click();
+  try {
+    await expect(
+      page.getByRole("img", { name: /Flex teaching diagram/ }),
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      page.getByRole("button", { name: "Target plate", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    release();
+  }
+  await expect(
+    page.getByText("Explored 1 / 5 objects.", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /Flex teaching diagram/ }),
+  ).toHaveAttribute("aria-disabled", "false");
+});

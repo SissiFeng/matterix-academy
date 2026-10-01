@@ -6,10 +6,12 @@ export default function FlexDiagram({
   session,
   selected,
   onSelect,
+  disabled = false,
 }: {
   session: Session;
   selected: EquipmentId;
   onSelect: (id: EquipmentId) => void;
+  disabled?: boolean;
 }) {
   const layout = session.experiment.layout;
   const tip = session.state.pipette;
@@ -21,6 +23,8 @@ export default function FlexDiagram({
       viewBox="0 0 720 530"
       className={s.diagram}
       role="img"
+      aria-disabled={disabled}
+      style={{ pointerEvents: disabled ? "none" : undefined }}
       aria-label="Flex teaching diagram, not a live 3D view. The object buttons below provide the same selection controls."
     >
       <defs>

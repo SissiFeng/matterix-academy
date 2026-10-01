@@ -91,7 +91,9 @@ class SQLiteStore:
                     )
                 else:
                     db.execute(
-                        "INSERT OR REPLACE INTO records VALUES (?,?,?,?)",
+                        "INSERT INTO records VALUES (?,?,?,?) "
+                        "ON CONFLICT(owner,id) DO UPDATE SET "
+                        "version=excluded.version, body=excluded.body",
                         (
                             write.owner,
                             write.key,

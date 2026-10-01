@@ -41,3 +41,12 @@ def test_release_rejects_changed_files_and_revision(release, monkeypatch, change
         monkeypatch.setenv("GITHUB_SHA", "b" * 40)
     with pytest.raises(ValueError):
         release.verify()
+
+
+@pytest.mark.parametrize("workers", ['"abc"', '{"a":1,"b":2,"c":3}', '[{},"b","c"]'])
+def test_malformed_function_configuration_is_rejected_before_aws(release, monkeypatch, workers):
+    monkeypatch.setenv("LAMBDA_FUNCTION", "academy")
+    monkeypatch.setenv("WORKER_LAMBDA_FUNCTIONS", workers)
+    monkeypatch.setattr(release.boto3, "Session", lambda **kw: pytest.fail("AWS was accessed"))
+    with pytest.raises(ValueError):
+        release.publish()

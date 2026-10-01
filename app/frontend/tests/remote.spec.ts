@@ -78,6 +78,12 @@ test("fixture-only snapshot survives disconnect and refresh without synthetic pr
   await lesson(page);
   const panel = page.getByRole("region", { name: "Remote experiment run" });
   await expect(panel.getByText("1 / 4 actions confirmed")).toBeVisible();
+  for (const stage of await page
+    .getByRole("navigation", { name: "Lesson stages" })
+    .getByRole("button")
+    .all()) {
+    await expect(stage).toBeDisabled();
+  }
   await expect(panel.getByText("Not observed", { exact: true })).toHaveCount(4);
   disconnected = true;
   await panel

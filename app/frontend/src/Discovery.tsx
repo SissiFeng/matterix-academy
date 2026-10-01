@@ -782,7 +782,7 @@ export function DiscoveryStudio({
           finishes.
         </p>
       )}
-      <fieldset className={s.studioBody} disabled={navigationPending}>
+      <fieldset className={s.studioBody} disabled={navigationPending || busy}>
         <header className={s.hero}>
           <span className={s.eyebrow}>DESIGN BEFORE AUTOMATION</span>
           <h1>Discovery studio</h1>

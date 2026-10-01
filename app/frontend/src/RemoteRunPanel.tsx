@@ -56,10 +56,12 @@ export default function RemoteRunPanel({
   session,
   dirty,
   onChange,
+  onLockChange,
 }: {
   session: Session;
   dirty: boolean;
   onChange: (next: Session) => void;
+  onLockChange: (locked: boolean) => void;
 }) {
   const [run, setRun] = useState<RemoteRun | null>(null);
   const [enabled, setEnabled] = useState(false);
@@ -74,6 +76,13 @@ export default function RemoteRunPanel({
   const latestRun = useRef("");
   const mutationEpoch = useRef(0);
   const key = `academy.remote-request.${session.id}`;
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const changeRef = useRef(onChange);
+  changeRef.current = onChange;
+  useEffect(() => {
+    if (loaded) onLockChange(!!run && !run.cleanup?.reset_verified);
+  }, [run, loaded, onLockChange]);
 
   useEffect(() => {
     alive.current = true;
@@ -103,6 +112,15 @@ export default function RemoteRunPanel({
           latestRun.current = next.run_id;
           latestVersion.current = next.version;
           setRun(next);
+          if (
+            next.cleanup?.reset_verified &&
+            sessionRef.current.remote_active_run
+          ) {
+            const current = await api<Session>(`/sessions/${session.id}`, {
+              signal: controller.signal,
+            });
+            if (active) changeRef.current(current);
+          }
         }
         setReconnecting(false);
         setLoaded(true);

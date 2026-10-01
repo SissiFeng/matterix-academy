@@ -156,6 +156,8 @@ export default function LearningLab({
   const [selected, setSelected] = useState<EquipmentId>("pipette");
   const [view, setView] = useState<"diagram" | "remote">("diagram");
   const [busy, setBusy] = useState(false);
+  const [remoteLocked, setRemoteLocked] = useState(!!session.remote_active_run);
+  const mutationLocked = busy || remoteLocked || !!session.remote_active_run;
   const [auto, setAuto] = useState(false);
   const [prediction, setPrediction] = useState({
     source: learning.prediction?.source.toString() ?? "",
@@ -230,7 +232,8 @@ export default function LearningLab({
   );
   const task = useCallback(
     async (action: () => Promise<Session>) => {
-      if (lock.current || !mounted.current) return;
+      if (lock.current || !mounted.current || current.current.remote_active_run)
+        return;
       lock.current = true;
       setBusy(true);
       try {
@@ -291,6 +294,7 @@ export default function LearningLab({
     }
   };
   const select = async (id: EquipmentId) => {
+    if (lock.current || current.current.remote_active_run) return;
     setSelected(id);
     if (phase === "orient" && !learning.visited.includes(id) && !busy)
       await saveProgress({ visited: [...learning.visited, id] });
@@ -317,7 +321,7 @@ export default function LearningLab({
     if (next && !single) setAuto(true);
   };
   useEffect(() => {
-    if (!auto || busy || session.status !== "running") return;
+    if (!auto || mutationLocked || session.status !== "running") return;
     const timer = window.setTimeout(
       () =>
         task(async () => {
@@ -331,7 +335,7 @@ export default function LearningLab({
       1200,
     );
     return () => window.clearTimeout(timer);
-  }, [auto, busy, session.version, session.status, task]);
+  }, [auto, mutationLocked, session.version, session.status, task]);
   useEffect(() => {
     if (phase === "run" && session.cursor < 4)
       setSelected(
@@ -431,6 +435,12 @@ export default function LearningLab({
           <span>Learning stages</span>
         </div>
       </header>
+      {(remoteLocked || session.remote_active_run) && (
+        <p role="status">
+          A remote run owns this experiment. Teaching controls stay locked until
+          cleanup is verified. Open Remote 3D to follow its status.
+        </p>
+      )}
       <div className={s.learningGrid}>
         <nav className={s.phaseNav} aria-label="Lesson stages">
           <span className={s.eyebrow}>YOUR LEARNING PATH</span>
@@ -440,7 +450,7 @@ export default function LearningLab({
               aria-current={phase === p.id ? "step" : undefined}
               className={phase === p.id ? s.currentPhase : ""}
               onClick={() => changePhase(p.id)}
-              disabled={busy || session.status === "running"}
+              disabled={mutationLocked || session.status === "running"}
             >
               <span className={s.phaseNumber}>
                 {derivedDone[i] ? (
@@ -497,6 +507,7 @@ export default function LearningLab({
                 session={session}
                 dirty={predictionDirty || busy}
                 onChange={accept}
+                onLockChange={setRemoteLocked}
               />
               <RemoteView />
             </>
@@ -506,12 +517,13 @@ export default function LearningLab({
                 session={session}
                 selected={selected}
                 onSelect={select}
+                disabled={mutationLocked}
               />
               <div className={s.objectButtons}>
                 {(Object.keys(EQUIPMENT) as EquipmentId[]).map((id) => (
                   <button
                     key={id}
-                    disabled={busy}
+                    disabled={mutationLocked}
                     aria-pressed={selected === id}
                     onClick={() => select(id)}
                   >
@@ -549,7 +561,7 @@ export default function LearningLab({
                     {EQUIPMENT[id].name}
                     <select
                       aria-label={`${EQUIPMENT[id].name} slot`}
-                      disabled={busy || session.status !== "draft"}
+                      disabled={mutationLocked || session.status !== "draft"}
                       value={session.experiment.layout[id]}
                       onChange={(e) => {
                         const slot = e.target.value;
@@ -689,7 +701,7 @@ export default function LearningLab({
                       type="radio"
                       name="location"
                       checked={learning.location_answer === value}
-                      disabled={busy}
+                      disabled={mutationLocked}
                       onChange={() => saveProgress({ location_answer: value })}
                     />
                     {label}
@@ -704,7 +716,7 @@ export default function LearningLab({
               )}
               <button
                 className={s.primary}
-                disabled={busy || !orientDone}
+                disabled={mutationLocked || !orientDone}
                 onClick={() => changePhase("prepare")}
               >
                 Prepare the experiment <ArrowRight size={16} />
@@ -727,7 +739,7 @@ export default function LearningLab({
                   <label key={check.id}>
                     <input
                       type="checkbox"
-                      disabled={busy || session.status !== "draft"}
+                      disabled={mutationLocked || session.status !== "draft"}
                       checked={learning.checks.includes(check.id)}
                       onChange={() =>
                         saveProgress({
@@ -753,7 +765,7 @@ export default function LearningLab({
               </div>
               <button
                 className={s.primary}
-                disabled={busy || !orientDone || !preparationDone}
+                disabled={mutationLocked || !orientDone || !preparationDone}
                 onClick={() => changePhase("predict")}
               >
                 Predict the volumes <ArrowRight size={16} />
@@ -796,7 +808,7 @@ export default function LearningLab({
                         step="any"
                         required
                         value={prediction[field.key]}
-                        disabled={busy || session.status !== "draft"}
+                        disabled={mutationLocked || session.status !== "draft"}
                         onChange={(e) => {
                           setPrediction({
                             ...prediction,
@@ -812,7 +824,7 @@ export default function LearningLab({
                 ))}
                 <button
                   className={s.secondary}
-                  disabled={busy || session.status !== "draft"}
+                  disabled={mutationLocked || session.status !== "draft"}
                 >
                   Check my prediction
                 </button>
@@ -825,7 +837,9 @@ export default function LearningLab({
               </p>
               <button
                 className={s.primary}
-                disabled={busy || !session.readiness?.ready || predictionDirty}
+                disabled={
+                  mutationLocked || !session.readiness?.ready || predictionDirty
+                }
                 onClick={() => changePhase("run")}
               >
                 Start practicing <ArrowRight size={16} />
@@ -896,7 +910,7 @@ export default function LearningLab({
               {session.status === "completed" ? (
                 <button
                   className={s.primary}
-                  disabled={busy}
+                  disabled={mutationLocked}
                   onClick={() => changePhase("reflect")}
                 >
                   Explain the result and try again <ArrowRight size={16} />
@@ -904,7 +918,7 @@ export default function LearningLab({
               ) : session.status === "faulted" ? (
                 <button
                   className={s.primary}
-                  disabled={busy}
+                  disabled={mutationLocked}
                   onClick={() => restart(volume)}
                 >
                   Retry from the initial state
@@ -913,7 +927,9 @@ export default function LearningLab({
                 <div className={s.runControls}>
                   <button
                     className={s.primary}
-                    disabled={busy || !session.readiness?.ready || auto}
+                    disabled={
+                      mutationLocked || !session.readiness?.ready || auto
+                    }
                     onClick={() => perform(true)}
                   >
                     <SkipForward size={16} />
@@ -922,7 +938,7 @@ export default function LearningLab({
                   {auto || session.status === "running" ? (
                     <button
                       className={s.secondary}
-                      disabled={busy}
+                      disabled={mutationLocked}
                       onClick={() => {
                         setAuto(false);
                         task(() => control("pause"));
@@ -933,7 +949,7 @@ export default function LearningLab({
                   ) : (
                     <button
                       className={s.secondary}
-                      disabled={busy || !session.readiness?.ready}
+                      disabled={mutationLocked || !session.readiness?.ready}
                       onClick={() => perform(false)}
                     >
                       <Play size={15} /> Run continuously
@@ -989,7 +1005,9 @@ export default function LearningLab({
                     <input
                       type="radio"
                       name="reflection"
-                      disabled={busy || session.status !== "completed"}
+                      disabled={
+                        mutationLocked || session.status !== "completed"
+                      }
                       checked={learning.reflection === value}
                       onChange={() => saveProgress({ reflection: value })}
                     />
@@ -1025,7 +1043,7 @@ export default function LearningLab({
               </p>
               <button
                 className={s.primary}
-                disabled={busy || session.status !== "completed"}
+                disabled={mutationLocked || session.status !== "completed"}
                 onClick={() => restart(volume === 100 ? 50 : 100)}
               >
                 <RotateCcw size={16} /> Try a {volume === 100 ? 50 : 100} µL

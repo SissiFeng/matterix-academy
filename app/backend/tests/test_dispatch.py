@@ -193,11 +193,11 @@ def test_native_write_and_terminal_ack_replay(system):
             service.snapshot("lab-1", request.run_id, payload)
     final = snapshot(run, 4, 2)
     stored = service.snapshot("lab-1", request.run_id, final)
+    with pytest.raises(Conflict):
+        service.snapshot("lab-1", request.run_id, snapshot(run, 4, 3))
     clock[0] += 90
     assert service.snapshot("lab-1", request.run_id, final) == stored
     assert service.raw(request.run_id)["status"] == "completed"
-    with pytest.raises((Conflict, HTTPException)):
-        service.snapshot("lab-1", request.run_id, snapshot(run, 4, 3))
 
 
 def test_machine_scope_and_revocation(system):
@@ -232,6 +232,45 @@ def test_controls_are_versioned_and_pause_needs_native_ack(system):
     body["control_id"] = str(command.command_id)
     service.snapshot("lab-1", request.run_id, SnapshotRequest.model_validate(body))
     assert service.get("alice", request.run_id)["status"] == "paused"
+
+
+@pytest.mark.parametrize("action", ["pause", "resume"])
+@pytest.mark.parametrize("terminal_status", ["completed", "failed"])
+def test_control_ack_racing_terminal_snapshot_keeps_terminal_outcome(
+    system, action, terminal_status
+):
+    service, _, request = system
+    run, _ = start(system)
+    initial = snapshot(run, 0, 1).model_dump(mode="json")
+    if action == "resume":
+        initial["snapshot"]["status"] = "paused"
+    current = service.snapshot("lab-1", request.run_id, SnapshotRequest.model_validate(initial))
+    command = RunControl(command_id=uuid4(), expected_version=current["version"], action=action)
+    service.control("alice", request.run_id, command)
+    body = snapshot(run, 4 if terminal_status == "completed" else 0, 2).model_dump(mode="json")
+    body["snapshot"]["status"] = terminal_status
+    if terminal_status == "failed":
+        body["snapshot"]["error"] = "Synthetic terminal failure"
+    body["control_id"] = str(command.command_id)
+    response = service.snapshot("lab-1", request.run_id, SnapshotRequest.model_validate(body))
+    assert response["status"] == terminal_status
+    assert response["control"]["acknowledged"] is True
+    assert (
+        service.snapshot("lab-1", request.run_id, SnapshotRequest.model_validate(body)) == response
+    )
+    assert service.cleanup("lab-1", request.run_id, cleanup(run))["cleanup"]["reset_verified"]
+
+
+def test_transaction_update_preserves_session_creation_order(store):
+    for index in range(51):
+        session = {"version": 1, "id": str(index), "created_at": f"2026-10-01T00:00:{index:02d}Z"}
+        store.put("alice", f"session#{index}", session, None)
+    before = [session["id"] for session in store.list("alice")]
+    oldest = store.get("alice", "session#0")
+    store.transact([Write("alice", "session#0", revised(oldest, remote_active_run="fixture"), 1)])
+    assert [session["id"] for session in store.list("alice")] == before
+    assert "0" not in before
+    assert store.get("alice", "session#0")["version"] == 2
 
 
 def test_queued_cancel_releases_session_without_touching_sim(system):

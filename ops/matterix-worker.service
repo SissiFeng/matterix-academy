@@ -9,6 +9,8 @@ User=matterix-worker
 Group=matterix-worker
 WorkingDirectory=/opt/matterix-academy
 EnvironmentFile=/etc/matterix-worker/worker.env
+# Install source tokens root:root 0600 in a root:root 0700 directory.
+# PID 1 supplies read-only copies; do not grant the service direct source access.
 LoadCredential=worker.token:/etc/matterix-worker/worker.token
 LoadCredential=gateway.token:/etc/matterix-worker/gateway.token
 Environment=ACADEMY_WORKER_CREDENTIAL_FILE=%d/worker.token

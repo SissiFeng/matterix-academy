@@ -10,7 +10,7 @@ This request prioritizes the real viewport ahead of the longer-term browser-rend
 
 ## What was checked
 
-The separate Codex task **评估 deploy 合理性** uses the same checkout at `/Users/sissifeng/matterix-academy`; this repository currently lists only that Git worktree. Its deployment and automatic-release work is ongoing. This review does not change that task's implementation files or cloud resources.
+The initial cloud deployment is recorded in [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md); application release behavior is defined in [CONTINUOUS-DEPLOYMENT.md](CONTINUOUS-DEPLOYMENT.md). The topology observations below are a dated, read-only snapshot.
 
 | Boundary | Evidence on 2026-10-01 | Limit |
 |---|---|---|
@@ -21,6 +21,36 @@ The separate Codex task **评估 deploy 合理性** uses the same checkout at `/
 | Native runtime and media | [Worker handoff](WORKER-CONTROL.md) and [synchronized-run contract](SYNCHRONIZED-RUNS.md) still require native qualification and authenticated media | No verified installed gateway, live stream, or viewer grant endpoint |
 
 No SSH login, runtime restart, Tailscale policy change, port exposure, worker enrollment or new AWS resource was performed in this review.
+
+## Concrete starting point supplied by the operator
+
+The operator reports that the following configuration launches the desired Isaac Lab window successfully on Ubuntu. Source inspection used the exact supplied Matterix commit, not the subsequently advanced local branch. Opening the window is not itself a passing pouring verdict or a streaming acceptance test.
+
+| Field | Supplied configuration |
+|---|---|
+| Checkout | `/home/sissi/matterix-semantics-pr61-b0p9uC` |
+| Matterix commit | `b6a5f00036044686776ba5bc6bf0c72daa6ac17a` |
+| Python | `/home/sissi/.conda/envs/matterix-pr50-py312/bin/python` |
+| Entry point | `scripts/validation/run_semantics_pouring.sh` |
+| Scenario | `Matterix-Test-Semantics-Pouring-Franka-v1` |
+| Parameters | `--num_envs 2 --test_stage pour --video --motion_speed_scale 3 --viz kit --livestream 0 --enable_cameras --device cuda:0` |
+
+This provides a concrete first streaming scenario before accepting arbitrary learner-composed Flex workflows. The currently implemented worker contract is scoped to the Flex lesson; the pouring probe requires its own registered scenario and observation/result mapping before the learner API can launch it.
+
+The supplied configuration uses the local Kit visualization and disables livestreaming. `--video` records two MP4 outputs (overview and tiled close-ups); it does not deliver a live browser stream. The wrapper clears inherited `LIVESTREAM` and `HEADLESS`, so a streaming variant must use explicit, installed-version-compatible launch arguments. Do not assume setting an outer environment variable enables streaming, or that changing `0` to another value completes network integration.
+
+At the pinned revision, the probe already provides:
+
+- `MATTERIX_PHASE` JSON log events for startup and execution stages.
+- `MATTERIX_POUR_DIAGNOSTICS` JSON log events with simulation step and per-environment action/geometry diagnostics, emitted periodically and on action changes.
+- `result.diagnostics.json` with richer sampled native state and semantic events.
+- `result.json`, `run.log`, and overview/close-up recordings in a unique result directory. The wrapper reports success only when `passed` is true and the simulator process exit status is zero.
+
+The integration adapter can consume these existing events, add run/session/generation identity and ordered observation metadata, and publish them through the worker API. They do not already satisfy the platform contract: startup phases are not workflow-step completion receipts, particle counts are not calibrated liquid volumes, and these files/events do not contain Academy run identities. Reading JSON files requires handling writes in progress; a structured event sink or atomic snapshot write is preferable to assuming every file read is complete.
+
+The probe is finite, with a default ten-minute wrapper timeout, and closes the simulation after saving results. Browser connection must be ready before the instructional actions begin, with a bounded wait so an absent viewer cannot reserve the GPU indefinitely. A terminal run should show its saved outcome and, after artifact publication is implemented, the existing recordings. It should not promise a live scene after the process has exited.
+
+Register a versioned launch profile for this scenario. Repository preparation (`git fetch` and checkout selection) belongs to deployment; a learner run launches the prepared revision with validated parameters. Reconnection only reattaches to the recorded process/run. It must not run the shell command again.
 
 ## Topology to preserve
 

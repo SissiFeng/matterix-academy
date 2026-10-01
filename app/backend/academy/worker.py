@@ -17,9 +17,19 @@ from uuid import UUID, uuid4
 
 import httpx
 
-from .gateway import GatewayUnavailable, MatterixGateway, RemoteOutcomeUnknown
+from .gateway import (
+    GatewayUnavailable,
+    MatterixGateway,
+    RemoteOperationPending,
+    RemoteOutcomeUnknown,
+)
 from .models import StrictModel
-from .remote_run import RemoteRunRequest, RemoteRunSnapshot, check_run_snapshot
+from .remote_run import (
+    TERMINAL_SNAPSHOT_STATUSES,
+    RemoteRunRequest,
+    RemoteRunSnapshot,
+    check_run_snapshot,
+)
 from .runs import TERMINAL
 
 logger = logging.getLogger("academy.worker")
@@ -110,15 +120,23 @@ class GatewayRunner:
     def __init__(self, gateway):
         self.gateway = gateway
 
+    def require_actions(self, local):
+        capabilities = self.gateway.capabilities()
+        needed = {action["kind"] for action in local["run"]["plan"]["actions"]}
+        if not needed <= set(capabilities.actions):
+            raise GatewayUnavailable("Gateway does not support every saved workflow action")
+
     def prepare(self, local, recovering=False):
+        self.require_actions(local)
         allocation_id = UUID(local["allocation_id"])
         if recovering:
             allocation = self.gateway.allocation(allocation_id)
+            if allocation.status == "pending":
+                raise RemoteOperationPending("Allocation is still pending")
             if allocation.status != "allocated" or allocation.session_id is None:
                 raise GatewayUnavailable("Allocation intent cannot be safely recovered")
             native = self.gateway.snapshot(allocation.session_id)
         else:
-            self.gateway.capabilities()
             native = self.gateway.allocate(allocation_id)
         return {
             "native_session_id": str(native.id),
@@ -137,6 +155,7 @@ class GatewayRunner:
         )
 
     def start(self, local):
+        self.require_actions(local)
         return self.gateway.start_run(
             UUID(local["binding"]["native_session_id"]), self.request_for(local)
         )
@@ -174,6 +193,16 @@ class GatewayRunner:
         )
         return snapshot
 
+    def require_completed_operation(self, session_id, command_id, operation):
+        if operation.status in {"accepted", "running"}:
+            operation = self.gateway.operation(session_id, operation.operation_id)
+        if operation.command_id != command_id:
+            raise GatewayUnavailable("Native operation belongs to a different command")
+        if operation.status in {"accepted", "running"}:
+            raise RemoteOperationPending("Native operation is still pending")
+        if operation.status != "completed":
+            raise GatewayUnavailable("Native operation requires operator reconciliation")
+
     def cleanup(self, local, recovering=False):
         session_id = UUID(local["binding"]["native_session_id"])
         command_id = UUID(local["cleanup_id"])
@@ -182,8 +211,7 @@ class GatewayRunner:
         else:
             revision = local["last_snapshot"]["session_revision"]
             operation = self.gateway.reset(session_id, command_id, revision)
-        if operation.status != "completed":
-            raise GatewayUnavailable("Reset is unresolved; operator reconciliation required")
+        self.require_completed_operation(session_id, command_id, operation)
         proof = self.gateway._exchange(
             "GET", f"v1/sessions/{session_id}/reset-verification/{command_id}", ResetVerification
         )
@@ -199,8 +227,7 @@ class GatewayRunner:
         else:
             revision = self.gateway.snapshot(session_id).revision
             operation = self.gateway.release(session_id, command_id, revision)
-        if operation.status != "completed":
-            raise GatewayUnavailable("Native release has not been verified")
+        self.require_completed_operation(session_id, command_id, operation)
 
 
 class Worker:
@@ -216,16 +243,15 @@ class Worker:
         if not local:
             run = self.client.request("POST", "internal/runs/claim")
             if not run:
-                return
+                return False  # Idle polling has a separate bounded backoff.
             if run["status"] != "claimed":
                 # A journal lost after an execution cannot be reconstructed as
                 # permission to start. Keep its runtime quarantined for recovery.
-                if run["status"] not in TERMINAL:
-                    self.client.post(
-                        run,
-                        "unknown",
-                        reason="Local intent journal is missing; operator reconciliation required",
-                    )
+                self.client.post(
+                    run,
+                    "unknown",
+                    reason="Local intent journal is missing; operator reconciliation required",
+                )
                 return
             local = dict(
                 run=run, phase="claimed", start_id=str(uuid4()), allocation_id=str(uuid4())
@@ -285,7 +311,11 @@ class Worker:
                 result = self.runner.start(local)
                 local.update(phase="polling", last_snapshot=result.model_dump(mode="json"))
                 self.journal.save(local)
-            elif local["phase"] in {"start_intent", "polling"} and run["status"] not in TERMINAL:
+            elif (
+                local["phase"] in {"start_intent", "polling"}
+                and run["status"] not in TERMINAL
+                and local.get("last_snapshot", {}).get("status") not in TERMINAL_SNAPSHOT_STATUSES
+            ):
                 result = self.runner.poll(local)
                 local.update(phase="polling", last_snapshot=result.model_dump(mode="json"))
                 self.journal.save(local)
@@ -353,6 +383,8 @@ class Worker:
                 result = self.client.post(run, "cleanup", **local["cleanup"])
                 if result["cleanup"]["reset_verified"]:
                     self.journal.clear()
+        except RemoteOperationPending:
+            logger.info("Native operation is pending; preserving its intent for read-only polling")
         except RemoteOutcomeUnknown:
             logger.warning(
                 "Native acknowledgement lost; next attempt only reads the original operation"
@@ -393,8 +425,8 @@ def main():
     try:
         while True:
             try:
-                worker.step()
-                delay = 2
+                idle = worker.step() is False
+                delay = min(delay * 2, 20) if idle else 2
             except (httpx.HTTPError, GatewayUnavailable):
                 # Do not log headers, full URL, tokens, plans or learner records.
                 logger.warning(

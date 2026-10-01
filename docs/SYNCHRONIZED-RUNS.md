@@ -18,7 +18,8 @@ sequenceDiagram
   Worker->>API: Claim immutable plan and obtain one start grant
   Worker->>Gateway: Journal intent, allocate lease and submit this plan once
   Gateway->>Sim: Start or reuse an isolated runtime; configure scene
-  Gateway-->>API: Queued / loading (0 completed steps)
+  Gateway-->>Worker: Queued / loading (0 completed steps)
+  Worker->>API: Publish initial snapshot
   Sim->>Sim: Execute the mapped actions in order
   loop While the run is active
     Sim-->>Gateway: Action outcomes and native observations

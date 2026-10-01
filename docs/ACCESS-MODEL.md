@@ -70,9 +70,9 @@ flowchart LR
 | 身份 | 凭据 | 存放 | 可以做 | 不可以做 |
 |---|---|---|---|---|
 | 学生 | Cognito access token（短时效，PKCE） | 浏览器 session storage | 自己的实验与运行 | 任何 `/internal`、他人数据、主机 |
-| 讲师 | 同上 + `instructors` group | 同上 | 只读查看本班、本租户学员运行 | 改学员数据、控制运行（v1） |
-| 管理员 | 同上 + `admins` group | 同上 | 课程、场景能力开关、worker 池状态 | 登录主机 |
-| Academy API | Lambda 执行角色（IAM） | AWS | 读写 DynamoDB、签发 media token | 直接访问实验室网络 |
+| 讲师（规划中） | 同上 + `instructors` group | 同上 | v1 不支持跨用户读取；班级/租户成员关系与只读视图待实施 | 改学员数据、控制运行 |
+| 网页管理员（规划中） | 同上 + `admins` group | 同上 | 管理页面待实施；当前使用 IAM 运维 CLI | 登录主机 |
+| Academy API | Lambda 执行角色（IAM） | AWS | 读写 DynamoDB；media token 签发待实施 | 直接访问实验室网络 |
 | Worker | 机器凭据（§8） | 主机上的 root-only 文件 / systemd credential | 领取运行、推送本运行的快照与心跳 | 读学生资料、列出其他运行、签发用户令牌 |
 | 运维 | Tailscale 身份 + SSH key | 运维个人设备 | SSH、远程桌面、部署 | 以学生身份操作（应使用测试账号） |
 
@@ -184,7 +184,7 @@ UpdateItem run#<run_id>
 |---|---|
 | 机器凭据有效，且 `lease_owner == worker_id`、`claim_token` 匹配 | 403 |
 | `run_id`、`session_id`、`plan_hash` 与记录一致 | 409，告警 |
-| `sequence` 大于已存值；同一 sequence 内容必须逐字节相同（幂等重放） | 同 sequence 不同内容 → 409；更小 → 忽略并返回当前值 |
+| `sequence` 大于已存值；同一 sequence 内容必须逐字节相同（幂等重放） | 同 sequence 不同内容或更小 → 409 |
 | 终态不改变；相同已保存报告重传可确认 | 改变终态 → 409 |
 | 步骤顺序不变；已确认的步骤不被撤回 | 409 |
 | 完成步骤有确认时间与观测修订号，且时间与修订号非递减 | 422 |
@@ -376,14 +376,14 @@ flowchart LR
 
 ## 11. 对现有仓库的影响
 
-| 文件 | 需要的修改 |
+| 文件 | 已实现与剩余工作 |
 |---|---|
-| `SYNCHRONIZED-RUNS.md` | 端点方向改为 worker 拉取；新增 claim/lease/claim_token、`outcome_unknown` 的触发规则 |
-| `REMOTE-UBUNTU.md` | `ACADEMY_GATEWAY_URL` 可能不再需要；改为 worker 注册与机器凭据配置 |
-| `MATTERIX-CONTRACT.md` | 快照增加 `poses`、`joints`、`asset_version`（方案 B） |
-| `infra/` | 新增 `/internal` 独立 API 与 authorizer、worker 凭据表、KMS 签名密钥；可选 TURN |
-| `app/` | `/api/runs` 写入运行记录；`/internal/*` 处理器；快照写入校验；media token 签发 |
-| 新组件 | worker 服务（Python），运行在 Ubuntu 上的容器或 systemd 服务 |
+| `SYNCHRONIZED-RUNS.md` | 已定义 worker 拉取与 claim/lease/claim_token、`outcome_unknown` 的触发规则 |
+| `REMOTE-UBUNTU.md` | 已定义 worker 注册与机器凭据配置；worker 仍需私有 gateway URL，Ubuntu 部署待验收 |
+| `MATTERIX-CONTRACT.md` | engine/asset 版本绑定已实现；`poses`、`joints` 与媒体方案仍待实施 |
+| `infra/` | 已实现 `/internal` 独立 API、authorizer 与 worker 注册；KMS 媒体签名和 TURN 待实施 |
+| `app/` | 已实现 `/api/runs`、`/internal/*` 与快照校验；media token 签发待实施 |
+| 新组件 | Python worker 与 systemd 模板已实现；Ubuntu 原生安装与验收待完成 |
 
 ## 12. 建议实施顺序
 

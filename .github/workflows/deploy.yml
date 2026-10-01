@@ -57,7 +57,7 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
@@ -106,7 +106,7 @@ jobs:
           role-session-name: academy-${{ github.run_id }}
           aws-region: ${{ vars.AWS_REGION }}
           allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
-          role-duration-seconds: 900
+          role-duration-seconds: 1800
       - name: Publish and verify the tested release
         if: steps.head.outputs.current == 'true'
         run: uv run --frozen python scripts/release.py publish

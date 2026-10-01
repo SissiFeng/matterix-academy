@@ -38,6 +38,7 @@ export type RunEvent = {
   hint: string;
 };
 export type Session = {
+  remote_active_run?: string | null;
   id: string;
   version: number;
   created_at: string;

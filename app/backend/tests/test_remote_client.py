@@ -2,7 +2,13 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from academy.gateway import GatewayUnavailable, MatterixGateway, RemoteCommand, RemoteOutcomeUnknown
+from academy.gateway import (
+    GatewayUnavailable,
+    MatterixGateway,
+    RemoteCommand,
+    RemoteOperationPending,
+    RemoteOutcomeUnknown,
+)
 
 
 def snapshot(session_id):
@@ -76,16 +82,36 @@ def test_remote_allocate_lookup_command_and_release_use_scoped_contract():
     import json
 
     session_id, command_id, operation_id = uuid4(), uuid4(), uuid4()
+    allocation_id, reset_id, release_id = uuid4(), uuid4(), uuid4()
     requests = []
 
     def handler(request):
         requests.append(request)
-        if (
-            request.url.path == "/v1/sessions"
-            or request.method == "GET"
-            and "/operations/" not in request.url.path
-        ):
+        endpoint = request.method, request.url.path
+        if endpoint == ("POST", "/v1/sessions"):
+            assert json.loads(request.content) == {
+                "allocation_id": str(allocation_id),
+                "scene_id": "flex-first-transfer-v1",
+            }
             return httpx.Response(200, json=snapshot(session_id))
+        if endpoint == ("GET", f"/v1/allocations/{allocation_id}"):
+            return httpx.Response(
+                200,
+                json={
+                    "allocation_id": str(allocation_id),
+                    "status": "allocated",
+                    "session_id": str(session_id),
+                },
+            )
+        if endpoint == ("GET", f"/v1/sessions/{session_id}"):
+            return httpx.Response(200, json=snapshot(session_id))
+        assert endpoint in {
+            ("POST", f"/v1/sessions/{session_id}/commands"),
+            ("GET", f"/v1/sessions/{session_id}/commands/{command_id}"),
+            ("GET", f"/v1/sessions/{session_id}/operations/{operation_id}"),
+            ("POST", f"/v1/sessions/{session_id}/reset"),
+            ("DELETE", f"/v1/sessions/{session_id}"),
+        }
         reply_command = (
             json.loads(request.content)["command_id"] if request.content else str(command_id)
         )
@@ -99,7 +125,7 @@ def test_remote_allocate_lookup_command_and_release_use_scoped_contract():
         )
 
     gateway = MatterixGateway("https://gateway.example", "secret", httpx.MockTransport(handler))
-    assert gateway.allocate(uuid4()).id == session_id
+    assert gateway.allocate(allocation_id).id == session_id
     assert gateway.snapshot(session_id).revision == 1
     assert (
         gateway.submit(
@@ -111,11 +137,51 @@ def test_remote_allocate_lookup_command_and_release_use_scoped_contract():
         == operation_id
     )
     assert gateway.operation(session_id, operation_id).status == "accepted"
-    gateway.reset(session_id, uuid4(), 2)
-    gateway.release(session_id, uuid4(), 3)
-    assert json.loads(requests[-1].content)["expected_revision"] == 3
-    assert requests[-1].method == "DELETE"
+    assert gateway.command_result(session_id, command_id).operation_id == operation_id
+    gateway.reset(session_id, reset_id, 2)
+    gateway.release(session_id, release_id, 3)
+    assert json.loads(requests[-2].content) == {"command_id": str(reset_id), "expected_revision": 2}
+    assert json.loads(requests[-1].content) == {
+        "command_id": str(release_id),
+        "expected_revision": 3,
+    }
+    assert [(r.method, r.url.path) for r in requests] == [
+        ("POST", "/v1/sessions"),
+        ("GET", f"/v1/allocations/{allocation_id}"),
+        ("GET", f"/v1/sessions/{session_id}"),
+        ("POST", f"/v1/sessions/{session_id}/commands"),
+        ("GET", f"/v1/sessions/{session_id}/operations/{operation_id}"),
+        ("GET", f"/v1/sessions/{session_id}/commands/{command_id}"),
+        ("POST", f"/v1/sessions/{session_id}/reset"),
+        ("DELETE", f"/v1/sessions/{session_id}"),
+    ]
     assert all(r.url.host == "gateway.example" for r in requests)
+    gateway.close()
+
+
+@pytest.mark.parametrize("case", ["session", "allocation", "pending"])
+def test_allocation_response_requires_its_original_allocation_association(case):
+    session_id, allocation_id = uuid4(), uuid4()
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        if request.method == "POST":
+            return httpx.Response(200, json=snapshot(session_id))
+        assert request.url.path == f"/v1/allocations/{allocation_id}"
+        return httpx.Response(
+            200,
+            json={
+                "allocation_id": str(uuid4() if case == "allocation" else allocation_id),
+                "session_id": str(uuid4() if case == "session" else session_id),
+                "status": "pending" if case == "pending" else "allocated",
+            },
+        )
+
+    gateway = MatterixGateway("https://gateway.example", "secret", httpx.MockTransport(handler))
+    with pytest.raises(RemoteOperationPending if case == "pending" else RemoteOutcomeUnknown):
+        gateway.allocate(allocation_id)
+    assert [request.method for request in calls] == ["POST", "GET"]
     gateway.close()
 
 

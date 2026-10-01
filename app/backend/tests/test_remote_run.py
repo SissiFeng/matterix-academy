@@ -272,3 +272,22 @@ def test_ordered_actions_cannot_have_reversed_completion_evidence(field):
     body["steps"][1][field] = "2026-10-01T13:59:00Z" if field == "completed_at" else 1
     with pytest.raises(ValidationError):
         RemoteRunSnapshot.model_validate(body)
+
+
+@pytest.mark.parametrize("status", ["completed", "failed", "unknown"])
+@pytest.mark.parametrize("change", ["native_state", "sequence", "status"])
+def test_terminal_native_evidence_is_frozen_including_unknown(status, change):
+    session_id, request = uuid4(), plan()
+    body = report(session_id, request, completed=len(request.experiment.actions), sequence=1)
+    body.update(status=status, error="Synthetic stopped outcome" if status == "failed" else None)
+    previous = RemoteRunSnapshot.model_validate(body)
+    check_run_snapshot(previous, session_id, request, previous)
+    body["sequence"] += 1
+    if change == "native_state":
+        body["session_revision"] += 1
+        body["native_state"]["revision"] += 1
+        body["native_state"]["pipette_volume_ul"] = 100
+    elif change == "status":
+        body["status"] = "running" if status == "unknown" else "unknown"
+    with pytest.raises(ValueError, match="immutable"):
+        check_run_snapshot(RemoteRunSnapshot.model_validate(body), session_id, request, previous)

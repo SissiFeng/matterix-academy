@@ -31,6 +31,10 @@ class RemoteOutcomeUnknown(GatewayUnavailable):
     """A submitted mutation may have executed. Reconcile; do not retry it blindly."""
 
 
+class RemoteOperationPending(GatewayUnavailable):
+    """A recorded operation is still in flight; only read its original IDs."""
+
+
 class RemoteCommand(StrictModel):
     command_id: UUID
     expected_revision: int = Field(ge=1)
@@ -132,15 +136,27 @@ class MatterixGateway:
             raise error("Remote response did not match the expected contract") from exc
 
     def allocate(self, allocation_id: UUID):
-        return self._exchange(
+        allocation_id = UUID(str(allocation_id))
+        result = self._exchange(
             "POST",
             "v1/sessions",
             RemoteSnapshot,
             {
-                "allocation_id": str(UUID(str(allocation_id))),
+                "allocation_id": str(allocation_id),
                 "scene_id": "flex-first-transfer-v1",
             },
         )
+        try:
+            allocation = self.allocation(allocation_id)
+        except GatewayUnavailable as exc:
+            raise RemoteOutcomeUnknown(
+                "Allocation acknowledgement could not be associated"
+            ) from exc
+        if allocation.status == "pending":
+            raise RemoteOperationPending("Allocation is still pending")
+        if allocation.status != "allocated" or allocation.session_id != result.id:
+            raise RemoteOutcomeUnknown("Allocation acknowledgement belongs to a different session")
+        return result
 
     def allocation(self, allocation_id: UUID):
         allocation_id = UUID(str(allocation_id))
