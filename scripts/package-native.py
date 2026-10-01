@@ -7,9 +7,9 @@ The bootstrap bucket must be private, independent of the learner website bucket.
 import argparse
 import hashlib
 import io
+import json
 import os
 import pathlib
-import shlex
 import subprocess
 import tarfile
 import tempfile
@@ -96,7 +96,9 @@ def main():
             'release_base="${XDG_DATA_HOME:-$HOME/.local/share}/lab-onboarding/releases"',
             'mkdir -p "$release_base"',
             f'release_dir="$(mktemp -d "$release_base/{revision[:12]}.XXXXXX")"',
-            f'curl --fail --silent --show-error --location {shlex.quote(url)} --output "$release_dir/agent.tar.gz"',
+            "curl --fail --silent --show-error --location --output \"$release_dir/agent.tar.gz\" --config - <<'LAB_PRIVATE_DOWNLOAD'",
+            "url = " + json.dumps(url),
+            "LAB_PRIVATE_DOWNLOAD",
             f"printf '%s  %s\\n' '{digest}' \"$release_dir/agent.tar.gz\" | sha256sum --check --status",
             'tar -xzf "$release_dir/agent.tar.gz" -C "$release_dir"',
             'bash "$release_dir/scripts/install-native.sh"',
