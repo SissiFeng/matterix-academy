@@ -109,7 +109,9 @@ test("saved native fixture displays matching quantities and survives refresh wit
   await expect(page.getByText("40 µL", { exact: true })).toBeVisible();
   await expect(page.getByText("4 / 4", { exact: true })).toBeVisible();
   await expect(page.getByText("Reset verified · lab released")).toBeVisible();
-  await page.getByRole("button", { name: "Simulation lab", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Simulation lab", exact: true })
+    .click();
   await expect(page).toHaveURL(new RegExp(`/#/sim/${session.id}$`));
   await page.reload();
   await expect(page.getByText("40 µL", { exact: true })).toBeVisible();
