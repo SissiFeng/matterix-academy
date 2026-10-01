@@ -1737,7 +1737,11 @@ export default function App() {
             <footer className={s.appFooter}>
               <span>LAB ONBOARDING</span>
               <span>Explore freely. Learn deliberately.</span>
-              <span>Teaching model · v0.1</span>
+              <span>
+                {view === "sim"
+                  ? "Isaac / Matterix · v0.1"
+                  : "Teaching model · v0.1"}
+              </span>
             </footer>
           </main>
         </div>

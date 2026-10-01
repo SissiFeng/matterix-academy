@@ -16,6 +16,7 @@ import tempfile
 
 import boto3
 from academy.worker_admin import operator_identity, read_credential
+from botocore.config import Config
 
 
 def main():
@@ -32,7 +33,11 @@ def main():
     expected_bucket = f"matterix-academy-dev-{args.expected_account_id}-bootstrap"
     if args.bucket != expected_bucket:
         parser.error("Only the separate private development bootstrap bucket is supported")
-    s3 = session.client("s3")
+    s3 = session.client(
+        "s3",
+        endpoint_url="https://s3.ca-central-1.amazonaws.com",
+        config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+    )
     if not all(
         s3.get_public_access_block(Bucket=args.bucket)["PublicAccessBlockConfiguration"].values()
     ):
