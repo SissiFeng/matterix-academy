@@ -40,6 +40,15 @@ variable "environment" {
     error_message = "Use dev, test or prod."
   }
 }
+variable "self_signup_email_domains" {
+  type        = set(string)
+  default     = []
+  description = "Exact lowercase email domains admitted to verified learner self-registration; empty keeps invitation-only access."
+  validation {
+    condition     = alltrue([for domain in var.self_signup_email_domains : can(regex("^[a-z0-9]+([.-][a-z0-9]+)*\\.[a-z]{2,}$", domain))])
+    error_message = "Use exact lowercase email domains, without @, whitespace or wildcards."
+  }
+}
 variable "lambda_zip" {
   type    = string
   default = "../build/lambda.zip"

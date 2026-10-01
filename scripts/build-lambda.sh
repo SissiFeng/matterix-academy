@@ -22,4 +22,11 @@ with zipfile.ZipFile('build/lambda.zip','w',zipfile.ZIP_DEFLATED) as archive:
         if file.is_file() and '__pycache__' not in file.parts:
             archive.write(file,file.relative_to('build/lambda'))
 print('Built build/lambda.zip for Python 3.12 / Linux x86_64')
+# Stable archive metadata prevents an unchanged policy from producing Terraform drift.
+with zipfile.ZipFile('build/cognito-signup.zip', 'w') as archive:
+    info = zipfile.ZipInfo('pre_signup.py', date_time=(1980, 1, 1, 0, 0, 0))
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = 0o644 << 16
+    archive.writestr(info, Path('infra/cognito/pre_signup.py').read_bytes())
+print('Built build/cognito-signup.zip (Terraform-owned admission policy)')
 PY

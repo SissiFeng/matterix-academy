@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ class Settings:
     gateway_url: str = ""
     gateway_token: str = ""
     remote_enabled: bool = False
+    self_signup_email_domains: tuple[str, ...] = ()
 
     def __post_init__(self):
         if self.runtime not in {"local", "aws"}:
@@ -62,4 +64,7 @@ class Settings:
             gateway_url=os.getenv("ACADEMY_GATEWAY_URL", ""),
             gateway_token=os.getenv("ACADEMY_GATEWAY_TOKEN", ""),
             remote_enabled=os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true",
+            self_signup_email_domains=tuple(
+                json.loads(os.getenv("ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS", "[]"))
+            ),
         )

@@ -63,7 +63,11 @@ resource "aws_cognito_user_pool" "learners" {
   username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
   deletion_protection      = "ACTIVE"
-  admin_create_user_config { allow_admin_create_user_only = true }
+  admin_create_user_config { allow_admin_create_user_only = length(var.self_signup_email_domains) == 0 }
+  lambda_config { pre_sign_up = aws_lambda_function.signup.arn }
+  user_attribute_update_settings {
+    attributes_require_verification_before_update = ["email"]
+  }
   password_policy {
     minimum_length                   = 12
     require_lowercase                = true
@@ -146,14 +150,15 @@ resource "aws_lambda_function" "api" {
   reserved_concurrent_executions = var.reserve_lambda_concurrency ? 10 : -1
   environment {
     variables = {
-      ACADEMY_RUNTIME        = "aws"
-      ACADEMY_ALLOW_DEMO     = "false"
-      ACADEMY_TABLE          = aws_dynamodb_table.records.name
-      ACADEMY_ISSUER         = "https://${aws_cognito_user_pool.learners.endpoint}"
-      ACADEMY_CLIENT_ID      = aws_cognito_user_pool_client.web.id
-      ACADEMY_COGNITO_DOMAIN = "https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com"
-      ACADEMY_APP_URL        = "https://${aws_cloudfront_distribution.web.domain_name}"
-      ACADEMY_REMOTE_ENABLED = tostring(var.remote_execution_enabled)
+      ACADEMY_RUNTIME                   = "aws"
+      ACADEMY_ALLOW_DEMO                = "false"
+      ACADEMY_TABLE                     = aws_dynamodb_table.records.name
+      ACADEMY_ISSUER                    = "https://${aws_cognito_user_pool.learners.endpoint}"
+      ACADEMY_CLIENT_ID                 = aws_cognito_user_pool_client.web.id
+      ACADEMY_COGNITO_DOMAIN            = "https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com"
+      ACADEMY_APP_URL                   = "https://${aws_cloudfront_distribution.web.domain_name}"
+      ACADEMY_REMOTE_ENABLED            = tostring(var.remote_execution_enabled)
+      ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
     }
   }
   depends_on = [aws_iam_role_policy.api, aws_cloudwatch_log_group.api]
