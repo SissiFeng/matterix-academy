@@ -148,7 +148,7 @@ def create_app(settings: Settings | None = None, store=None):
             return {
                 "state": "not_configured",
                 "available": False,
-                "message": "实验室尚未配置 Ubuntu 仿真连接。课程与教学练习仍可使用。",
+                "message": "The Ubuntu simulation connection is not configured yet. Lessons and teaching exercises are still available.",
             }
         try:
             gateway = MatterixGateway(settings.gateway_url, settings.gateway_token)
@@ -160,13 +160,13 @@ def create_app(settings: Settings | None = None, store=None):
             return {
                 "state": "unreachable",
                 "available": False,
-                "message": "无法确认 Ubuntu 仿真的能力与连接，请联系实验室管理员。教学练习不会替代远程运行结果。",
+                "message": "The Ubuntu simulation connection could not be verified. Contact your lab administrator. Teaching exercises do not replace remote results.",
             }
         missing = sorted({"pickup", "aspirate", "dispense", "drop"} - set(capabilities.actions))
         return {
             "state": "awaiting_qualification",
             "available": False,
-            "message": "已收到仿真能力响应；会话隔离、重置与鉴权画面尚需联调验收，暂不开放远程执行。",
+            "message": "The simulator responded, but session isolation, reset and authenticated streaming still need verification. Remote execution is not available yet.",
             "missing_actions": missing,
         }
 

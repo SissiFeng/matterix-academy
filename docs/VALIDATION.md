@@ -1,3 +1,9 @@
+# English interface validation — 2026-10-01
+
+All student interface copy is now English, including course content, diagram labels, accessibility labels, dialogs, readiness checks, assessments and remote connection messages. Exact legacy system-generated titles and assessment labels are translated on read; stored outcomes, learning progress and custom learner titles are preserved.
+
+Verified locally: **111 backend tests** and **10 Chromium journeys** passed, including the complete English first-transfer lesson, mobile overflow checks and legacy-record preservation. `scripts/verify.sh` and `scripts/build-lambda.sh` passed. The local preview API was restarted to serve the updated responses. This remains automated browser evidence; the previously documented remote, deployment and manual visual acceptance limitations still apply.
+
 # Guided first-transfer validation — 2026-09-30
 
 Verified locally for `codex/flex-guided-learning`:

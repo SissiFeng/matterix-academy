@@ -29,7 +29,8 @@ import type { EquipmentId } from "./learningContent";
 import FlexDiagram from "./FlexDiagram";
 import s from "./LearningLab.module.css";
 
-const number = (value: number) => Number(value.toFixed(2)).toLocaleString();
+const number = (value: number) =>
+  Number(value.toFixed(2)).toLocaleString("en-US");
 export function FirstLessonCard({
   onStart,
   resume,
@@ -40,22 +41,24 @@ export function FirstLessonCard({
   return (
     <section className={s.lessonCard}>
       <div>
-        <span className={s.eyebrow}>START HERE / 从你的手动实验经验出发</span>
+        <span className={s.eyebrow}>
+          START HERE / BUILD ON YOUR MANUAL LAB SKILLS
+        </span>
         <h2>
-          认识你的第一台
+          Meet your first
           <br />
-          <em>自动化移液工作站。</em>
+          <em>automated pipetting workstation.</em>
         </h2>
         <p>
-          从找到吸头和目标孔，到解释一次 100 µL 转移。
+          From finding tips and wells to explaining a 100 µL transfer.
           <br />
-          先认识，再预测，最后亲手试一次。
+          Explore the equipment, predict the result, then try it yourself.
         </p>
         <button className={s.primary} onClick={onStart}>
-          {resume ? "继续我的入门课程" : "开始 Flex 入门"}
+          {resume ? "Continue my Flex lesson" : "Start learning Flex"}
           <ArrowRight size={18} />
         </button>
-        <small>5 个学习环节 · 中文引导 · 无需编程</small>
+        <small>5 learning stages · Guided practice · No coding required</small>
       </div>
       <div className={s.lessonIndex}>
         {PHASES.map((p, i) => (
@@ -91,7 +94,8 @@ function RemoteView() {
       if (active.current)
         setStatus({
           state: "unreachable",
-          message: "暂时无法检查连接，请稍后重试。",
+          message:
+            "Unable to check the connection right now. Please try again.",
         });
     } finally {
       if (active.current) setBusy(false);
@@ -108,24 +112,28 @@ function RemoteView() {
     <div className={s.remote}>
       <Monitor size={38} />
       <span className={s.eyebrow}>REMOTE LAB / UBUNTU</span>
-      <h3>真实 3D 仿真等待接入</h3>
-      <p>{status?.message ?? "正在检查远程实验室连接…"}</p>
+      <h3>Live 3D simulation is not connected yet</h3>
+      <p>{status?.message ?? "Checking the remote lab connection…"}</p>
       <div className={s.connectionPath}>
-        <span>你的浏览器</span>
+        <span>Your browser</span>
         <ChevronRight size={14} />
-        <span>课程平台</span>
+        <span>Academy</span>
         <ChevronRight size={14} />
-        <span>Ubuntu 仿真</span>
+        <span>Ubuntu simulation</span>
       </div>
       <p>
-        接通并验收后，这里展示 Matterix
-        的真实画面。当前课程使用独立教学模型，你可以先认识设备、练习预测和动作顺序。
+        Once connected and verified, this view will show Matterix live. For now,
+        use the independent teaching model to explore equipment, predict results
+        and practice the action sequence.
       </p>
       <button className={s.secondary} onClick={check} disabled={busy}>
         <RotateCcw size={15} />
-        {busy ? "检查中…" : "重新检查连接"}
+        {busy ? "Checking…" : "Check connection again"}
       </button>
-      <small>学生无需 Ubuntu 账户。连接由实验室管理员配置。</small>
+      <small>
+        Students do not need an Ubuntu account. Your lab administrator
+        configures the connection.
+      </small>
     </div>
   );
 }
@@ -194,7 +202,9 @@ export default function LearningLab({
   }, []);
   useEffect(() => {
     registerLeaveGuard(
-      () => !predictionDirty || window.confirm("预测还未保存，确定离开吗？"),
+      () =>
+        !predictionDirty ||
+        window.confirm("Your prediction is not saved. Leave this lesson?"),
     );
     const warn = (e: BeforeUnloadEvent) => {
       if (predictionDirty) {
@@ -229,7 +239,11 @@ export default function LearningLab({
       } catch (e) {
         if (mounted.current) {
           setAuto(false);
-          onError(e instanceof Error ? e.message : "操作未完成，请重试。");
+          onError(
+            e instanceof Error
+              ? e.message
+              : "The operation did not complete. Please try again.",
+          );
           try {
             // A multi-request action may have saved its first step before failing.
             accept(await api<Session>(`/sessions/${current.current.id}`));
@@ -258,7 +272,10 @@ export default function LearningLab({
       ),
     );
   const changePhase = async (next: LearningProgress["phase"]) => {
-    if (predictionDirty && !window.confirm("预测还未保存，确定切换步骤吗？"))
+    if (
+      predictionDirty &&
+      !window.confirm("Your prediction is not saved. Switch stages?")
+    )
       return;
     const saved = await saveProgress({ phase: next });
     if (saved) {
@@ -330,7 +347,9 @@ export default function LearningLab({
         (v) => !v.trim() || !Number.isFinite(Number(v)) || Number(v) < 0,
       )
     ) {
-      setPredictionMessage("请填写三个非负液量，再检查你的预测。");
+      setPredictionMessage(
+        "Enter a non-negative volume for all three locations, then check your prediction.",
+      );
       return;
     }
     const saved = await saveProgress({
@@ -345,13 +364,18 @@ export default function LearningLab({
       setPredictionMessage(
         saved.readiness?.checks.find((check) => check.id === "prediction")
           ?.passed
-          ? "预测正确。吸液先把液体装进吸头，目标孔此时仍为空。"
-          : "再想一想：吸液把液体从源容器送进吸头；还没有执行排液。检查三个位置的液量。",
+          ? "Correct. Aspiration draws liquid into the tip; the target well is still empty."
+          : "Think again: aspiration moves liquid from the source into the tip. Nothing has been dispensed yet. Check all three volumes.",
       );
     }
   };
   const restart = async (nextVolume: number) => {
-    if (!window.confirm("保存本次尝试记录，并从初始状态重新开始？")) return;
+    if (
+      !window.confirm(
+        "Save this attempt and start again from the initial state?",
+      )
+    )
+      return;
     setAuto(false);
     const next = await task(async () => {
       const reset = await control("reset");
@@ -380,19 +404,22 @@ export default function LearningLab({
     <div className={s.workspace}>
       <div className={s.breadcrumb}>
         <button onClick={onBack}>
-          <ArrowLeft size={15} /> 返回课程
+          <ArrowLeft size={15} /> Back to courses
         </button>
-        <span>FLEX / 第一课</span>
-        <span className={s.source}>课程模型 · 非远程仿真</span>
+        <span>FLEX / LESSON ONE</span>
+        <span className={s.source}>
+          Teaching model · Not a remote simulation
+        </span>
       </div>
       <header className={s.heading}>
         <div>
-          <span className={s.eyebrow}>从手动移液，到自动化实验</span>
+          <span className={s.eyebrow}>FROM MANUAL PIPETTING TO AUTOMATION</span>
           <h1>
-            让 {volume} µL 液体，<em>到达正确的地方。</em>
+            Move {volume} µL <em>to the right place.</em>
           </h1>
           <p>
-            认识设备，预测变化，再观察每个动作。所有练习都保留在你的实验记录中。
+            Explore the equipment, predict what will change and observe each
+            action. Your progress is saved with your experiment.
           </p>
         </div>
         <div className={s.progressRing}>
@@ -400,11 +427,11 @@ export default function LearningLab({
             {derivedDone.filter(Boolean).length}
             <small>/ 5</small>
           </strong>
-          <span>学习环节</span>
+          <span>Learning stages</span>
         </div>
       </header>
       <div className={s.learningGrid}>
-        <nav className={s.phaseNav} aria-label="课程步骤">
+        <nav className={s.phaseNav} aria-label="Lesson stages">
           <span className={s.eyebrow}>YOUR LEARNING PATH</span>
           {PHASES.map((p, i) => (
             <button
@@ -430,11 +457,11 @@ export default function LearningLab({
           <div className={s.pathNote}>
             <BookOpen size={19} />
             <p>
-              你已经会手动移液。
+              You already know how to pipette.
               <br />
-              现在，把你的判断
+              Now, tell the robot
               <br />
-              一步一步告诉机器。
+              what to do, one step at a time.
             </p>
           </div>
           <a
@@ -442,22 +469,25 @@ export default function LearningLab({
             target="_blank"
             rel="noreferrer"
           >
-            Opentrons 官方手册 ↗
+            Opentrons official manual ↗
           </a>
         </nav>
-        <section className={s.stage} aria-label="设备与实验区域">
+        <section
+          className={s.stage}
+          aria-label="Equipment and experiment workspace"
+        >
           <div className={s.viewTabs}>
             <button
               aria-pressed={view === "diagram"}
               onClick={() => setView("diagram")}
             >
-              设备导览 <span>教学示意</span>
+              Equipment tour <span>Teaching diagram</span>
             </button>
             <button
               aria-pressed={view === "remote"}
               onClick={() => setView("remote")}
             >
-              <Monitor size={15} /> 远程 3D <WifiOff size={13} />
+              <Monitor size={15} /> Remote 3D <WifiOff size={13} />
             </button>
           </div>
           {view === "remote" ? (
@@ -489,27 +519,28 @@ export default function LearningLab({
             </>
           )}
           <div className={s.selection}>
-            <span>当前对象</span>
+            <span>Selected object</span>
             <strong>{evidence.name}</strong>
             <span>
               {selected === "pipette"
-                ? "机身移液器"
-                : `${session.experiment.layout[selected]} 槽位${selected === "plate" ? " → 目标孔板 → A1 孔" : ""}`}
+                ? "Robot-mounted pipette"
+                : `Slot ${session.experiment.layout[selected]}${selected === "plate" ? " → Target plate → Well A1" : ""}`}
             </span>
           </div>
           {phase === "prepare" && (
             <div className={s.deckEditor}>
-              <h3>把耗材放在正确的位置</h3>
+              <h3>Place your labware</h3>
               <p>
-                选择一个槽位会交换其中的耗材。D3
-                保留给固定废弃槽。当前布台用于位置练习，不模拟可达性。
+                Selecting an occupied slot swaps the labware. D3 is reserved for
+                the fixed waste chute. This layout exercise does not simulate
+                reachability.
               </p>
               <div>
                 {(["stock", "plate", "tips"] as const).map((id) => (
                   <label key={id}>
                     {EQUIPMENT[id].name}
                     <select
-                      aria-label={`${EQUIPMENT[id].name}槽位`}
+                      aria-label={`${EQUIPMENT[id].name} slot`}
                       disabled={busy || session.status !== "draft"}
                       value={session.experiment.layout[id]}
                       onChange={(e) => {
@@ -549,25 +580,27 @@ export default function LearningLab({
             </div>
           )}
           <div className={s.stateHeading}>
-            <strong>液量观察</strong>
-            <span>来源：课程模型推算</span>
+            <strong>Liquid volumes</strong>
+            <span>Source: teaching model calculations</span>
           </div>
           <div className={s.liquidStates}>
             {[
               {
-                name: "源容器",
+                name: "Source container",
                 value: session.state.wells.stock.volume,
-                detail: `${session.experiment.layout.stock} 槽位`,
+                detail: `Slot ${session.experiment.layout.stock}`,
               },
               {
-                name: "吸头内",
+                name: "Inside the tip",
                 value: session.state.pipette.volume,
-                detail: session.state.pipette.tip ? "已安装吸头" : "未安装吸头",
+                detail: session.state.pipette.tip
+                  ? "Tip attached"
+                  : "No tip attached",
               },
               {
-                name: "目标 A1 孔",
+                name: "Target well A1",
                 value: session.state.wells.A1.volume,
-                detail: `${session.experiment.layout.plate} 槽位 → 孔板`,
+                detail: `Slot ${session.experiment.layout.plate} → Plate`,
               },
             ].map((item) => (
               <div key={item.name}>
@@ -595,18 +628,18 @@ export default function LearningLab({
                 <span>{i < session.cursor ? <Check size={12} /> : i + 1}</span>
                 {
                   {
-                    pickup: "取头",
-                    aspirate: "吸液",
-                    dispense: "排液",
-                    drop: "弃头",
+                    pickup: "Pick up tip",
+                    aspirate: "Aspirate",
+                    dispense: "Dispense",
+                    drop: "Discard tip",
                   }[action.kind]
                 }
                 <small>
                   {i < session.cursor
-                    ? "已完成"
+                    ? "Complete"
                     : i === session.cursor
-                      ? "下一动作"
-                      : "待执行"}
+                      ? "Next action"
+                      : "Pending"}
                 </small>
               </div>
             ))}
@@ -618,10 +651,7 @@ export default function LearningLab({
           </span>
           {phase === "orient" && (
             <>
-              <h2>
-                {evidence.name}
-                <small>{evidence.english}</small>
-              </h2>
+              <h2>{evidence.name}</h2>
               <p>{evidence.purpose}</p>
               <div className={s.comparison}>
                 <span>{evidence.manual}</span>
@@ -633,15 +663,17 @@ export default function LearningLab({
                 <p>{evidence.notice}</p>
               </div>
               <small>
-                已探索 {new Set(learning.visited).size} / 5
-                个对象。点击下方对象按钮查看说明。
+                Explored {new Set(learning.visited).size} / 5 objects. Select an
+                object to learn more.
               </small>
               <fieldset>
-                <legend>“D2 槽位上的孔板 A1”，A1 指什么？</legend>
+                <legend>
+                  In “well A1 of the plate in slot D2”, what does A1 identify?
+                </legend>
                 {(
                   [
-                    ["well", "孔板中的一个孔"],
-                    ["slot", "另一个台面槽位"],
+                    ["well", "A well in the plate"],
+                    ["slot", "Another deck slot"],
                   ] as const
                 ).map(([value, label]) => (
                   <label key={value}>
@@ -658,7 +690,8 @@ export default function LearningLab({
               </fieldset>
               {learning.location_answer === "slot" && (
                 <p className={s.feedback}>
-                  槽位放耗材，孔位接收液体。这句话里的 A1 属于孔板。
+                  Slots hold labware; wells receive liquid. Here, A1 is a well
+                  in the plate.
                 </p>
               )}
               <button
@@ -666,20 +699,20 @@ export default function LearningLab({
                 disabled={busy || !orientDone}
                 onClick={() => changePhase("prepare")}
               >
-                去准备实验 <ArrowRight size={16} />
+                Prepare the experiment <ArrowRight size={16} />
               </button>
             </>
           )}
           {phase === "prepare" && (
             <>
               <h2>
-                像上实验台一样，
+                Before you begin,
                 <br />
-                先检查准备。
+                check your setup.
               </h2>
               <p>
-                这一课从 {number(session.experiment.source_volume)} µL
-                源液开始，向空的 A1 孔转移 {volume} µL。
+                Start with {number(session.experiment.source_volume)} µL in the
+                source. Transfer {volume} µL into empty well A1.
               </p>
               <div className={s.checklist}>
                 {PREPARATION.map((check) => (
@@ -706,8 +739,8 @@ export default function LearningLab({
               <div className={s.note}>
                 <CircleHelp size={16} />
                 <p>
-                  这份检查单是虚拟准备练习。实体 Flex 仍需真实的 Labware
-                  Position Check 和现场操作培训。
+                  This is a virtual preparation exercise. A physical Flex still
+                  requires a real Labware Position Check and hands-on training.
                 </p>
               </div>
               <button
@@ -715,20 +748,21 @@ export default function LearningLab({
                 disabled={busy || !orientDone || !preparationDone}
                 onClick={() => changePhase("predict")}
               >
-                先预测液量 <ArrowRight size={16} />
+                Predict the volumes <ArrowRight size={16} />
               </button>
             </>
           )}
           {phase === "predict" && (
             <>
               <h2>
-                吸液结束后，
+                After aspiration,
                 <br />
-                液体在哪里？
+                where is the liquid?
               </h2>
               <p>
-                源容器有 {number(session.experiment.source_volume)}{" "}
-                µL，吸头和目标孔均为空。执行“吸取 {volume} µL”，还没有排液。
+                The source contains {number(session.experiment.source_volume)}{" "}
+                µL. The tip and target well are empty. Aspirate {volume} µL,
+                without dispensing yet.
               </p>
               <form
                 onSubmit={(e) => {
@@ -739,9 +773,9 @@ export default function LearningLab({
               >
                 {(
                   [
-                    { key: "source", label: "源容器剩余" },
-                    { key: "tip", label: "吸头内液量" },
-                    { key: "target", label: "目标 A1 孔液量" },
+                    { key: "source", label: "Source volume remaining" },
+                    { key: "tip", label: "Volume in the tip" },
+                    { key: "target", label: "Volume in target well A1" },
                   ] as const
                 ).map((field) => (
                   <label key={field.key}>
@@ -772,21 +806,21 @@ export default function LearningLab({
                   className={s.secondary}
                   disabled={busy || session.status !== "draft"}
                 >
-                  检查我的预测
+                  Check my prediction
                 </button>
               </form>
               <p role="status" className={s.feedback}>
                 {predictionMessage ||
                   (predictionDone
-                    ? "已保存正确预测。运行时将它与模型结果对照。"
-                    : "提示：三个位置的总液量应该保持不变。")}
+                    ? "Your correct prediction is saved. Compare it with the model as you run."
+                    : "Hint: the total volume across all three locations should stay the same.")}
               </p>
               <button
                 className={s.primary}
                 disabled={busy || !session.readiness?.ready || predictionDirty}
                 onClick={() => changePhase("run")}
               >
-                进入操作练习 <ArrowRight size={16} />
+                Start practicing <ArrowRight size={16} />
               </button>
             </>
           )}
@@ -794,7 +828,7 @@ export default function LearningLab({
             <>
               <h2>
                 {session.status === "completed"
-                  ? "转移完成。现在解释它。"
+                  ? "Transfer complete. Now explain it."
                   : explanation.title}
               </h2>
               <span className={s.english}>
@@ -804,19 +838,20 @@ export default function LearningLab({
               </span>
               {session.status !== "completed" ? (
                 <>
-                  <h3>为什么这样做</h3>
+                  <h3>Why this action matters</h3>
                   <p>{explanation.why}</p>
-                  <h3>操作前需要</h3>
+                  <h3>Before this action</h3>
                   <p>{explanation.before}</p>
                   <div className={s.expected}>
-                    <span>预计观察到</span>
+                    <span>What to expect</span>
                     <strong>{explanation.expect}</strong>
                   </div>
                 </>
               ) : (
                 <>
                   <p>
-                    对照你的预测，检查源容器、吸头和目标孔。流程完成之后，还需要解释液体是怎样到达目标的。
+                    Compare the source, tip and target with your prediction.
+                    Then explain how the liquid reached its destination.
                   </p>
                   <div className={s.assessment}>
                     {session.assessment?.checks.map((c) => (
@@ -832,7 +867,7 @@ export default function LearningLab({
                 <div className={s.note}>
                   <CircleHelp size={16} />
                   <div>
-                    <p>运行前还有准备未完成：</p>
+                    <p>Complete these checks before running:</p>
                     {session.readiness?.checks
                       .filter((c) => !c.passed)
                       .map((c) => (
@@ -856,7 +891,7 @@ export default function LearningLab({
                   disabled={busy}
                   onClick={() => changePhase("reflect")}
                 >
-                  解释结果并再试一次 <ArrowRight size={16} />
+                  Explain the result and try again <ArrowRight size={16} />
                 </button>
               ) : session.status === "faulted" ? (
                 <button
@@ -864,7 +899,7 @@ export default function LearningLab({
                   disabled={busy}
                   onClick={() => restart(volume)}
                 >
-                  从初始状态重试
+                  Retry from the initial state
                 </button>
               ) : (
                 <div className={s.runControls}>
@@ -874,7 +909,7 @@ export default function LearningLab({
                     onClick={() => perform(true)}
                   >
                     <SkipForward size={16} />
-                    {busy ? "正在执行…" : "执行下一步"}
+                    {busy ? "Running…" : "Run next step"}
                   </button>
                   {auto || session.status === "running" ? (
                     <button
@@ -885,7 +920,7 @@ export default function LearningLab({
                         task(() => control("pause"));
                       }}
                     >
-                      <Pause size={15} /> 暂停练习
+                      <Pause size={15} /> Pause practice
                     </button>
                   ) : (
                     <button
@@ -893,16 +928,17 @@ export default function LearningLab({
                       disabled={busy || !session.readiness?.ready}
                       onClick={() => perform(false)}
                     >
-                      <Play size={15} /> 连续运行
+                      <Play size={15} /> Run continuously
                     </button>
                   )}
                 </div>
               )}
               <small>
-                每次单步在动作结束后暂停。教学模型在离开页面后不继续自动执行。
+                Single-step pauses after each action. The teaching model stops
+                advancing when you leave this page.
               </small>
               <details>
-                <summary>查看本次动作记录 · {session.events.length}</summary>
+                <summary>View action history · {session.events.length}</summary>
                 {session.events.length ? (
                   session.events.map((event, i) => (
                     <p key={i}>
@@ -910,7 +946,7 @@ export default function LearningLab({
                     </p>
                   ))
                 ) : (
-                  <p>还没有执行动作。</p>
+                  <p>No actions have run yet.</p>
                 )}
               </details>
             </>
@@ -918,16 +954,27 @@ export default function LearningLab({
           {phase === "reflect" && (
             <>
               <h2>
-                {completed ? "你已经解释了第一次转移。" : "做完之后，想明白。"}
+                {completed
+                  ? "You can explain your first transfer."
+                  : "Reflect on what happened."}
               </h2>
-              <p>吸液结束、排液开始之前，液体从哪里到了哪里？</p>
+              <p>
+                After aspiration and before dispensing, where has the liquid
+                moved?
+              </p>
               <fieldset>
-                <legend>选择与动作相符的解释</legend>
+                <legend>Choose the explanation that matches the action</legend>
                 {(
                   [
-                    ["source_to_tip", "从源容器进入吸头，目标孔仍为空"],
-                    ["source_to_target", "从源容器直接到达目标孔"],
-                    ["target_to_tip", "从目标孔回到吸头"],
+                    [
+                      "source_to_tip",
+                      "From the source into the tip; the target is still empty",
+                    ],
+                    [
+                      "source_to_target",
+                      "Directly from the source into the target well",
+                    ],
+                    ["target_to_tip", "From the target well back into the tip"],
                   ] as const
                 ).map(([value, label]) => (
                   <label key={value}>
@@ -943,39 +990,49 @@ export default function LearningLab({
                 ))}
               </fieldset>
               {session.status !== "completed" ? (
-                <p className={s.feedback}>先完成一次转移，再对照结果作答。</p>
+                <p className={s.feedback}>
+                  Complete a transfer first, then use the results to answer.
+                </p>
               ) : learning.reflection &&
                 learning.reflection !== "source_to_tip" ? (
                 <p className={s.feedback}>
-                  吸液时目标孔还没有收到液体。排液才把吸头里的液体送入目标。
+                  The target is still empty after aspiration. Dispensing moves
+                  the liquid from the tip into the target.
                 </p>
               ) : completed ? (
                 <div className={s.success}>
                   <CheckCircle2 size={22} />
-                  <strong>操作与理解均已完成</strong>
-                  <p>这次记录来自教学模型，不代表实体机器操作认证。</p>
+                  <strong>Practice and understanding complete</strong>
+                  <p>
+                    This result comes from the teaching model. It is not
+                    certification to operate a physical robot.
+                  </p>
                 </div>
               ) : null}
-              <h3>换一个条件，再试一次</h3>
+              <h3>Change one condition and try again</h3>
               <p>
-                把体积改为 {volume === 100 ? 50 : 100}{" "}
-                µL，重新检查并预测。你可以不依赖上一轮答案完成吗？
+                Change the volume to {volume === 100 ? 50 : 100} µL. Check the
+                setup and predict again. Can you complete it without relying on
+                your previous answers?
               </p>
               <button
                 className={s.primary}
                 disabled={busy || session.status !== "completed"}
                 onClick={() => restart(volume === 100 ? 50 : 100)}
               >
-                <RotateCcw size={16} /> 挑战 {volume === 100 ? 50 : 100} µL 转移
+                <RotateCcw size={16} /> Try a {volume === 100 ? 50 : 100} µL
+                transfer
               </button>
               <small>
-                本实验保留最近 10 次尝试摘要。已有 {session.attempts.length}{" "}
-                次历史尝试。
+                This experiment keeps the last 10 attempt summaries. Saved
+                attempts: {session.attempts.length}.
               </small>
               <div className={s.note}>
                 <FlaskConical size={17} />
                 <p>
-                  下一课：连续稀释。它还需要稀释液、混匀和多个目标孔；当前稀释练习采用理想混合假设。
+                  Next: serial dilution, which adds diluent, mixing and multiple
+                  target wells. The current dilution exercise assumes ideal
+                  mixing.
                 </p>
               </div>
             </>
@@ -986,12 +1043,12 @@ export default function LearningLab({
         <span>
           <CheckCircle2 size={14} />{" "}
           {busy
-            ? "正在保存或执行…"
+            ? "Saving or running…"
             : predictionDirty
-              ? "预测尚未保存"
-              : "学习进度已保存"}
+              ? "Prediction not saved"
+              : "Learning progress saved"}
         </span>
-        <span>课程 v1 · 自由探索设备，按检查点开始运行</span>
+        <span>Lesson v1 · Explore freely, complete the checks, then run</span>
       </div>
     </div>
   );

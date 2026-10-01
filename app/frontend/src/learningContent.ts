@@ -1,57 +1,77 @@
 import type { Experiment, LearningProgress } from "./types";
 
 export const PHASES = [
-  { id: "orient", title: "认识设备", detail: "把手动经验映射到 Flex" },
-  { id: "prepare", title: "准备台面", detail: "检查耗材、位置和液体" },
-  { id: "predict", title: "预测变化", detail: "先想一想液体会去哪里" },
-  { id: "run", title: "逐步运行", detail: "观察每一个动作的结果" },
-  { id: "reflect", title: "复盘与再试", detail: "用新体积检验你的理解" },
+  {
+    id: "orient",
+    title: "Explore the equipment",
+    detail: "Connect your manual skills to Flex",
+  },
+  {
+    id: "prepare",
+    title: "Prepare the deck",
+    detail: "Check labware, positions and liquids",
+  },
+  {
+    id: "predict",
+    title: "Predict changes",
+    detail: "Think about where the liquid will go",
+  },
+  {
+    id: "run",
+    title: "Run step by step",
+    detail: "Observe the result of each action",
+  },
+  {
+    id: "reflect",
+    title: "Reflect and retry",
+    detail: "Test your understanding with a new volume",
+  },
 ] as const;
 
 export const EQUIPMENT = {
   pipette: {
-    name: "移液器",
-    english: "Pipette",
-    purpose: "负责吸取和排出液体，相当于你手中的移液枪。移动由机器人完成。",
+    name: "Pipette",
+    purpose:
+      "Draws in and dispenses liquid, just like a handheld pipette. The robot moves it between locations.",
     notice:
-      "先确认量程与吸头兼容性。这里是上限 300 µL 的教学模型，不代表所有 Flex 移液器。",
-    manual: "手动：调节移液枪体积",
-    robot: "自动化：在动作中明确体积与目标孔",
+      "Check the volume range and tip compatibility first. This teaching model has a 300 µL limit; that is not a specification for every Flex pipette.",
+    manual: "By hand: set the pipette volume",
+    robot: "With Flex: specify the volume and target well in each action",
   },
   tips: {
-    name: "吸头架",
-    english: "Tip rack",
-    purpose: "存放一次性吸头。移液器先取头，才能接触和转移液体。",
-    notice: "本课每次转移用一个新吸头；其他实验的换头策略要按污染风险设计。",
-    manual: "手动：装上一个新吸头",
-    robot: "自动化：先安排 Pick up tip 动作",
+    name: "Tip rack",
+    purpose:
+      "Holds disposable tips. The pipette must pick up a tip before handling liquid.",
+    notice:
+      "Use a fresh tip for each transfer in this lesson. Other protocols need a tip strategy based on contamination risk.",
+    manual: "By hand: attach a fresh tip",
+    robot: "With Flex: add a Pick up tip action first",
   },
   stock: {
-    name: "源容器",
-    english: "Source",
-    purpose: "盛放准备转移的教学液体，是这次实验的起点。",
+    name: "Source container",
+    purpose: "Holds the practice liquid. This is where your transfer begins.",
     notice:
-      "机器需要你提供初始液量。当前显示为课程模型推算，不是液位传感器测量。",
-    manual: "手动：找到试剂并判断余量",
-    robot: "自动化：明确源容器、孔位和初始体积",
+      "The robot needs an initial volume. These values come from the teaching model, not a liquid-level sensor.",
+    manual: "By hand: find the reagent and check how much remains",
+    robot: "With Flex: specify the source container, well and starting volume",
   },
   plate: {
-    name: "目标孔板",
-    english: "Well plate",
+    name: "Target plate",
     purpose:
-      "接收液体。每个孔有自己的地址，例如 A1、A2；孔板本身也占一个台面槽位。",
-    notice: "D2 槽位 → 目标孔板 → A1 孔。槽位和孔位是两个不同层级。",
-    manual: "手动：把枪头移到目标孔",
-    robot: "自动化：使用确定的耗材和孔位地址",
+      "Receives liquid. Each well has an address, such as A1 or A2. The plate itself occupies a deck slot.",
+    notice:
+      "Slot D2 → target plate → well A1. Deck slots and plate wells are different levels of location.",
+    manual: "By hand: move the tip to the target well",
+    robot: "With Flex: specify the labware and well address",
   },
   waste: {
-    name: "废弃槽",
-    english: "Waste chute",
-    purpose: "接收本次用过的吸头。Flex 的废弃槽安装在台面 D3 位置。",
+    name: "Waste chute",
+    purpose:
+      "Receives used tips. The Flex waste chute is installed at deck position D3.",
     notice:
-      "Waste chute 固定在 D3，不能随意拖动；它与可移动的 trash bin 不同。",
-    manual: "手动：将用过的吸头打入废物容器",
-    robot: "自动化：在转移完成后安排 Discard tip",
+      "The waste chute is fixed at D3. It is different from the movable trash bin.",
+    manual: "By hand: eject the used tip into a waste container",
+    robot: "With Flex: add Discard tip after the transfer",
   },
 };
 export type EquipmentId = keyof typeof EQUIPMENT;
@@ -66,32 +86,33 @@ export const EMPTY_LEARNING: LearningProgress = {
 export const PREPARATION = [
   {
     id: "instrument",
-    title: "移液器与吸头",
+    title: "Pipette and tips",
     detail:
-      "确认本课使用教学移液器，目标体积在 1–300 µL 练习范围内，吸头可用。",
+      "Confirm that tips are available and the transfer is within the 1–300 µL range of this teaching pipette.",
   },
   {
     id: "labware",
-    title: "耗材与位置",
+    title: "Labware and positions",
     detail:
-      "源容器、孔板和吸头架各占一个槽位；废弃槽在 D3。图中的 A1 孔属于目标孔板。",
+      "The source, plate and tip rack each occupy one slot. The waste chute is at D3. Well A1 belongs to the target plate.",
   },
   {
     id: "liquids",
-    title: "起始液量",
-    detail: "源容器起始 1,000 µL，目标孔为空。这里练习直接转移，不需要稀释液。",
+    title: "Starting volumes",
+    detail:
+      "The source starts with 1,000 µL and the target well is empty. This is a direct transfer, so no diluent is needed.",
   },
   {
     id: "simulation",
-    title: "本次练习的范围",
+    title: "Scope of this exercise",
     detail:
-      "这是课程模型推算，不包含碰撞、液面高度或真实移液精度；没有连接实体机器。",
+      "This teaching model does not simulate collisions, liquid height or real pipetting accuracy. No physical robot is connected.",
   },
 ];
 
 export function firstTransfer(volume = 100): Experiment {
   return {
-    title: `第一次转移 · ${volume} µL`,
+    title: `First transfer · ${volume} µL`,
     course_id: "flex-first-transfer",
     transfer_volume: volume,
     layout: { stock: "D1", plate: "D2", tips: "B1", waste: "D3" },
@@ -109,36 +130,39 @@ export function firstTransfer(volume = 100): Experiment {
 export function stepExplanation(index: number, volume: number, source: number) {
   return [
     {
-      title: "取一个新吸头",
+      title: "Pick up a fresh tip",
       english: "Pick up tip",
-      why: "液体接触吸头，而不是移液器内部。先取头是吸液的前置条件。",
-      expect: "吸头状态从未安装变成已安装，三个位置的液量都不变。",
+      why: "Liquid goes into the tip, not the pipette body. A tip must be attached before aspiration.",
+      expect:
+        "A tip becomes attached. Volumes in the source, tip and target do not change.",
       object: "tips",
-      before: "吸头架还有未使用的吸头，移液器上没有旧吸头。",
+      before: "An unused tip is available and no tip is currently attached.",
     },
     {
-      title: `吸取 ${volume} µL`,
+      title: `Aspirate ${volume} µL`,
       english: "Aspirate",
-      why: "这一步只把液体从源容器移到吸头里，还没有送到目标孔。",
-      expect: `源容器 ${source - volume} µL · 吸头 ${volume} µL · 目标孔 0 µL。`,
+      why: "Aspiration moves liquid from the source into the tip. The target well has not received any liquid yet.",
+      expect: `Source ${source - volume} µL · Tip ${volume} µL · Target 0 µL.`,
       object: "stock",
-      before: `已经安装新吸头，源容器至少有 ${volume} µL 可用液体。`,
+      before: `A fresh tip is attached and the source has at least ${volume} µL available.`,
     },
     {
-      title: `排出 ${volume} µL`,
+      title: `Dispense ${volume} µL`,
       english: "Dispense",
-      why: "移液器到达目标孔后，将吸头中的液体转移到孔里。",
-      expect: `源容器 ${source - volume} µL · 吸头 0 µL · 目标孔 ${volume} µL。`,
+      why: "At the target well, the pipette releases the liquid held in its tip.",
+      expect: `Source ${source - volume} µL · Tip 0 µL · Target ${volume} µL.`,
       object: "plate",
-      before: `吸头中有 ${volume} µL 液体，目标为孔板 A1 孔。`,
+      before: `The tip contains ${volume} µL and the destination is well A1 of the plate.`,
     },
     {
-      title: "弃去用过的吸头",
+      title: "Discard the used tip",
       english: "Discard tip",
-      why: "结束本次转移，避免把已经使用的吸头带入下一次练习。",
-      expect: "移液器不再带吸头，液体已经全部排入目标孔。",
+      why: "Finish this transfer with no used tip attached, ready for the next exercise.",
+      expect:
+        "The pipette has no tip attached. All transferred liquid is in the target well.",
       object: "waste",
-      before: "已完成排液，吸头中没有残留的模型液体。",
+      before:
+        "Dispensing is complete and no modeled liquid remains in the tip.",
     },
   ][Math.min(index, 3)];
 }

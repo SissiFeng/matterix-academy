@@ -188,3 +188,35 @@ def test_remote_status_is_unavailable_without_operator_configuration(client, app
     assert client.get("/api/remote/status").json()["available"] is False
     with TestClient(app) as anonymous:
         assert anonymous.get("/api/remote/status").status_code == 401
+
+
+def test_legacy_system_copy_is_english_without_rewriting_learning_records():
+    from academy.learning import present
+
+    run = new_session(Experiment(**lesson()))
+    run["experiment"]["title"] = "第一次转移 · 100 µL"
+    run["assessment"] = {
+        "passed": False,
+        "checks": [
+            {"label": "目标 A1 孔收到 100 µL", "passed": True},
+            {"label": "源容器减少了对应体积", "passed": False},
+            {"label": "未向其他孔转移", "passed": True},
+        ],
+    }
+    run["attempts"] = [{"assessment": deepcopy(run["assessment"]), "learning": run["learning"]}]
+    original = deepcopy(run)
+    shown = present(run)
+    assert shown["experiment"]["title"] == "First transfer · 100 µL"
+    assert [c["label"] for c in shown["assessment"]["checks"]] == [
+        "Target well A1 received 100 µL",
+        "The source volume decreased by the transferred amount",
+        "No liquid was transferred to other wells",
+    ]
+    assert shown["attempts"][0]["assessment"] == shown["assessment"]
+    assert not shown["assessment"]["passed"]
+    assert [c["passed"] for c in shown["assessment"]["checks"]] == [True, False, True]
+    assert shown["learning"] == original["learning"]
+    assert shown["version"] == original["version"]
+    assert run == original
+    run["experiment"]["title"] = "我的自定义实验"
+    assert present(run)["experiment"]["title"] == "我的自定义实验"

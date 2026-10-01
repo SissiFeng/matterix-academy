@@ -68,18 +68,18 @@ def assessment(state: dict, experiment: dict) -> dict:
         volume = experiment["transfer_volume"]
         checks = [
             {
-                "label": f"目标 A1 孔收到 {volume:g} µL",
+                "label": f"Target well A1 received {volume:g} µL",
                 "passed": abs(state["wells"]["A1"]["volume"] - volume) < 1e-6,
             },
             {
-                "label": "源容器减少了对应体积",
+                "label": "The source volume decreased by the transferred amount",
                 "passed": abs(
                     state["wells"]["stock"]["volume"] - (experiment["source_volume"] - volume)
                 )
                 < 1e-6,
             },
             {
-                "label": "未向其他孔转移",
+                "label": "No liquid was transferred to other wells",
                 "passed": all(state["wells"][w]["volume"] == 0 for w in ["A2", "A3"]),
             },
         ]

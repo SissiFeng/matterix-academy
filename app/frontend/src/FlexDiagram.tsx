@@ -21,7 +21,7 @@ export default function FlexDiagram({
       viewBox="0 0 720 530"
       className={s.diagram}
       role="img"
-      aria-label="Flex 设备教学示意图，非实时三维画面。下方对象按钮提供相同选择功能。"
+      aria-label="Flex teaching diagram, not a live 3D view. The object buttons below provide the same selection controls."
     >
       <defs>
         <linearGradient id="case" x2="0" y2="1">
@@ -80,7 +80,7 @@ export default function FlexDiagram({
         TEACHING VIEW
       </text>
       <text x="363" y="148" textAnchor="middle" fontSize="10" fill="#61715e">
-        后方 · BACK
+        BACK
       </text>
       {[..."ABCD"].flatMap((r, row) =>
         [1, 2, 3].map((col) => {
@@ -196,7 +196,7 @@ export default function FlexDiagram({
                     />
                   ))}
                   <text x={x + 27} y={y + 54} fontSize="8" fill="#a24925">
-                    A1 孔
+                    Well A1
                   </text>
                 </g>
               )}
@@ -221,7 +221,7 @@ export default function FlexDiagram({
                     fill="#f7f8ec"
                     fontSize="9"
                   >
-                    固定 D3
+                    Fixed at D3
                   </text>
                 </g>
               )}
@@ -252,19 +252,19 @@ export default function FlexDiagram({
         )}
         <path d="M445 124h46l19-14" stroke={highlight("pipette")} fill="none" />
         <text x="511" y="108" fill={highlight("pipette")} fontSize="12">
-          移液器
+          Pipette
         </text>
       </g>
       <path d="M 90 442 H 632 V 466 H 90 Z" fill="#b6c6b1" />
       <text x="360" y="458" textAnchor="middle" fontSize="10" fill="#3f593f">
-        前方 · FRONT / 学生面对设备的方向
+        FRONT / OPERATOR SIDE
       </text>
       <rect x="526" y="449" width="75" height="10" rx="3" fill="#74906b" />
       <text x="29" y="30" fontSize="10" fill="#74806a" letterSpacing="2">
         EXPLORE THE INSTRUMENT
       </text>
       <text x="29" y="511" fontSize="10" fill="#677660">
-        示意图用于设备定位 · 不展示真实运动、碰撞或液面
+        Equipment guide only · No live motion, collisions or liquid levels
       </text>
     </svg>
   );

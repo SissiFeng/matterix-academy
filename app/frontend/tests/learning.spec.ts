@@ -8,50 +8,66 @@ async function startLesson(page: Page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
   await page
-    .getByRole("button", { name: "开始 Flex 入门", exact: true })
+    .getByRole("button", { name: "Start learning Flex", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: /让 100 µL 液体/ }),
+    page.getByRole("heading", { name: /Move 100 µL/ }),
   ).toBeVisible();
 }
 
 async function tour(page: Page) {
-  for (const name of ["移液器", "吸头架", "源容器", "目标孔板", "废弃槽"]) {
+  for (const name of [
+    "Pipette",
+    "Tip rack",
+    "Source container",
+    "Target plate",
+    "Waste chute",
+  ]) {
     await page.getByRole("button", { name, exact: true }).click();
     await expect(
       page.getByText(
-        `已探索 ${["移液器", "吸头架", "源容器", "目标孔板", "废弃槽"].indexOf(name) + 1} / 5 个对象。`,
+        `Explored ${["Pipette", "Tip rack", "Source container", "Target plate", "Waste chute"].indexOf(name) + 1} / 5 objects.`,
         { exact: false },
       ),
     ).toBeVisible();
   }
-  await page.getByLabel("孔板中的一个孔", { exact: true }).click();
-  await page.getByRole("button", { name: "去准备实验", exact: true }).click();
+  await page.getByLabel("A well in the plate", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Prepare the experiment", exact: true })
+    .click();
 }
 
 async function prepare(page: Page) {
   for (const name of [
-    "移液器与吸头",
-    "耗材与位置",
-    "起始液量",
-    "本次练习的范围",
+    "Pipette and tips",
+    "Labware and positions",
+    "Starting volumes",
+    "Scope of this exercise",
   ]) {
     const checkbox = page.getByRole("checkbox", { name: new RegExp(name) });
     await checkbox.click();
     await expect(checkbox).toBeChecked();
   }
-  await page.getByRole("button", { name: "先预测液量", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Predict the volumes", exact: true })
+    .click();
 }
 
 async function predict(page: Page, volume: number) {
-  await page.getByLabel("源容器剩余").fill(String(1000 - volume));
-  await page.getByLabel("吸头内液量").fill(String(volume));
-  await page.getByLabel("目标 A1 孔液量").fill("0");
-  await page.getByRole("button", { name: "检查我的预测", exact: true }).click();
+  await page.getByLabel("Source volume remaining").fill(String(1000 - volume));
+  await page.getByLabel("Volume in the tip").fill(String(volume));
+  await page.getByLabel("Volume in target well A1").fill("0");
+  await page
+    .getByRole("button", { name: "Check my prediction", exact: true })
+    .click();
   await expect(
-    page.getByText("预测正确。吸液先把液体装进吸头，目标孔此时仍为空。"),
+    page.getByText(
+      "Correct. Aspiration draws liquid into the tip; the target well is still empty.",
+    ),
   ).toBeVisible();
-  await page.getByRole("button", { name: "进入操作练习", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Start practicing", exact: true })
+    .click();
 }
 
 test("novice learns equipment, predicts, executes each step, reflects and retries 50 uL", async ({
@@ -61,60 +77,78 @@ test("novice learns equipment, predicts, executes each step, reflects and retrie
   page.on("pageerror", (e) => errors.push(e.message));
   await startLesson(page);
   await expect(
-    page.getByRole("button", { name: "去准备实验", exact: true }),
+    page.getByRole("button", { name: "Prepare the experiment", exact: true }),
   ).toBeDisabled();
   await tour(page);
   await expect(
-    page.getByLabel("目标孔板槽位").locator("option[value='D3']"),
+    page.getByLabel("Target plate slot").locator("option[value='D3']"),
   ).toHaveCount(0);
   await prepare(page);
-  await page.getByLabel("源容器剩余").fill("900");
-  await page.getByLabel("吸头内液量").fill("0");
-  await page.getByLabel("目标 A1 孔液量").fill("100");
-  await page.getByRole("button", { name: "检查我的预测", exact: true }).click();
-  await expect(page.getByText(/再想一想：吸液/)).toBeVisible();
+  await page.getByLabel("Source volume remaining").fill("900");
+  await page.getByLabel("Volume in the tip").fill("0");
+  await page.getByLabel("Volume in target well A1").fill("100");
+  await page
+    .getByRole("button", { name: "Check my prediction", exact: true })
+    .click();
+  await expect(page.getByText(/Think again: aspiration/)).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "进入操作练习", exact: true }),
+    page.getByRole("button", { name: "Start practicing", exact: true }),
   ).toBeDisabled();
   await predict(page, 100);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "取一个新吸头", exact: true }),
+    page.getByRole("heading", { name: "Pick up a fresh tip", exact: true }),
   ).toBeVisible();
   for (const next of [
-    "吸取 100 µL",
-    "排出 100 µL",
-    "弃去用过的吸头",
-    "转移完成。现在解释它。",
+    "Aspirate 100 µL",
+    "Dispense 100 µL",
+    "Discard the used tip",
+    "Transfer complete. Now explain it.",
   ]) {
-    await page.getByRole("button", { name: "执行下一步", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Run next step", exact: true })
+      .click();
     await expect(
       page.getByRole("heading", { name: next, exact: true }),
     ).toBeVisible();
   }
   await page
-    .getByRole("button", { name: "解释结果并再试一次", exact: true })
+    .getByRole("button", {
+      name: "Explain the result and try again",
+      exact: true,
+    })
     .click();
-  await page.getByLabel("从源容器直接到达目标孔", { exact: true }).click();
-  await expect(page.getByText(/吸液时目标孔还没有收到液体/)).toBeVisible();
   await page
-    .getByLabel("从源容器进入吸头，目标孔仍为空", { exact: true })
+    .getByLabel("Directly from the source into the target well", {
+      exact: true,
+    })
     .click();
   await expect(
-    page.getByText("操作与理解均已完成", { exact: true }),
+    page.getByText(/The target is still empty after aspiration/),
+  ).toBeVisible();
+  await page
+    .getByLabel("From the source into the tip; the target is still empty", {
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByText("Practice and understanding complete", { exact: true }),
   ).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
   await page
-    .getByRole("button", { name: "挑战 50 µL 转移", exact: true })
+    .getByRole("button", { name: "Try a 50 µL transfer", exact: true })
     .click();
-  await expect(
-    page.getByRole("heading", { name: /让 50 µL 液体/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Move 50 µL/ })).toBeVisible();
   await prepare(page);
   await predict(page, 50);
-  await page.getByRole("button", { name: "连续运行", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Run continuously", exact: true })
+    .click();
   await expect(
-    page.getByRole("heading", { name: "转移完成。现在解释它。", exact: true }),
+    page.getByRole("heading", {
+      name: "Transfer complete. Now explain it.",
+      exact: true,
+    }),
   ).toBeVisible({ timeout: 15000 });
   expect(errors).toEqual([]);
 });
@@ -127,21 +161,27 @@ test("remote remains honest and lesson fits a phone", async ({ page }) => {
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole("button", { name: /远程 3D/ }).click();
+  await page.getByRole("button", { name: /Remote 3D/ }).click();
   await expect(
-    page.getByText("实验室尚未配置 Ubuntu 仿真连接。课程与教学练习仍可使用。"),
+    page.getByText(
+      "The Ubuntu simulation connection is not configured yet. Lessons and teaching exercises are still available.",
+    ),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "真实 3D 仿真等待接入" }),
+    page.getByRole("heading", {
+      name: "Live 3D simulation is not connected yet",
+    }),
   ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole("button", { name: "重新检查连接" }).click();
+  await page.getByRole("button", { name: "Check connection again" }).click();
   await expect(
-    page.getByText("实验室尚未配置 Ubuntu 仿真连接。课程与教学练习仍可使用。"),
+    page.getByText(
+      "The Ubuntu simulation connection is not configured yet. Lessons and teaching exercises are still available.",
+    ),
   ).toBeVisible();
 });
 
@@ -151,25 +191,27 @@ test("unfinished prediction is protected and changing deck invalidates readiness
   await startLesson(page);
   await tour(page);
   await prepare(page);
-  await page.getByLabel("源容器剩余").fill("900");
+  await page.getByLabel("Source volume remaining").fill("900");
   page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "返回课程", exact: true }).click();
-  await expect(page.getByLabel("源容器剩余")).toHaveValue("900");
+  await page
+    .getByRole("button", { name: "Back to courses", exact: true })
+    .click();
+  await expect(page.getByLabel("Source volume remaining")).toHaveValue("900");
   await predict(page, 100);
-  await page.getByRole("button", { name: /预测变化 先想/ }).click();
-  await page.getByLabel("源容器剩余").fill("0");
+  await page.getByRole("button", { name: /Predict changes Think/ }).click();
+  await page.getByLabel("Source volume remaining").fill("0");
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: /准备台面 检查/ }).click();
-  await page.getByRole("button", { name: /预测变化 先想/ }).click();
-  await expect(page.getByLabel("源容器剩余")).toHaveValue("900");
-  await page.getByRole("button", { name: /准备台面 检查/ }).click();
-  await page.getByLabel("吸头架槽位").selectOption("C1");
+  await page.getByRole("button", { name: /Prepare the deck Check/ }).click();
+  await page.getByRole("button", { name: /Predict changes Think/ }).click();
+  await expect(page.getByLabel("Source volume remaining")).toHaveValue("900");
+  await page.getByRole("button", { name: /Prepare the deck Check/ }).click();
+  await page.getByLabel("Tip rack slot").selectOption("C1");
   await expect(
-    page.getByRole("checkbox", { name: /移液器与吸头/ }),
+    page.getByRole("checkbox", { name: /Pipette and tips/ }),
   ).not.toBeChecked();
-  await page.getByRole("button", { name: /逐步运行 观察/ }).click();
+  await page.getByRole("button", { name: /Run step by step Observe/ }).click();
   await expect(
-    page.getByRole("button", { name: "执行下一步", exact: true }),
+    page.getByRole("button", { name: "Run next step", exact: true }),
   ).toBeDisabled();
 });
 
@@ -177,16 +219,20 @@ test("a correct prediction is recognized even before other prerequisites", async
   page,
 }) => {
   await startLesson(page);
-  await page.getByRole("button", { name: /预测变化 先想/ }).click();
-  await page.getByLabel("源容器剩余").fill("900");
-  await page.getByLabel("吸头内液量").fill("100");
-  await page.getByLabel("目标 A1 孔液量").fill("0");
-  await page.getByRole("button", { name: "检查我的预测", exact: true }).click();
+  await page.getByRole("button", { name: /Predict changes Think/ }).click();
+  await page.getByLabel("Source volume remaining").fill("900");
+  await page.getByLabel("Volume in the tip").fill("100");
+  await page.getByLabel("Volume in target well A1").fill("0");
+  await page
+    .getByRole("button", { name: "Check my prediction", exact: true })
+    .click();
   await expect(
-    page.getByText("预测正确。吸液先把液体装进吸头，目标孔此时仍为空。"),
+    page.getByText(
+      "Correct. Aspiration draws liquid into the tip; the target well is still empty.",
+    ),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "进入操作练习", exact: true }),
+    page.getByRole("button", { name: "Start practicing", exact: true }),
   ).toBeDisabled();
 });
 
@@ -208,13 +254,17 @@ test("a lost step response reloads its saved result without replaying it", async
     },
     { times: 1 },
   );
-  await page.getByRole("button", { name: "执行下一步", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Run next step", exact: true })
+    .click();
   await expect(
-    page.getByRole("heading", { name: "吸取 100 µL", exact: true }),
+    page.getByRole("heading", { name: "Aspirate 100 µL", exact: true }),
   ).toBeVisible();
   expect(sent).toBe(1);
-  await page.getByRole("button", { name: "执行下一步", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Run next step", exact: true })
+    .click();
   await expect(
-    page.getByRole("heading", { name: "排出 100 µL", exact: true }),
+    page.getByRole("heading", { name: "Dispense 100 µL", exact: true }),
   ).toBeVisible();
 });

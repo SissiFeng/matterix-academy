@@ -118,12 +118,16 @@ COURSES = [
     {
         "id": "flex-first-transfer",
         "number": "01",
-        "title": "从手动移液，到第一次自动转移",
-        "subtitle": "认识 Flex，预测液量，逐步完成 100 µL 转移。",
+        "title": "From manual pipetting to your first automated transfer",
+        "subtitle": "Meet the Flex, predict liquid volumes and complete a 100 µL transfer step by step.",
         "duration": "20–30 min",
         "level": "First steps",
-        "objectives": ["认识设备与孔位", "检查台面和液体", "解释一次转移"],
-        "model_note": "课程练习使用教学模型；真实 3D 与远程执行需 Ubuntu gateway 验收。",
+        "objectives": [
+            "Identify equipment and wells",
+            "Check the deck and liquids",
+            "Explain a liquid transfer",
+        ],
+        "model_note": "Practice uses a teaching model. Live 3D and remote execution require a qualified Ubuntu gateway.",
     },
     {
         "id": "flex-foundations",
