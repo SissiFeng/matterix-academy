@@ -8,6 +8,9 @@ dependencies = [
   "boto3>=1.38,<2", "itsdangerous>=2.2,<3", "httpx>=0.28,<1",
 ]
 
+[project.optional-dependencies]
+native-worker = ["aiortc==1.14.0", "aioice==0.10.2", "websockets>=15,<17", "numpy>=2,<3"]
+
 [dependency-groups]
 dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "moto[dynamodb]>=5,<6"]
 

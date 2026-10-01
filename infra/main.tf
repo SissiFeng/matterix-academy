@@ -154,6 +154,7 @@ resource "aws_lambda_function" "api" {
       ACADEMY_COGNITO_DOMAIN = "https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com"
       ACADEMY_APP_URL        = "https://${aws_cloudfront_distribution.web.domain_name}"
       ACADEMY_REMOTE_ENABLED = tostring(var.remote_execution_enabled)
+      ACADEMY_MEDIA_PREFIX   = local.media_prefix
     }
   }
   depends_on = [aws_iam_role_policy.api, aws_cloudwatch_log_group.api]

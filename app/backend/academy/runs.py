@@ -16,7 +16,8 @@ from fastapi import HTTPException
 from pydantic import Field, model_validator
 
 from .learning import readiness
-from .models import Experiment, StrictModel
+from .models import StrictModel
+from .recipes import MIXING, parse_plan
 from .remote_run import RemoteRunRequest, RemoteRunSnapshot, check_run_snapshot, workflow_digest
 from .store import Conflict, Write
 
@@ -180,10 +181,10 @@ class RunService:
             raise HTTPException(404, "Experiment not found")
         if session["version"] != data.expected_version or session["status"] == "running":
             raise Conflict
-        plan = Experiment.model_validate(session["experiment"])
-        if plan.course_id != "flex-first-transfer":
+        plan = parse_plan(session["experiment"])
+        if plan.course_id not in {"flex-first-transfer", MIXING}:
             raise HTTPException(422, "Only the qualified first-transfer scene is supported")
-        if not readiness(session)["ready"]:
+        if plan.course_id == "flex-first-transfer" and not readiness(session)["ready"]:
             raise HTTPException(
                 409, "Complete lesson preparation and prediction before native execution"
             )
@@ -251,6 +252,8 @@ class RunService:
         for candidate in self.store.partition(QUEUE):
             run = self.raw(candidate["run_id"])
             if run["status"] != "queued":
+                continue
+            if run["plan"]["course_id"] not in worker.get("scenes", ["flex-first-transfer"]):
                 continue
             now = self.clock()
             claimed = revised(
@@ -375,7 +378,12 @@ class RunService:
             and run["control"]["command_id"] == str(data.control_id)
             and run["control"]["acknowledged"]
         )
-        if payload == run.get("snapshot") and duplicate_ack:
+        saved = (
+            RemoteRunSnapshot.model_validate(run["snapshot"]).model_dump(mode="json")
+            if run.get("snapshot")
+            else None
+        )
+        if payload == saved and duplicate_ack:
             return self.machine_view(run, worker_id)
         self.owned(worker_id, run_id, data.claim_token)
         if run["status"] in TERMINAL or not run.get("binding"):

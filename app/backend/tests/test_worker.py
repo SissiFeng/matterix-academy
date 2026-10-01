@@ -493,3 +493,30 @@ def test_idle_worker_uses_bounded_backoff_and_active_work_resets_it(monkeypatch,
     with pytest.raises(KeyboardInterrupt):
         worker_module.main()
     assert delays == [4, 8, 16, 20, 20, 2, 4]
+
+
+def test_lost_media_provisioning_response_recovers_before_native_launch(worker_system):
+    service, submitted, client, path, now = worker_system
+    runner = FixtureRunner()
+    attempts = []
+
+    def provision(local):
+        attempts.append(local["run"]["run_id"])
+        if len(attempts) == 1:
+            raise httpx.ReadTimeout("Synthetic lost media provisioning response")
+
+    runner.provision = provision
+    journal = Journal(path)
+    engine = Worker(client, runner, journal, clock=lambda: now)
+    try:
+        with pytest.raises(httpx.ReadTimeout):
+            engine.step()
+        assert journal.read()["phase"] == "bound"
+        assert runner.starts == 0
+        engine.step()
+        assert runner.starts == 1
+        assert runner.allocations == 1
+        assert attempts == [submitted["run_id"]] * 2
+        assert service.raw(submitted["run_id"])["status"] == "completed"
+    finally:
+        journal.close()

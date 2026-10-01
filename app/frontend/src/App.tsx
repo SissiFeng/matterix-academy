@@ -1,3 +1,4 @@
+import SimulationLab from "./SimulationLab";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -1393,7 +1394,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(marketplace|discovery|connector|history)(?:\/([a-z]+))?$/,
+        /^#\/(marketplace|discovery|connector|history|sim)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -1449,8 +1450,8 @@ export default function App() {
     window.scrollTo(0, 0);
   };
   const nav = (target: string) => {
-    // Keep the active connector subpage when reselecting its sidebar section.
-    if (target === "connector" && view === "connector") return;
+    // Preserve the selected subpage/run when reselecting its sidebar section.
+    if ((target === "connector" || target === "sim") && view === target) return;
     if (leaveGuard.current && !leaveGuard.current()) return;
     navigationEpoch.current += 1;
     setView(target);
@@ -1552,6 +1553,12 @@ export default function App() {
             <div className={s.sidebarLabel}>YOUR TRAINING</div>
             <nav>
               <button
+                className={view === "sim" ? s.activeNav : ""}
+                onClick={() => nav("sim")}
+              >
+                <FlaskConical size={18} /> Simulation lab
+              </button>
+              <button
                 className={view === "learn" ? s.activeNav : ""}
                 onClick={() => nav("learn")}
               >
@@ -1642,7 +1649,9 @@ export default function App() {
                         ? "Workflow marketplace"
                         : view === "connector"
                           ? "Connector explorer"
-                          : "Learning lab"}
+                          : view === "sim"
+                            ? "Simulation lab"
+                            : "Learning lab"}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -1651,7 +1660,9 @@ export default function App() {
                   : "Training workspace"}
               </span>
             </header>
-            {view === "marketplace" ? (
+            {view === "sim" ? (
+              <SimulationLab />
+            ) : view === "marketplace" ? (
               <WorkflowMarketplace
                 onAdapt={(item) => {
                   if (leaveGuard.current && !leaveGuard.current()) return;

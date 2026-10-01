@@ -10,7 +10,9 @@ from .auth import identify, local_signer
 from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
 from .learning import present, readiness
+from .media import MediaService, ViewerRequest
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
+from .recipes import MIXING, CreateMixing, MixingPlan, mixing_session
 from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
 from .store import Conflict, DynamoStore, SQLiteStore
@@ -33,6 +35,7 @@ def create_app(settings: Settings | None = None, store=None):
         else SQLiteStore(settings.data_path)
     )
     app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
+    app.state.media = MediaService(app.state.runs)
     if settings.runtime == "local":
         app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
@@ -71,6 +74,16 @@ def create_app(settings: Settings | None = None, store=None):
     @app.get("/api/health")
     def health():
         return {"status": "ok", "version": "0.1.0"}
+
+    @app.post("/api/runs/{run_id}/viewer")
+    def viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):
+        return app.state.media.viewer(owner, run_id, data.client_id)
+
+    @app.post("/api/runs/{run_id}/viewer/renew")
+    def renew_viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):
+        return app.state.media.viewer(
+            owner, run_id, data.client_id, connect=False, frame_received=data.frame_received
+        )
 
     @app.get("/api/config")
     def config():
@@ -213,7 +226,35 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.get("/api/sessions")
     def sessions(owner: str = Depends(identify)):
-        return [present(session) for session in app.state.store.list(owner)]
+        return [
+            present(session)
+            for session in app.state.store.list(owner)
+            if session["experiment"]["course_id"] != MIXING
+        ]
+
+    @app.get("/api/simulations")
+    def simulations(owner: str = Depends(identify)):
+        return {
+            "enabled": settings.remote_enabled,
+            "recipe": MixingPlan().model_dump(mode="json"),
+            "sessions": [
+                session
+                for session in app.state.store.list(owner)
+                if session["experiment"]["course_id"] == MIXING
+            ],
+        }
+
+    @app.post("/api/simulations", status_code=201)
+    def create_simulation(data: CreateMixing, owner: str = Depends(identify)):
+        expected = mixing_session(data)
+        key = f"session#{data.session_id}"
+        existing = app.state.store.get(owner, key)
+        if existing:
+            if existing["experiment"] != expected["experiment"]:
+                raise Conflict
+            return existing
+        app.state.store.put(owner, key, expected, None)
+        return expected
 
     @app.post("/api/sessions", status_code=201)
     def create_session(experiment: Experiment, owner: str = Depends(identify)):
@@ -226,6 +267,10 @@ def create_app(settings: Settings | None = None, store=None):
         if session is None:
             raise HTTPException(404, "Experiment not found")
         return session
+
+    def require_teaching(session):
+        if session["experiment"]["course_id"] == MIXING:
+            raise InvalidTransition("This recipe runs only in the native simulation workspace")
 
     def save(owner, session, expected):
         if session.get("remote_active_run"):
@@ -245,6 +290,7 @@ def create_app(settings: Settings | None = None, store=None):
     @app.put("/api/sessions/{session_id}")
     def update_session(session_id: UUID, data: UpdateExperiment, owner: str = Depends(identify)):
         session = get_session(owner, session_id)
+        require_teaching(session)
         if session["status"] != "draft":
             raise InvalidTransition("Reset the experiment before editing it")
         if data.experiment.course_id != session["experiment"]["course_id"]:
@@ -268,6 +314,7 @@ def create_app(settings: Settings | None = None, store=None):
     @app.post("/api/sessions/{session_id}/advance")
     def advance(session_id: UUID, data: Revision, owner: str = Depends(identify)):
         session = get_session(owner, session_id)
+        require_teaching(session)
         if session["version"] != data.version:
             raise Conflict
         return save(owner, execute_step(session), data.version)
@@ -280,6 +327,7 @@ def create_app(settings: Settings | None = None, store=None):
         owner: str = Depends(identify),
     ):
         session = get_session(owner, session_id)
+        require_teaching(session)
         if command in {"start", "resume"}:
             # Legacy draft layouts must be corrected explicitly, never moved silently.
             try:

@@ -393,10 +393,26 @@ def main():
         controls = evidence.get("controls", [])
         if not isinstance(controls, list) or not set(controls) <= {"pause", "resume", "cancel"}:
             parser.error("Invalid qualified control list")
+        scenes = evidence.get("scenes", ["flex-first-transfer"])
+        if (
+            not isinstance(scenes, list)
+            or not scenes
+            or not set(scenes) <= {"flex-first-transfer", "flex-mixing"}
+        ):
+            parser.error("Invalid qualified scene list")
+        if "flex-mixing" in scenes and evidence.get("mixing_and_media_verified") is not True:
+            parser.error("Mixing qualification requires a verified native mixing and media report")
         store.put(
             WORKERS,
             args.worker_id,
-            revised(old, qualified=True, state="ready", controls=controls, qualification=evidence),
+            revised(
+                old,
+                qualified=True,
+                state="ready",
+                controls=controls,
+                scenes=scenes,
+                qualification=evidence,
+            ),
             old["version"],
         )
         print("Worker qualification recorded. The separate deployment feature gate still applies.")

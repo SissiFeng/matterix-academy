@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 uv run ruff check app/backend scripts/release.py
 uv run ruff format --check app/backend scripts/release.py
-uv run pytest -q
+uv run --extra native-worker pytest -q
 npm --prefix app/frontend run build
 npm --prefix app/frontend run format:check
 terraform -chdir=infra fmt -check

@@ -11,12 +11,13 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, Field, model_validator
 
-from .models import Experiment, StrictModel
+from .models import StrictModel
+from .recipes import ExecutionPlan, MixingPlan
 
 TERMINAL_SNAPSHOT_STATUSES = frozenset({"completed", "failed", "unknown"})
 
 
-def workflow_digest(experiment: Experiment) -> str:
+def workflow_digest(experiment: ExecutionPlan) -> str:
     """Bind the complete normalized plan, including layout and starting volumes."""
     encoded = json.dumps(
         experiment.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
@@ -27,7 +28,7 @@ def workflow_digest(experiment: Experiment) -> str:
 class RemoteRunRequest(StrictModel):
     run_id: UUID
     expected_revision: int = Field(ge=1)
-    experiment: Experiment
+    experiment: ExecutionPlan
     plan_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
@@ -57,6 +58,41 @@ class RemoteStepProgress(StrictModel):
         return self
 
 
+class MixingObservation(StrictModel):
+    """Observed semantic state for the single-environment Flex mixing recipe."""
+
+    source_volumes_ul: list[float] = Field(min_length=8, max_length=8)
+    mixture_components_ul: list[float] = Field(min_length=8, max_length=8)
+    source_order: list[int] = Field(min_length=4, max_length=4)
+    lid_parked: bool
+    lid_attached: bool
+    active_tip: str | None
+    tips_used: list[str] = Field(max_length=4)
+    tips_discarded: list[str] = Field(max_length=4)
+    joint_positions: list[float] = Field(min_length=7, max_length=7)
+    native_action_index: int = Field(ge=0, le=256)
+    native_action_count: int = Field(ge=1, le=256)
+    native_action: str = Field(min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def valid_observation(self):
+        if any(v < 0 for v in self.source_volumes_ul + self.mixture_components_ul):
+            raise ValueError("Observed amounts cannot be negative")
+        if len(set(self.source_order)) != 4 or any(not 0 <= i < 8 for i in self.source_order):
+            raise ValueError("Report four distinct source indices")
+        allowed = {f"Tips__A{i}" for i in range(1, 5)}
+        if self.active_tip is not None and self.active_tip not in allowed:
+            raise ValueError("Unknown mixing tip")
+        if any(
+            len(ids) != len(set(ids)) or not set(ids) <= allowed
+            for ids in (self.tips_used, self.tips_discarded)
+        ) or not set(self.tips_discarded) <= set(self.tips_used):
+            raise ValueError("Inconsistent tip observations")
+        if self.native_action_index > self.native_action_count:
+            raise ValueError("Action index exceeds native workflow")
+        return self
+
+
 class RemoteNativeState(StrictModel):
     """Null means unobserved, never zero or a value filled by the teaching model."""
 
@@ -66,6 +102,7 @@ class RemoteNativeState(StrictModel):
     pipette_volume_ul: float | None = Field(default=None, ge=0)
     tip_attached: bool | None = None
     well_volumes_ul: dict[Literal["stock", "A1", "A2", "A3"], float | None]
+    mixing: MixingObservation | None = None
 
     @model_validator(mode="after")
     def volumes_are_nonnegative(self):
@@ -192,6 +229,8 @@ def check_run_snapshot(
         )
     ):
         raise ValueError("Progress does not belong to the submitted workflow and session")
+    if isinstance(request.experiment, MixingPlan):
+        check_mixing_observation(snapshot, request.experiment)
     if previous is None:
         return
     check_run_snapshot(previous, session_id, request)
@@ -224,3 +263,45 @@ def check_run_snapshot(
         and snapshot.native_state != previous.native_state
     ):
         raise ValueError("The same native observation revision cannot describe different state")
+
+
+def check_mixing_observation(snapshot: RemoteRunSnapshot, plan: MixingPlan) -> None:
+    state = snapshot.native_state
+    mixing = state.mixing if state else None
+    if mixing is None:
+        if snapshot.completed_steps or snapshot.status in {"running", "paused", "completed"}:
+            raise ValueError("Mixing progress requires the native mixing observation")
+        return
+    sources = [step.source_index for step in plan.actions[1:]]
+    if mixing.source_order != sources:
+        raise ValueError("Observed source order differs from the saved mixing plan")
+    if snapshot.completed_steps and (not mixing.lid_parked or mixing.lid_attached):
+        raise ValueError("Confirmed uncover step requires the parked lid observation")
+    transfers = max(0, snapshot.completed_steps - 1)
+    tips = [step.tip_id for step in plan.actions[1 : transfers + 1]]
+    if mixing.tips_discarded[:transfers] != tips or mixing.tips_used[:transfers] != tips:
+        raise ValueError("Confirmed transfers require the planned fresh-tip disposal order")
+    for source in sources[:transfers]:
+        if abs(mixing.mixture_components_ul[source] - 10) > 0.01:
+            raise ValueError("Confirmed transfer requires 10 uL observed in its mixture component")
+    if snapshot.status == "completed":
+        expected = [10 if i in sources else 0 for i in range(8)]
+        if (
+            any(
+                abs(a - b) > 0.01
+                for a, b in zip(mixing.mixture_components_ul, expected, strict=True)
+            )
+            or any(
+                abs(v - (1500 - expected[i])) > 0.01 for i, v in enumerate(mixing.source_volumes_ul)
+            )
+            or mixing.active_tip is not None
+            or state.tip_attached is not False
+            or state.pipette_volume_ul is None
+            or abs(state.pipette_volume_ul) > 0.01
+            or state.well_volumes_ul["A1"] is None
+            or abs(state.well_volumes_ul["A1"] - 40) > 0.01
+            or mixing.native_action_index != mixing.native_action_count
+        ):
+            raise ValueError(
+                "Mixing completion requires the observed 40 uL result, empty tool and completed workflow"
+            )

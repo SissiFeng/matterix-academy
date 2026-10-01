@@ -22,35 +22,34 @@ The initial cloud deployment is recorded in [DEPLOYMENT-2026-10-01.md](DEPLOYMEN
 
 No SSH login, runtime restart, Tailscale policy change, port exposure, worker enrollment or new AWS resource was performed in this review.
 
-## Concrete starting point supplied by the operator
+## First integration target: existing OT Flex workflow
 
-The operator reports that the following configuration launches the desired Isaac Lab window successfully on Ubuntu. Source inspection used the exact supplied Matterix commit, not the subsequently advanced local branch. Opening the window is not itself a passing pouring verdict or a streaming acceptance test.
+The operator clarified that the pouring demo is still being debugged. It is excluded from the first onboarding integration. Use an existing OT Flex workflow instead; the exact previously working workflow is being confirmed with the operator.
 
-| Field | Supplied configuration |
+Live GitHub metadata and local source inspection identify [Matterix PR #59](https://github.com/ac-rad/Matterix-Internal/pull/59) as the Flex implementation. [PR #58](https://github.com/ac-rad/Matterix-Internal/pull/58) concerns the OT-2 97-body tip-rack collection. The corresponding Flex USD assets are in [assets PR #11](https://github.com/ac-rad/Matterix_assets_internal/pull/11).
+
+| Field | Verified source candidate |
 |---|---|
-| Checkout | `/home/sissi/matterix-semantics-pr61-b0p9uC` |
-| Matterix commit | `b6a5f00036044686776ba5bc6bf0c72daa6ac17a` |
-| Python | `/home/sissi/.conda/envs/matterix-pr50-py312/bin/python` |
-| Entry point | `scripts/validation/run_semantics_pouring.sh` |
-| Scenario | `Matterix-Test-Semantics-Pouring-Franka-v1` |
-| Parameters | `--num_envs 2 --test_stage pour --video --motion_speed_scale 3 --viz kit --livestream 0 --enable_cameras --device cuda:0` |
+| Code branch / commit | `codex/flex-liquid-handler` / `18a96b78ee989fbf4e480e9db6a588c148c6adbe` |
+| Assets branch / commit | `codex/flex-gripper-asset` / `c57f12a04079a5f99405e1fcb818a3b7ccc52e5b` |
+| Mixing task | `Matterix-Flex-Mixing-v1` |
+| Mixing workflow | `mix_four_vials` |
+| Other registered mixing-task workflows | `left_tip_cycle`, `right_tip_cycle` |
+| Pipetting task alternatives | `Matterix-Flex-Pipetting-v1`: `tip_pickup_and_release`, `tip_rack_cycle`, `tip_liquid_cycle` |
 
-This provides a concrete first streaming scenario before accepting arbitrary learner-composed Flex workflows. The currently implemented worker contract is scoped to the Flex lesson; the pouring probe requires its own registered scenario and observation/result mapping before the learner API can launch it.
+The current mixing source removes the shared C1 lid with the gripper and parks it on D4, selects four distinct source vials from eight using a fixed seed, and transfers 10 µL from each to D1 A1. Each transfer uses a fresh left-tool tip (`Tips__A1` through `Tips__A4`) followed by disposal. Expected final mixture: 40 µL, four tips used. The PR prose still describes one tip; the current code implements four. These are semantic liquid/attachment models, not fluid-dynamics or grasp-force acceptance.
 
-The supplied configuration uses the local Kit visualization and disables livestreaming. `--video` records two MP4 outputs (overview and tiled close-ups); it does not deliver a live browser stream. The wrapper clears inherited `LIVESTREAM` and `HEADLESS`, so a streaming variant must use explicit, installed-version-compatible launch arguments. Do not assume setting an outer environment variable enables streaming, or that changing `0` to another value completes network integration.
+### Existing launch and result tooling
 
-At the pinned revision, the probe already provides:
+The preserved local validation checkout at `/Users/sissifeng/Matterix-Internal-flex-tip-validation`, commit `51e0371d6e3e560d852387d6187b2a6a29129e61`, contains `scripts/run_flex_mixing_ubuntu.sh`, `scripts/smoke_flex.py`, and `_flex_mixing_validation.py`. These helpers are not tracked in the PR #59 source checkout and must not be assumed present after a fresh PR checkout. The old remote validation branch was removed; do not use its branch name as a deployment dependency.
 
-- `MATTERIX_PHASE` JSON log events for startup and execution stages.
-- `MATTERIX_POUR_DIAGNOSTICS` JSON log events with simulation step and per-environment action/geometry diagnostics, emitted periodically and on action changes.
-- `result.diagnostics.json` with richer sampled native state and semantic events.
-- `result.json`, `run.log`, and overview/close-up recordings in a unique result directory. The wrapper reports success only when `passed` is true and the simulator process exit status is zero.
+The historical wrapper uses the `matterix-flex-lab3` Conda environment and calls `smoke_flex.py` with `Matterix-Flex-Mixing-v1`, `mix_four_vials`, seed 42, a bounded 16,000-step workflow, Kit visualization, recording and `--keep_open`. It defaults to eight environments. First web integration should use one environment and one active run; the actual installed code/assets/environment paths must be verified before reusing the wrapper.
 
-The integration adapter can consume these existing events, add run/session/generation identity and ordered observation metadata, and publish them through the worker API. They do not already satisfy the platform contract: startup phases are not workflow-step completion receipts, particle counts are not calibrated liquid volumes, and these files/events do not contain Academy run identities. Reading JSON files requires handling writes in progress; a structured event sink or atomic snapshot write is preferable to assuming every file read is complete.
+The wrapper currently updates assets before running. A platform launch profile must instead use a prepared, pinned code/assets release. The generic `scripts/run_workflow.py` loops over episodes while the app is open and resets state machines after environment termination; it is not an at-most-once learner runner without adaptation. Preserve single execution and explicit terminal results in the web adapter.
 
-The probe is finite, with a default ten-minute wrapper timeout, and closes the simulation after saving results. Browser connection must be ready before the instructional actions begin, with a bounded wait so an absent viewer cannot reserve the GPU indefinitely. A terminal run should show its saved outcome and, after artifact publication is implemented, the existing recordings. It should not promise a live scene after the process has exited.
+The validation helpers already expose workflow outcome, selected sources, tip pickup/disposal order, source/mixture amounts, lid state, and MP4/result artifacts. `FLEX_MIXING_PASS` is a checked terminal report; a `.state.json` file can contain observations from before acceptance and is not a pass. Continuous run-bound progress still needs an adapter emitting native action transitions and observations with run/session/generation IDs and ordered timestamps. The existing teaching lesson and `mix_four_vials` have different plans and parameters; they must not be silently substituted for one another.
 
-Register a versioned launch profile for this scenario. Repository preparation (`git fetch` and checkout selection) belongs to deployment; a learner run launches the prepared revision with validated parameters. Reconnection only reattaches to the recorded process/run. It must not run the shell command again.
+No fresh Ubuntu run or streaming acceptance was performed in this source review. Use the operator's known-working Flex setup as the runtime baseline after identifying its exact workflow and revisions. Browser connection must be ready before the instructional actions begin, with a bounded wait for the viewer. Replace indefinite `--keep_open` behavior with an explicit, bounded end-of-run viewing lease, followed by verified cleanup. Refresh reattaches to the same run and never starts the command again.
 
 ## Topology to preserve
 
@@ -100,11 +99,11 @@ The [official NVIDIA browser client](https://docs.isaacsim.omniverse.nvidia.com/
 ## Implementation sequence
 
 1. **Inspect the installed host without disturbing its current run.** Confirm the intended workstation, SSH account, Matterix/assets commits, Isaac Lab/Sim/Kit and streaming-extension versions, GPU encoding support, launch command, current process and available ports. Record the facts before choosing a streaming client or launcher flag. A finite smoke-test script is not a persistent session service.
-2. **Prove one private live viewport.** Use the operator's existing network access to test the actual Matterix scene, first rendered frames and reconnect. This validates runtime/client compatibility only; it is not student web delivery acceptance.
+2. **Prove one private live viewport.** Use the operator's existing network access to test the selected OT Flex workflow, first rendered frames and reconnect. Keep the pouring demo out of this integration. This validates runtime/client compatibility only; it is not student web delivery acceptance.
 3. **Complete native execution binding.** Install and qualify the documented outbound worker and local gateway. Execute the saved immutable plan in the allocated runtime; report native observations, confirmed actions, and verified reset/release. Do not enable learner execution until the native contract passes.
 4. **Prove browser-only media delivery.** Implement the authenticated signaling/media path and any required host adapter. Test from a browser outside the tailnet. The service must admit only the authorized run, expire/revoke viewers, and remain unable to expose a general desktop or editor input. Use view-only mode first if server-side camera restrictions are not yet available.
 5. **Embed the viewer beside progress.** Add a viewport to the existing remote run panel. Bind every grant to the authenticated owner, Academy run/session, native session, and current runtime generation. Reject a stream for an old allocation. Display video connectivity separately from snapshot freshness; missing frame timestamps must not be replaced by invented latency values.
-6. **Accept the complete path.** Run the 100 µL lesson and 50 µL variation. Confirm the submitted volume/layout reaches that runtime, its live viewport appears during execution, and native reports drive progress. Reconnect without rerunning actions. Reject another user's media grant, revoke an expired viewer, test runtime replacement and stale updates, and verify reset before the next learner.
+6. **Accept the complete path.** First execute the selected existing Flex workflow with its actual unchanged parameters and verify its native outcome, viewport and progress together. For `mix_four_vials`, verify four distinct sources, four fresh tips, 10 µL per source and a 40 µL final mixture. Separately qualify the parameterized 100 µL/50 µL teaching lesson when its native adapter exists. Reconnect without rerunning actions. Reject another user's media grant, revoke an expired viewer, test runtime replacement and stale updates, and verify reset before the next learner.
 
 ## Run-page behavior
 
