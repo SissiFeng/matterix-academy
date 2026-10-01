@@ -290,6 +290,8 @@ TURN 只提供传输中继，不直接验证 Academy 的运行权限。实施 A 
 
 ### 7.2 企业租户
 
+当前 AC dev 的普通学习入口允许完整域名为 `utoronto.ca` 的邮箱自行注册，完成 Cognito 邮件验证码验证后无需人工审批。此规则只决定注册准入，不授予讲师、管理员或真实设备权限，也不代表大学 SSO 或持续在校身份认证；其他邮箱仍可由管理员邀请。配置与撤回方式见 [AWS.md](AWS.md#learner-registration)。
+
 - 后续多租户：推荐后端按 authorizer 中的 sub 查询运维维护的租户/班级成员关系；若改用 Cognito custom 属性，必须禁用客户端写权限，并配置 V2_0 pre-token trigger 将授权声明加入 access token。custom 属性默认只进入 ID token。第一阶段仍按 sub 隔离，不开放讲师跨用户读取。
 - DynamoDB 主键以 tenant 为前缀，例如 `PK = TENANT#<id>#USER#<sub>`；API 层从令牌取 tenant，不接受请求体里传入的 tenant。
 - 讲师权限 = 角色 group ∧ 相同 tenant ∧ cohort 在其负责列表中。

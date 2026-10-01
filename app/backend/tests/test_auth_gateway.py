@@ -59,6 +59,20 @@ def test_aws_cannot_enable_local_auth():
         aws_settings(allow_demo=True)
 
 
+def test_aws_config_advertises_signup_without_granting_access(store):
+    app = create_app(aws_settings(self_signup_email_domains=("utoronto.ca",)), store)
+    with TestClient(app) as client:
+        config = client.get("/api/config").json()
+        assert config["self_signup_email_domains"] == ["utoronto.ca"]
+        assert config["auth"] == "cognito"
+        assert config["engines"]["matterix"]["available"] is False
+        assert client.get("/api/me").status_code == 401
+
+
+def test_local_config_does_not_advertise_university_signup(client):
+    assert client.get("/api/config").json()["self_signup_email_domains"] == []
+
+
 @pytest.mark.parametrize(
     "override",
     [
