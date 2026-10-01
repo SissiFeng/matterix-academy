@@ -117,7 +117,7 @@ function RemoteView() {
       <div className={s.connectionPath}>
         <span>Your browser</span>
         <ChevronRight size={14} />
-        <span>Academy</span>
+        <span>Lab Onboarding</span>
         <ChevronRight size={14} />
         <span>Ubuntu simulation</span>
       </div>

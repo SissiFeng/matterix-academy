@@ -1,8 +1,10 @@
 # Architecture and boundaries
 
+**Product:** Lab Onboarding covers simulation training and supervised physical-device training. Matterix is the digital-twin engine. The real-device path is planned and must use its own device authority and acceptance evidence; it is not enabled by qualifying a simulator worker. See [PRODUCT-SCOPE.md](PRODUCT-SCOPE.md).
+
 ## Current development direction — 2026-09-30
 
-The next integration targets an existing remote Ubuntu GPU server. Student access stays in the browser; students do not receive Ubuntu accounts or a general-purpose remote desktop. The Academy web/API layer may later run on AWS, but provisioning an AWS GPU host is not a prerequisite. Start with one active learner session and a queue, with confirmed reset between learners, before qualifying classroom concurrency.
+The next integration targets an existing remote Ubuntu GPU server. Student access stays in the browser; students do not receive Ubuntu accounts or a general-purpose remote desktop. The Lab Onboarding web/API layer may later run on AWS, but provisioning an AWS GPU host is not a prerequisite. Start with one active learner session and a queue, with confirmed reset between learners, before qualifying classroom concurrency.
 
 The novice curriculum, implemented first-transfer workspace and remaining remote-session acceptance criteria are specified in [LEARNING-EXPERIENCE.md](LEARNING-EXPERIENCE.md). The browser now supports equipment exploration, preparation, prediction, step-by-step transfer and reflection, including a 50 µL retry. The runtime diagram below shows the eventual AWS control plane; the current application remains a local teaching preview. Operator setup and unresolved Ubuntu integration work are listed in [REMOTE-UBUNTU.md](REMOTE-UBUNTU.md).
 
@@ -20,11 +22,11 @@ flowchart LR
   Gateway -.-> Engine[Matterix / Isaac Sim]
 ```
 
-Academy owns identity, curriculum, learner work, teaching attempts and session allocation. Matterix will own the physical simulation state, device actions and scene changes. A thin adapter maps the versioned contract; it must not introduce a second physics state or independently choose retries and recovery for uncertain remote execution.
+Lab Onboarding owns identity, curriculum, learner work, teaching attempts and session allocation. Matterix will own the physical simulation state, device actions and scene changes. A thin adapter maps the versioned contract; it must not introduce a second physics state or independently choose retries and recovery for uncertain remote execution.
 
 The teaching runner is an isolated educational model, not a compatibility implementation of Matterix. Its evidence source is always `synthetic`. The UI never converts a gateway error into a teaching result or a synthetic result into a GPU claim.
 
-The required next execution path is a [synchronized run](SYNCHRONIZED-RUNS.md): Academy persists the student's complete plan, Matterix executes it in an isolated lease, and Academy renders the same run's confirmed step outcomes and native observations. Browser timers may poll for updates but never execute or complete remote steps. The typed workflow/progress client contract is implemented; durable orchestration, Ubuntu endpoints and the live UI are not yet connected.
+The required next execution path is a [synchronized run](SYNCHRONIZED-RUNS.md): Lab Onboarding persists the student's complete plan, Matterix executes it in an isolated lease, and Lab Onboarding renders the same run's confirmed step outcomes and native observations. Browser timers may poll for updates but never execute or complete remote steps. The typed workflow/progress client contract is implemented; durable orchestration, Ubuntu endpoints and the live UI are not yet connected.
 
 ## Teaching semantics
 
@@ -50,6 +52,6 @@ Local guest access requires an explicit environment flag, loopback hosting and a
 
 ## Next integration slice
 
-The Academy-side HTTPS client implements allocation, revision-bound commands, observations, reset, release and read-only recovery using caller-known request IDs. It never retries uncertain mutations automatically. The authenticated connection-status route reports configuration and capability checks but cannot enable remote execution by itself.
+The platform’s HTTPS client implements allocation, revision-bound commands, observations, reset, release and read-only recovery using caller-known request IDs. It never retries uncertain mutations automatically. The authenticated connection-status route reports configuration and capability checks but cannot enable remote execution by itself.
 
 Build and qualify the Ubuntu gateway against the documented contract, including scoped scene control and authenticated streaming. Then add persistent remote operation records, session leasing, expiration and reconnection to the platform. Test GPU memory and single-client streaming limits before selecting classroom concurrency. Teacher authoring, cohort administration, multiple devices, realistic collision physics and certification remain unimplemented.

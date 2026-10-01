@@ -257,7 +257,7 @@ export function WorkflowMarketplace({
         <section className={s.adaptation}>
           <div>
             <span className={s.eyebrow}>
-              ACADEMY ADAPTATION / NOT YET VALIDATED
+              WORKFLOW ADAPTATION / NOT YET VALIDATED
             </span>
             <h2>What could you borrow for Flex?</h2>
             <p>{selected.adaptation}</p>
@@ -271,8 +271,7 @@ export function WorkflowMarketplace({
               Adapt this workflow <ArrowRight size={16} />
             </button>
             <small>
-              Creates a design brief. This paper is not an executable Academy
-              protocol.
+              Creates a design brief. This paper is not an executable protocol.
             </small>
           </aside>
         </section>

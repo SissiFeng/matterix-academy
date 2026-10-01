@@ -255,7 +255,7 @@ function ModuleLesson({
           <div className={styles.backendGrid}>
             <div>
               <span>01</span>
-              <h4>Academy teaching model</h4>
+              <h4>Onboarding teaching model</h4>
               <p>
                 Educational steps and arithmetic for practice. This course’s
                 trace is a local illustration.
@@ -411,10 +411,11 @@ function SourceMap() {
       </div>
       <SourcePanel id={selected} />
       <div className={styles.mapBoundary}>
-        <strong>Where Academy fits</strong>
+        <strong>Where Lab Onboarding fits</strong>
         <p>
           This explorer teaches the connector’s design. It does not invoke SiLA,
-          start a native simulation or connect Academy to physical hardware.
+          start a native simulation or connect this platform to physical
+          hardware.
         </p>
       </div>
     </section>

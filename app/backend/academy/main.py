@@ -19,7 +19,7 @@ from .teaching import InvalidTransition, control, execute_step, initial_state, n
 def create_app(settings: Settings | None = None, store=None):
     settings = settings or Settings.from_env()
     app = FastAPI(
-        title="Matterix Academy",
+        title="Lab Onboarding",
         version="0.1.0",
         docs_url="/api/docs" if settings.runtime == "local" else None,
         redoc_url=None,

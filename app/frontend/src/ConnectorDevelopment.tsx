@@ -470,7 +470,7 @@ export function DevelopmentPath({ onMapping }: { onMapping: () => void }) {
       </div>
       <p className={s.note}>
         Browsing the steps is learning progress, not a test result or
-        commissioning record. This Academy page does not generate or install a
+        commissioning record. This tutorial does not generate or install a
         connector.
       </p>
       <button className={s.secondary} onClick={onMapping}>

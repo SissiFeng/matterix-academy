@@ -81,7 +81,7 @@ function Brand({ small = false }: { small?: boolean }) {
         <span />
       </span>
       <span>
-        matterix<span className={s.brandSub}>academy</span>
+        Lab<span className={s.brandSub}>Onboarding</span>
       </span>
     </div>
   );
@@ -207,7 +207,7 @@ function Welcome({
           <p>
             Build a workflow. Make a mistake. Try again.
             <br />
-            Get comfortable in the lab, before you step into one.
+            Build skills for simulation and supervised lab practice.
           </p>
           <form
             onSubmit={(e) => {
@@ -234,7 +234,7 @@ function Welcome({
               {busy
                 ? "Opening your workspace…"
                 : config.auth === "cognito"
-                  ? "Sign in to your academy"
+                  ? "Sign in to Lab Onboarding"
                   : "Enter the learning lab"}
               <ArrowRight size={18} />
             </button>
@@ -244,7 +244,7 @@ function Welcome({
               ? "Local preview · your progress stays on this computer"
               : config.auth === "disabled"
                 ? "Sign-in has not been configured. Ask your administrator."
-                : "Use your academy account to save your progress."}
+                : "Use your training account to save your progress."}
           </span>
         </section>
         <section className={s.welcomeVisual}>
@@ -379,17 +379,27 @@ function Onboarding({
               Try differently.
             </h1>
             <p>
-              This workspace begins with a teaching model. It tracks liquid
-              volumes, ideal dilution and tip use. Realistic robot motion comes
-              with a connected Matterix lab.
+              Lab Onboarding connects simulation training with supervised
+              practice on real devices. Start here with liquid volumes, ideal
+              dilution and tip use in a teaching model.
             </p>
             <div className={s.safetyNote}>
               <ShieldCheck size={25} />
               <div>
-                <strong>Your work stays in simulation.</strong>
+                <strong>Simulation · Teaching practice available</strong>
                 <p>
-                  No physical robot is connected. A successful exercise is
-                  practice, not certification for a real machine.
+                  Matterix will provide the connected digital twin once its
+                  Ubuntu runtime is qualified.
+                </p>
+              </div>
+            </div>
+            <div className={s.safetyNote}>
+              <Pipette size={25} />
+              <div>
+                <strong>Real devices · Not connected</strong>
+                <p>
+                  Supervised hardware training is a planned path. Simulation
+                  practice does not grant permission to operate a real device.
                 </p>
               </div>
             </div>
@@ -1539,7 +1549,7 @@ export default function App() {
         <div className={s.shell}>
           <aside className={s.sidebar}>
             <Brand small />
-            <div className={s.sidebarLabel}>YOUR ACADEMY</div>
+            <div className={s.sidebarLabel}>YOUR TRAINING</div>
             <nav>
               <button
                 className={view === "learn" ? s.activeNav : ""}
@@ -1620,7 +1630,8 @@ export default function App() {
           <main className={s.content}>
             <header className={s.topbar}>
               <span>
-                <LayoutGrid size={15} /> Academy <ChevronRight size={13} />{" "}
+                <LayoutGrid size={15} /> Lab Onboarding{" "}
+                <ChevronRight size={13} />{" "}
                 {view === "lab"
                   ? "Flex foundations"
                   : view === "history"
@@ -1637,7 +1648,7 @@ export default function App() {
                 <span className={s.noteDot} />{" "}
                 {config.auth === "local"
                   ? "Local learning preview"
-                  : "Academy workspace"}
+                  : "Training workspace"}
               </span>
             </header>
             {view === "marketplace" ? (
@@ -1709,7 +1720,7 @@ export default function App() {
               />
             )}
             <footer className={s.appFooter}>
-              <span>MATTERIX ACADEMY</span>
+              <span>LAB ONBOARDING</span>
               <span>Explore freely. Learn deliberately.</span>
               <span>Teaching model · v0.1</span>
             </footer>
@@ -1733,7 +1744,12 @@ export default function App() {
               <X size={20} />
             </button>
             <Maximize2 size={28} />
-            <h2 id="help-title">Room to experiment.</h2>
+            <h2 id="help-title">About Lab Onboarding</h2>
+            <p>
+              Learn laboratory automation, explore workflows and understand
+              connectors. Training spans simulation and supervised work on real
+              devices.
+            </p>
             <p>
               Choose a lesson, arrange the deck and edit the action sequence.
               Run automatically or advance one step at a time. Review your
@@ -1742,7 +1758,9 @@ export default function App() {
             <p>
               The current teaching model checks volume, capacity and tip-use
               rules. Deck placement is schematic; reachability, collisions and
-              chemical outcomes are not evaluated.
+              chemical outcomes are not evaluated. Matterix is the digital twin
+              engine for the connected simulation path. Real-device training is
+              planned; no physical robot is connected here.
             </p>
             <button className={s.primary} onClick={() => setHelp(false)}>
               Got it

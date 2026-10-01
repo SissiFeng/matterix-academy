@@ -1,6 +1,8 @@
-# Matterix Academy
+# Lab Onboarding
 
-A browser-based learning lab for students to arrange a Flex deck, compose liquid-handling steps, make mistakes and understand the result. React + TypeScript and FastAPI, with independently deployable AWS infrastructure.
+A laboratory automation onboarding and training platform spanning simulation practice and supervised work on real devices. Learners explore experimental design, discover workflows, practice Flex operations and understand connector development. Matterix supplies the digital-twin engine for the simulation path; it is not the platform identity.
+
+The interface remains English. The implementation uses React + TypeScript and FastAPI, with independently deployable AWS infrastructure. See [product scope and training paths](docs/PRODUCT-SCOPE.md) for the distinction between simulation, physical-device training and currently available execution.
 
 **Current release:** a guided English-language first-transfer lesson plus the original three-stage serial dilution workspace. Explore the Flex, check the deck, predict liquid movement, run a 100 µL transfer step by step, explain the result and retry at 50 µL. Both exercises are explicitly synthetic: no physical robot, GPU physics, collision checks or chemical predictions are connected. The remote Ubuntu contract client supports capability checks, session/command requests and read-only reconciliation; live sessions remain disabled until the server implementation and streaming are connected and qualified.
 
