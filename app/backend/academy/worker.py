@@ -278,6 +278,8 @@ class Worker:
             run = self.client.post(run, "heartbeat")
             local["run"] = run
             self.valid_lease(run)
+            if local.get("binding") and hasattr(self.runner, "renew"):
+                self.runner.renew(local)
         if local["phase"] == "claimed":
             run = self.client.post(run, "start", command_id=local["start_id"])
             local.update(run=run, phase="granted")
@@ -305,7 +307,14 @@ class Worker:
                     engine_version=local["binding"]["engine_version"],
                     asset_version=local["binding"]["asset_version"],
                 )
-                local.update(run=run, phase="start_intent")
+                local.update(run=run, phase="bound")
+                self.journal.save(local)
+            if local["phase"] == "bound":
+                # Cloud/media provisioning is idempotent and must finish before
+                # the irreversible native launch intent is persisted.
+                if hasattr(self.runner, "provision"):
+                    self.runner.provision(local)
+                local.update(phase="start_intent")
                 self.journal.save(local)
                 self.valid_lease(run)
                 result = self.runner.start(local)

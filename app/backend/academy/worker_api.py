@@ -3,6 +3,7 @@
 No Cognito identity, learner routes or browser cookies are accepted here.
 """
 
+import json
 import os
 from uuid import UUID
 
@@ -11,6 +12,8 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from .media import MediaService
+from .models import StrictModel
 from .runs import (
     BindRequest,
     CleanupRequest,
@@ -19,9 +22,19 @@ from .runs import (
     SnapshotRequest,
     StartRequest,
     UnknownRequest,
+    revised,
     worker_credential,
 )
 from .store import Conflict, DynamoStore, SQLiteStore
+
+
+class HostProbe(StrictModel):
+    observed_at: str
+    hostname: str
+    display: str | None
+    environments: list[dict]
+    repositories: list[dict]
+    gpu: str
 
 
 def machine_store():
@@ -59,6 +72,7 @@ def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
     service = RunService(store, enabled, **({"clock": clock} if clock else {}))
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.state.runs = service
+    app.state.media = MediaService(service)
     if runtime == "local":
         app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
@@ -116,6 +130,25 @@ def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
             )
         }
 
+    @app.get("/internal/workers/configuration")
+    def configuration(worker_id: str = Depends(identify_worker)):
+        worker = service.worker(worker_id)
+        return {
+            "enabled": service.enabled,
+            "qualified": worker.get("qualified", False),
+            "configuration": worker.get("native_config"),
+        }
+
+    @app.post("/internal/workers/probe")
+    def probe(data: HostProbe, worker_id: str = Depends(identify_worker)):
+        payload = data.model_dump(mode="json")
+        if len(json.dumps(payload).encode()) > 32000:
+            raise HTTPException(413, "Environment report is too large")
+        old = store.get("system#host-probes", worker_id)
+        record = revised(old, report=payload) if old else {"version": 1, "report": payload}
+        store.put("system#host-probes", worker_id, record, old["version"] if old else None)
+        return {"received": True, "worker_id": worker_id}
+
     @app.post("/internal/runs/claim")
     def claim(worker_id: str = Depends(identify_worker)):
         result = service.claim(worker_id)
@@ -149,6 +182,14 @@ def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
     def cleanup(run_id: UUID, data: CleanupRequest, worker_id: str = Depends(identify_worker)):
         return service.cleanup(worker_id, run_id, data)
 
+    @app.post("/internal/runs/{run_id}/publisher")
+    def publisher(run_id: UUID, data: LeaseRequest, worker_id: str = Depends(identify_worker)):
+        return app.state.media.publisher(worker_id, run_id, data.claim_token)
+
+    @app.post("/internal/runs/{run_id}/viewers")
+    def viewers(run_id: UUID, data: LeaseRequest, worker_id: str = Depends(identify_worker)):
+        return app.state.media.viewers(worker_id, run_id, data.claim_token)
+
     return app
 
 
@@ -157,4 +198,7 @@ handler = Mangum(app, lifespan="off")
 
 
 def reap_handler(event, context):
-    return {"expired_runs": RunService(machine_store()).reap()}
+    runs = RunService(
+        machine_store(), enabled=os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true"
+    )
+    return {"expired_runs": runs.reap(), "closed_viewports": MediaService(runs).reap()}

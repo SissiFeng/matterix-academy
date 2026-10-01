@@ -159,6 +159,8 @@ resource "aws_lambda_function" "api" {
       ACADEMY_APP_URL                   = "https://${aws_cloudfront_distribution.web.domain_name}"
       ACADEMY_REMOTE_ENABLED            = tostring(var.remote_execution_enabled)
       ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
+      ACADEMY_MEDIA_PREFIX              = local.media_prefix
+
     }
   }
   depends_on = [aws_iam_role_policy.api, aws_cloudwatch_log_group.api]
