@@ -1,3 +1,13 @@
+# Discovery learning validation — 2026-10-01
+
+Verified locally: **149 backend tests** and **18 Chromium journeys** passed. New coverage exercises the owner-scoped SQLite/mocked-DynamoDB notebook, optimistic version conflicts, serialized storage bounds, research filters and primary-source links, adaptation into a persisted design brief, method ordering, scenario reasoning, same-design concurrent edits, lost save responses, cancelled navigation without session creation, delayed creation with draft locking and retained history, connector source/trace interactions, reload and 390px layouts.
+
+`scripts/verify.sh` passed Python lint/format, backend tests, TypeScript/Vite build, frontend formatting and Terraform validation. `scripts/build-lambda.sh` produced the Linux x86_64 archive. No deployment was performed. The two existing upstream Python deprecation warnings remain.
+
+Security review found no introduced vulnerabilities. Architecture review identified orphan experiment creation after cancelled navigation and same-design overwrite after conflict reload. These and delayed-creation navigation/result handling were fixed with regression journeys. The five displayed connector excerpts were compared byte-for-byte with the pinned committed source, independent of the connector checkout's uncommitted edits.
+
+Research evidence consists of six manually curated primary papers and linked official Flex documentation. Marketplace search filters that local collection; there is no live literature crawler. Gantry diagrams, connector playback and illustrative measurements are educational, not executed native simulation or experimental results. Paper adaptations are design-only and cannot be submitted to the execution runner. The previous manual visual, Ubuntu/GPU and AWS qualification limits remain in effect.
+
 # Synchronized run contract validation — 2026-10-01
 
 Verified locally: **139 backend tests** passed. New coverage binds whole-workflow inputs to a run, distinguishes acknowledgement from confirmed progress, rejects cross-run/out-of-order reports and rewritten native observations, requires ordered completion evidence, and recovers a lost start response through the original run ID without another POST. Both specialist reviewers identified observation-integrity gaps; these were fixed, regression-tested and rechecked.

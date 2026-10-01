@@ -7,6 +7,7 @@ from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .auth import identify, local_signer
+from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
 from .learning import present, readiness
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
@@ -57,7 +58,7 @@ def create_app(settings: Settings | None = None, store=None):
     @app.exception_handler(Conflict)
     async def conflict_handler(request, exc):
         return JSONResponse(
-            {"detail": "This experiment changed in another request. Reload its latest state."},
+            {"detail": "This record changed in another request. Reload its latest state."},
             status_code=409,
         )
 
@@ -137,6 +138,19 @@ def create_app(settings: Settings | None = None, store=None):
         profile = {**data.model_dump(), "version": (version or 0) + 1}
         app.state.store.put(owner, "profile", profile, version)
         return profile
+
+    @app.get("/api/discovery")
+    def discovery_notebook(owner: str = Depends(identify)):
+        return app.state.store.get(owner, "discovery") or {"version": 0, "briefs": []}
+
+    @app.put("/api/discovery")
+    def update_discovery(data: NotebookUpdate, owner: str = Depends(identify)):
+        notebook = {
+            "version": data.expected_version + 1,
+            "briefs": [brief.model_dump(mode="json") for brief in data.briefs],
+        }
+        app.state.store.put(owner, "discovery", notebook, data.expected_version or None)
+        return notebook
 
     @app.get("/api/courses")
     def courses(owner: str = Depends(identify)):

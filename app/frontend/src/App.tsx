@@ -29,6 +29,9 @@ import {
   Circle,
   Pipette,
   Layers3,
+  Compass,
+  Store,
+  GitBranch,
 } from "lucide-react";
 import { api, ApiError, configureAuth, json, signIn, signOut } from "./api";
 import type {
@@ -43,6 +46,13 @@ import s from "./App.module.css";
 import { useDialog } from "./useDialog";
 import LearningLab, { FirstLessonCard } from "./LearningLab";
 import { firstTransfer } from "./learningContent";
+import {
+  DiscoveryInvitation,
+  DiscoveryStudio,
+  WorkflowMarketplace,
+} from "./Discovery";
+import { workflows, type Workflow } from "./discoveryContent";
+import ConnectorExplorer from "./ConnectorExplorer";
 
 const LABWARE: Record<string, { name: string; detail: string }> = {
   stock: { name: "Stock solution", detail: "1,500 µL vial" },
@@ -417,6 +427,7 @@ function Dashboard({
   onCreate,
   onFirstLesson,
   onOpen,
+  onNavigate,
   view,
 }: {
   profile: Profile;
@@ -425,6 +436,7 @@ function Dashboard({
   onCreate: () => void;
   onFirstLesson: () => void;
   onOpen: (run: Session) => void;
+  onNavigate: (view: string) => void;
   view: string;
 }) {
   const completed = sessions.filter((run) => run.assessment?.passed).length;
@@ -450,6 +462,7 @@ function Dashboard({
       </div>
       {view !== "history" && (
         <>
+          <DiscoveryInvitation onNavigate={onNavigate} />
           <FirstLessonCard
             onStart={onFirstLesson}
             resume={sessions.some(
@@ -1342,6 +1355,7 @@ export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [view, setView] = useState("learn");
+  const [discoverySeed, setDiscoverySeed] = useState<Workflow | undefined>();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1349,6 +1363,8 @@ export default function App() {
   const closeHelp = useCallback(() => setHelp(false), []);
   useDialog(help, closeHelp);
   const leaveGuard = useRef<(() => boolean) | null>(null);
+  const navigationEpoch = useRef(0);
+  const identityEpoch = useRef(0);
   const registerLeaveGuard = useCallback((guard: (() => boolean) | null) => {
     leaveGuard.current = guard;
   }, []);
@@ -1365,6 +1381,15 @@ export default function App() {
     if (id) {
       setSession(await api<Session>(`/sessions/${id}`));
       setView("lab");
+    } else {
+      const route = window.location.hash.match(
+        /^#\/(marketplace|discovery|connector|history)(?:\/([a-z]+))?$/,
+      );
+      if (route) {
+        setView(route[1]);
+        if (route[1] === "discovery")
+          setDiscoverySeed(workflows.find((w) => w.id === route[2]));
+      }
     }
   }, []);
   useEffect(() => {
@@ -1389,6 +1414,8 @@ export default function App() {
       }
     })();
     const unauthorized = () => {
+      identityEpoch.current += 1;
+      navigationEpoch.current += 1;
       setProfile(null);
       setSession(null);
     };
@@ -1403,8 +1430,9 @@ export default function App() {
     setSession((current) => (current?.id === next.id ? next : current));
     setSessions((list) => [next, ...list.filter((r) => r.id !== next.id)]);
   }, []);
-  const open = (run: Session) => {
-    if (leaveGuard.current && !leaveGuard.current()) return;
+  const open = (run: Session, checkLeave = true) => {
+    if (checkLeave && leaveGuard.current && !leaveGuard.current()) return;
+    navigationEpoch.current += 1;
     setSession(run);
     setView("lab");
     window.location.hash = `/lab/${run.id}`;
@@ -1412,20 +1440,34 @@ export default function App() {
   };
   const nav = (target: string) => {
     if (leaveGuard.current && !leaveGuard.current()) return;
+    navigationEpoch.current += 1;
     setView(target);
     setSession(null);
-    window.history.replaceState({}, "", "/");
+    window.history.replaceState(
+      {},
+      "",
+      target === "learn" ? "/" : `/#/${target}`,
+    );
+    if (target === "discovery") setDiscoverySeed(undefined);
     window.scrollTo(0, 0);
   };
   const create = async (first = false) => {
+    if (leaveGuard.current && !leaveGuard.current()) return;
+    const originEpoch = navigationEpoch.current;
+    const originIdentity = identityEpoch.current;
     setBusy(true);
     try {
       const run = await api<Session>(
         "/sessions",
         json(first ? firstTransfer() : {}),
       );
-      setSessions([run, ...sessions]);
-      open(run);
+      if (originIdentity !== identityEpoch.current) return;
+      setSessions((list) => [
+        run,
+        ...list.filter((item) => item.id !== run.id),
+      ]);
+      if (originEpoch !== navigationEpoch.current) return;
+      open(run, false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1433,6 +1475,7 @@ export default function App() {
     }
   };
   const enter = async (name: string) => {
+    identityEpoch.current += 1;
     setBusy(true);
     try {
       if (config?.auth === "cognito") await signIn();
@@ -1503,6 +1546,24 @@ export default function App() {
                 <BookOpen size={18} /> Learning lab
               </button>
               <button
+                className={view === "discovery" ? s.activeNav : ""}
+                onClick={() => nav("discovery")}
+              >
+                <Compass size={18} /> Discovery studio
+              </button>
+              <button
+                className={view === "marketplace" ? s.activeNav : ""}
+                onClick={() => nav("marketplace")}
+              >
+                <Store size={18} /> Workflow marketplace
+              </button>
+              <button
+                className={view === "connector" ? s.activeNav : ""}
+                onClick={() => nav("connector")}
+              >
+                <GitBranch size={18} /> Connector explorer
+              </button>
+              <button
                 className={view === "history" ? s.activeNav : ""}
                 onClick={() => nav("history")}
               >
@@ -1537,6 +1598,8 @@ export default function App() {
                   onClick={async () => {
                     if (leaveGuard.current && !leaveGuard.current()) return;
                     try {
+                      identityEpoch.current += 1;
+                      navigationEpoch.current += 1;
                       await signOut(config);
                       setProfile(null);
                       setSession(null);
@@ -1560,7 +1623,13 @@ export default function App() {
                   ? "Flex foundations"
                   : view === "history"
                     ? "My experiments"
-                    : "Learning lab"}
+                    : view === "discovery"
+                      ? "Discovery studio"
+                      : view === "marketplace"
+                        ? "Workflow marketplace"
+                        : view === "connector"
+                          ? "Connector explorer"
+                          : "Learning lab"}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -1569,8 +1638,36 @@ export default function App() {
                   : "Academy workspace"}
               </span>
             </header>
-            {view === "lab" &&
-            session?.experiment.course_id === "flex-first-transfer" ? (
+            {view === "marketplace" ? (
+              <WorkflowMarketplace
+                onAdapt={(item) => {
+                  if (leaveGuard.current && !leaveGuard.current()) return;
+                  navigationEpoch.current += 1;
+                  setDiscoverySeed(item);
+                  setSession(null);
+                  setView("discovery");
+                  window.history.replaceState(
+                    {},
+                    "",
+                    `/#/discovery/${item.id}`,
+                  );
+                  window.scrollTo(0, 0);
+                }}
+              />
+            ) : view === "discovery" ? (
+              <DiscoveryStudio
+                key={discoverySeed?.id ?? "blank"}
+                seed={discoverySeed}
+                navigationPending={busy}
+                registerLeaveGuard={registerLeaveGuard}
+                onPractice={() => {
+                  if (!busy) create();
+                }}
+              />
+            ) : view === "connector" ? (
+              <ConnectorExplorer />
+            ) : view === "lab" &&
+              session?.experiment.course_id === "flex-first-transfer" ? (
               <LearningLab
                 key={session.id}
                 session={session}
@@ -1605,6 +1702,7 @@ export default function App() {
                   else create(true);
                 }}
                 onOpen={open}
+                onNavigate={nav}
                 view={view}
               />
             )}
