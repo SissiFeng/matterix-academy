@@ -27,6 +27,7 @@ import {
 } from "./learningContent";
 import type { EquipmentId } from "./learningContent";
 import FlexDiagram from "./FlexDiagram";
+import RemoteRunPanel from "./RemoteRunPanel";
 import s from "./LearningLab.module.css";
 
 const number = (value: number) =>
@@ -491,7 +492,14 @@ export default function LearningLab({
             </button>
           </div>
           {view === "remote" ? (
-            <RemoteView />
+            <>
+              <RemoteRunPanel
+                session={session}
+                dirty={predictionDirty || busy}
+                onChange={accept}
+              />
+              <RemoteView />
+            </>
           ) : (
             <>
               <FlexDiagram

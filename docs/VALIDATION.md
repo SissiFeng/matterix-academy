@@ -1,3 +1,7 @@
+# AC deployment and outbound worker validation — 2026-10-01
+
+The control plane and learner site are deployed to AC account 247893369214 in ca-central-1. Final local validation passed **194 backend tests and 23 Chromium journeys**, plus Lambda packaging, frontend build and Terraform validation. Terraform created 54 resources and the post-deployment plan has no changes. Live machine authentication/revocation and DynamoDB persistence/conditional rollback passed. Learner handler checks used synthetic authorizer context; actual Cognito login, two-real-user isolation and all native/GPU/media acceptance remain pending. Native execution is disabled. See [the deployment evidence record](DEPLOYMENT-2026-10-01.md) for exact scope and artifacts. Earlier entries below describe their historical validation boundaries.
+
 # Connector developer views validation — 2026-10-01
 
 Verified against committed baseline `1727cc4` plus the connector developer changes: **149 backend tests** and **21 Chromium journeys** passed. The three added journeys exercise native-to-SiLA mapping dimensions, temperature acceptance versus completion, live-property and error semantics, native interface choices, the six-stage development sequence, scenario feedback, subpage reload/sidebar navigation and 390px layouts. Frontend build and formatting passed after the final navigation fix.

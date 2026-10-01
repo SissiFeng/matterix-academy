@@ -1,45 +1,30 @@
 name: Deploy academy to AWS
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
-  id-token: write
-concurrency:
-  group: deploy-aws-development
-  cancel-in-progress: false
 jobs:
-  deploy:
+  build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: aws-development
     timeout-minutes: 20
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      WEB_BUCKET: ${{ vars.WEB_BUCKET }}
-      DISTRIBUTION_ID: ${{ vars.DISTRIBUTION_ID }}
-      LAMBDA_FUNCTION: ${{ vars.LAMBDA_FUNCTION }}
-      APP_URL: ${{ vars.APP_URL }}
+    outputs:
+      artifact_name: ${{ steps.release.outputs.name }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
       - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
         with:
           python-version: '3.12'
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: '1.5.7'
-      - name: Check deployment configuration
-        env:
-          ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-        run: |
-          test -n "$ROLE_ARN"
-          test -n "$AWS_REGION"
-          test -n "$WEB_BUCKET"
-          test -n "$DISTRIBUTION_ID"
-          test -n "$LAMBDA_FUNCTION"
-          test -n "$APP_URL"
       - run: uv sync --frozen
       - run: npm --prefix app/frontend ci --include=optional
       - run: bash scripts/build-lambda.sh
@@ -48,17 +33,80 @@ jobs:
         working-directory: app/frontend
       - run: npm run test:e2e
         working-directory: app/frontend
+      - name: Bind the tested files to this commit
+        id: release
+        run: |
+          uv run --frozen python scripts/release.py manifest
+          echo "name=academy-release-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ steps.release.outputs.name }}
+          path: |
+            build/lambda.zip
+            build/release.json
+            app/frontend/dist/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: failure()
+        with:
+          name: deployment-browser-results-${{ github.sha }}-${{ github.run_attempt }}
+          path: app/frontend/test-results
+          retention-days: 7
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: aws-development
+      url: ${{ vars.APP_URL }}
+    concurrency:
+      group: deploy-aws-development
+      cancel-in-progress: false
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      WEB_BUCKET: ${{ vars.WEB_BUCKET }}
+      DISTRIBUTION_ID: ${{ vars.DISTRIBUTION_ID }}
+      LAMBDA_FUNCTION: ${{ vars.LAMBDA_FUNCTION }}
+      WORKER_LAMBDA_FUNCTIONS: ${{ vars.WORKER_LAMBDA_FUNCTIONS }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Skip a superseded commit
+        id: head
+        run: |
+          current=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$current" = "$GITHUB_SHA" ]; then
+            echo 'current=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'current=false' >> "$GITHUB_OUTPUT"
+            echo 'A newer main commit exists; this run will not overwrite it.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: steps.head.outputs.current == 'true'
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: .
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        if: steps.head.outputs.current == 'true'
+        with:
+          python-version: '3.12'
+      - name: Verify the release before acquiring AWS credentials
+        if: steps.head.outputs.current == 'true'
+        run: uv run --frozen python scripts/release.py verify
       - uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
+        if: steps.head.outputs.current == 'true'
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: academy-${{ github.run_id }}
           aws-region: ${{ vars.AWS_REGION }}
-      - name: Publish tested application
-        run: |
-          aws lambda update-function-code --function-name "$LAMBDA_FUNCTION" --zip-file fileb://build/lambda.zip > /dev/null
-          aws lambda wait function-updated-v2 --function-name "$LAMBDA_FUNCTION"
-          aws s3 sync app/frontend/dist/assets "s3://$WEB_BUCKET/assets" --cache-control 'public,max-age=31536000,immutable'
-          aws s3 cp app/frontend/dist/index.html "s3://$WEB_BUCKET/index.html" --cache-control 'no-cache'
-          INVALIDATION_ID=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/' '/index.html' '/auth/callback' --query 'Invalidation.Id' --output text)
-          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$INVALIDATION_ID"
-          curl --fail --retry 3 "$APP_URL/api/health"
-          curl --fail "$APP_URL/"
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-duration-seconds: 900
+      - name: Publish and verify the tested release
+        if: steps.head.outputs.current == 'true'
+        run: uv run --frozen python scripts/release.py publish

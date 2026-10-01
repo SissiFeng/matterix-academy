@@ -9,23 +9,27 @@ sequenceDiagram
   actor Student
   participant UI as Academy browser
   participant API as Academy API and run records
+  participant Worker as Ubuntu outbound worker
   participant Gateway as Ubuntu gateway
   participant Sim as Matterix / Isaac runner
   Student->>UI: Run experiment
   UI->>API: Run the saved experiment revision
   API->>API: Persist owner, run ID and immutable plan
-  API->>Gateway: Allocate lease and submit this plan once
+  Worker->>API: Claim immutable plan and obtain one start grant
+  Worker->>Gateway: Journal intent, allocate lease and submit this plan once
   Gateway->>Sim: Start or reuse an isolated runtime; configure scene
   Gateway-->>API: Queued / loading (0 completed steps)
   Sim->>Sim: Execute the mapped actions in order
   loop While the run is active
     Sim-->>Gateway: Action outcomes and native observations
-    API->>Gateway: Read the original run ID
-    Gateway-->>API: Versioned cumulative progress snapshot
+    Worker->>Gateway: Read the original run ID
+    Gateway-->>Worker: Versioned cumulative progress snapshot
+    Worker->>API: Publish validated cumulative snapshot
     API-->>UI: Current step, confirmed progress, native state and freshness
   end
   Sim-->>Gateway: Final outcome and observations
-  Gateway-->>API: Completed / failed
+  Gateway-->>Worker: Completed / failed
+  Worker->>API: Final report, then verified reset and release receipt
   API-->>UI: Result and learning record
 ```
 
@@ -68,9 +72,9 @@ The 3D stream and structured state describe the **same session and run**. Frame 
 
 ## Implemented versus pending
 
-Implemented in Academy: typed whole-workflow request and native progress contract, client submission/read-only recovery, plan/identity/order/confirmation validation, and mock-transport tests for lost responses and mismatched progress.
+Implemented in Academy: typed workflow/native progress contracts, atomic durable queue/run/session records, separate machine API and authorizer, bounded worker leases, one start grant, journaled outbound worker, read-only recovery, validated reset receipts, and learner polling UI. [WORKER-CONTROL.md](WORKER-CONTROL.md) documents the authority, recovery and qualification boundaries. Fault tests use synthetic transports and native-looking fixtures.
 
-Still pending: Ubuntu run endpoints, the native scene/action/observation adapter, single-learner leases and queue, durable Academy dispatch records and polling API, authenticated media binding, UI rendering of remote run snapshots, and live end-to-end qualification. The existing student `Run experiment` continues to use the explicitly labeled teaching model. These new client methods are not wired to student execution routes, and a gateway capability response alone cannot enable them.
+Still pending: installed Ubuntu gateway endpoints, native scene/action/observation/reset adapter, authenticated media binding and live end-to-end qualification. The separate remote button remains disabled by the deployment flag until these pass. The existing student `Run experiment` continues to use the explicitly labeled teaching model; a capability response alone cannot enable native execution.
 
 ## Acceptance scenario
 

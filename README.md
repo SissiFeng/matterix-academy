@@ -6,6 +6,8 @@ The interface remains English. The implementation uses React + TypeScript and Fa
 
 **Current release:** a guided English-language first-transfer lesson plus the original three-stage serial dilution workspace. Explore the Flex, check the deck, predict liquid movement, run a 100 µL transfer step by step, explain the result and retry at 50 µL. Both exercises are explicitly synthetic: no physical robot, GPU physics, collision checks or chemical predictions are connected. The remote Ubuntu contract client supports capability checks, session/command requests and read-only reconciliation; live sessions remain disabled until the server implementation and streaming are connected and qualified.
 
+**AC development deployment:** [Open Academy](https://d2m3yolcjdy6d2.cloudfront.net). Infrastructure and application publication are verified; a learner invitation is needed for sign-in. The durable outbound-worker control plane is implemented, while native execution stays disabled pending Ubuntu qualification. See [deployment evidence and remaining acceptance](docs/DEPLOYMENT-2026-10-01.md) and [worker operations](docs/WORKER-CONTROL.md).
+
 ## Run locally
 
 Requirements: Node.js 22.12+, Python 3.12 and [uv](https://docs.astral.sh/uv/).
@@ -30,7 +32,7 @@ The original **Start an experiment** opens the dilution sandbox. Its default met
 - Server-owned state, per-user storage keys and optimistic concurrency checks. Invalid actions produce visible errors without partial transfers.
 - AWS Cognito authorization-code/PKCE login; API Gateway validates JWTs and scopes, and Lambda rechecks trusted authorizer claims.
 - Private S3 + CloudFront website, API Gateway + FastAPI/Mangum Lambda, DynamoDB, logs, basic error alarm and a scoped optional GitHub OIDC deployment role.
-- CI checks and a manual AWS application deployment workflow. No infrastructure is provisioned by a push.
+- CI checks and automatic AWS application deployment after a tested commit reaches `main`. Releases carry a verified commit/checksum manifest; Terraform manages infrastructure separately.
 
 No Three.js is included. The schematic deck is ordinary React/CSS; future Matterix 3D views will use a separately qualified streaming integration.
 

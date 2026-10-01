@@ -11,6 +11,7 @@ from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
 from .learning import present, readiness
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
+from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
 from .store import Conflict, DynamoStore, SQLiteStore
 from .teaching import InvalidTransition, control, execute_step, initial_state, new_session
@@ -31,6 +32,7 @@ def create_app(settings: Settings | None = None, store=None):
         if settings.runtime == "aws"
         else SQLiteStore(settings.data_path)
     )
+    app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
     if settings.runtime == "local":
         app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
@@ -184,6 +186,31 @@ def create_app(settings: Settings | None = None, store=None):
             "missing_actions": missing,
         }
 
+    @app.get("/api/runs/status")
+    def run_status(owner: str = Depends(identify)):
+        return {
+            "enabled": settings.remote_enabled,
+            "message": "Native execution is enabled for qualified workers."
+            if settings.remote_enabled
+            else "Remote execution is awaiting Ubuntu qualification. Your teaching exercises remain available.",
+        }
+
+    @app.post("/api/runs", status_code=201)
+    def submit_run(data: SubmitRun, owner: str = Depends(identify)):
+        return app.state.runs.submit(owner, data)
+
+    @app.get("/api/runs/{run_id}")
+    def read_run(run_id: UUID, owner: str = Depends(identify)):
+        return app.state.runs.get(owner, run_id)
+
+    @app.post("/api/runs/{run_id}/control")
+    def control_run(run_id: UUID, data: RunControl, owner: str = Depends(identify)):
+        return app.state.runs.control(owner, run_id, data)
+
+    @app.get("/api/sessions/{session_id}/remote-run")
+    def session_run(session_id: UUID, owner: str = Depends(identify)):
+        return app.state.runs.for_session(owner, session_id)
+
     @app.get("/api/sessions")
     def sessions(owner: str = Depends(identify)):
         return [present(session) for session in app.state.store.list(owner)]
@@ -201,6 +228,10 @@ def create_app(settings: Settings | None = None, store=None):
         return session
 
     def save(owner, session, expected):
+        if session.get("remote_active_run"):
+            raise HTTPException(
+                409, "Remote run cleanup must finish before changing this experiment"
+            )
         if session["version"] != expected:
             raise Conflict
         session["version"] += 1

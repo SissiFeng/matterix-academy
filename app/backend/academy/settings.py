@@ -17,6 +17,7 @@ class Settings:
     app_url: str = "http://127.0.0.1:5173"
     gateway_url: str = ""
     gateway_token: str = ""
+    remote_enabled: bool = False
 
     def __post_init__(self):
         if self.runtime not in {"local", "aws"}:
@@ -60,4 +61,5 @@ class Settings:
             app_url=os.getenv("ACADEMY_APP_URL", "http://127.0.0.1:5173"),
             gateway_url=os.getenv("ACADEMY_GATEWAY_URL", ""),
             gateway_token=os.getenv("ACADEMY_GATEWAY_TOKEN", ""),
+            remote_enabled=os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true",
         )

@@ -2,11 +2,11 @@
 
 **Product:** Lab Onboarding covers simulation training and supervised physical-device training. Matterix is the digital-twin engine. The real-device path is planned and must use its own device authority and acceptance evidence; it is not enabled by qualifying a simulator worker. See [PRODUCT-SCOPE.md](PRODUCT-SCOPE.md).
 
-## Current development direction — 2026-09-30
+## Current deployment direction — 2026-10-01
 
-The next integration targets an existing remote Ubuntu GPU server. Student access stays in the browser; students do not receive Ubuntu accounts or a general-purpose remote desktop. The Lab Onboarding web/API layer may later run on AWS, but provisioning an AWS GPU host is not a prerequisite. Start with one active learner session and a queue, with confirmed reset between learners, before qualifying classroom concurrency.
+The next integration targets an existing remote Ubuntu GPU server. Student access stays in the browser; students do not receive Ubuntu accounts or a general-purpose remote desktop. The Lab Onboarding web/API layer is deployed to the AC development account; provisioning an AWS GPU host is not a prerequisite. Start with one active learner session and a queue, with confirmed reset between learners, before qualifying classroom concurrency.
 
-The novice curriculum, implemented first-transfer workspace and remaining remote-session acceptance criteria are specified in [LEARNING-EXPERIENCE.md](LEARNING-EXPERIENCE.md). The browser now supports equipment exploration, preparation, prediction, step-by-step transfer and reflection, including a 50 µL retry. The runtime diagram below shows the eventual AWS control plane; the current application remains a local teaching preview. Operator setup and unresolved Ubuntu integration work are listed in [REMOTE-UBUNTU.md](REMOTE-UBUNTU.md).
+The novice curriculum, implemented first-transfer workspace and remaining remote-session acceptance criteria are specified in [LEARNING-EXPERIENCE.md](LEARNING-EXPERIENCE.md). The browser now supports equipment exploration, preparation, prediction, step-by-step transfer and reflection, including a 50 µL retry. The runtime diagram below shows the deployed AWS control plane and the still-unqualified native host boundary. Operator setup and unresolved Ubuntu integration work are listed in [REMOTE-UBUNTU.md](REMOTE-UBUNTU.md).
 
 ## Runtime
 
@@ -18,7 +18,11 @@ flowchart LR
   CDN --> API[API Gateway JWT authorizer]
   API --> Backend[FastAPI on Lambda]
   Backend --> DB[DynamoDB learner records]
-  Backend -. future qualified adapter .-> Gateway[Ubuntu gateway]
+  Worker[Ubuntu outbound worker] -. HTTPS claim and reports .-> MachineAPI[Worker HTTP API and machine authorizer]
+  MachineAPI --> Runner[Worker Lambda]
+  Runner --> DB
+  Reaper[Scheduled lease reaper] --> DB
+  Worker -. native qualification pending .-> Gateway[Ubuntu gateway]
   Gateway -.-> Engine[Matterix / Isaac Sim]
 ```
 
@@ -26,7 +30,7 @@ Lab Onboarding owns identity, curriculum, learner work, teaching attempts and se
 
 The teaching runner is an isolated educational model, not a compatibility implementation of Matterix. Its evidence source is always `synthetic`. The UI never converts a gateway error into a teaching result or a synthetic result into a GPU claim.
 
-The required next execution path is a [synchronized run](SYNCHRONIZED-RUNS.md): Lab Onboarding persists the student's complete plan, Matterix executes it in an isolated lease, and Lab Onboarding renders the same run's confirmed step outcomes and native observations. Browser timers may poll for updates but never execute or complete remote steps. The typed workflow/progress client contract is implemented; durable orchestration, Ubuntu endpoints and the live UI are not yet connected.
+The required next execution path is a [synchronized run](SYNCHRONIZED-RUNS.md): Lab Onboarding persists the student's complete plan, Matterix executes it in an isolated lease, and Lab Onboarding renders the same run's confirmed step outcomes and native observations. Browser timers may poll for updates but never execute or complete remote steps. The typed workflow/progress client, durable queue and single-worker leases, separate machine API, journaled outbound worker and learner snapshot UI are implemented. Native execution remains disabled until the installed Ubuntu endpoints and scene/observation/reset adapter pass qualification. See [WORKER-CONTROL.md](WORKER-CONTROL.md) and [deployment evidence](DEPLOYMENT-2026-10-01.md).
 
 ## Teaching semantics
 
@@ -54,4 +58,4 @@ Local guest access requires an explicit environment flag, loopback hosting and a
 
 The platform’s HTTPS client implements allocation, revision-bound commands, observations, reset, release and read-only recovery using caller-known request IDs. It never retries uncertain mutations automatically. The authenticated connection-status route reports configuration and capability checks but cannot enable remote execution by itself.
 
-Build and qualify the Ubuntu gateway against the documented contract, including scoped scene control and authenticated streaming. Then add persistent remote operation records, session leasing, expiration and reconnection to the platform. Test GPU memory and single-client streaming limits before selecting classroom concurrency. Teacher authoring, cohort administration, multiple devices, realistic collision physics and certification remain unimplemented.
+Build and qualify the Ubuntu gateway against the documented contract, including scoped scene control and verified reset/release. Persistent run records, leases, expiration and reconnection are already implemented behind a default-off flag. Add and independently qualify authenticated streaming. Test GPU memory and single-client streaming limits before selecting classroom concurrency. Teacher authoring, cohort administration, multiple devices, realistic collision physics and certification remain unimplemented.
