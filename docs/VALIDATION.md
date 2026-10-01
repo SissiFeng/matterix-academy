@@ -1,3 +1,11 @@
+# Connector developer views validation — 2026-10-01
+
+Verified against committed baseline `1727cc4` plus the connector developer changes: **149 backend tests** and **21 Chromium journeys** passed. The three added journeys exercise native-to-SiLA mapping dimensions, temperature acceptance versus completion, live-property and error semantics, native interface choices, the six-stage development sequence, scenario feedback, subpage reload/sidebar navigation and 390px layouts. Frontend build and formatting passed after the final navigation fix.
+
+Validation used an isolated source copy and dedicated test ports because unrelated remote-execution backend and infrastructure changes were being edited in the shared checkout. Those uncommitted changes are outside these results. `scripts/verify.sh` and `scripts/build-lambda.sh` passed in that copy. The twelve new displayed excerpts and the five existing excerpts were checked byte-for-byte against connector commit `2a9c3004400325d7816c80065a2282a4ad6b5b70`. Architecture review's subpage URL finding was fixed, regression-tested and rechecked.
+
+The SDK examples describe the actual Flex connector. HTTP and device-protocol examples illustrate development choices; they do not implement new transports. Feature names are repository-specific custom contracts, not a claim that all SiLA devices are interchangeable. Browsing the development stages does not run connector tests, commission hardware or deploy a server. No fresh manual visual, AWS, GPU or physical-device acceptance was performed.
+
 # Discovery learning validation — 2026-10-01
 
 Verified locally: **149 backend tests** and **18 Chromium journeys** passed. New coverage exercises the owner-scoped SQLite/mocked-DynamoDB notebook, optimistic version conflicts, serialized storage bounds, research filters and primary-source links, adaptation into a persisted design brief, method ordering, scenario reasoning, same-design concurrent edits, lost save responses, cancelled navigation without session creation, delayed creation with draft locking and retained history, connector source/trace interactions, reload and 390px layouts.

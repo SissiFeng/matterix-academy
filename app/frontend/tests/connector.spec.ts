@@ -166,3 +166,197 @@ test("connector trace playback is controllable and source stays readable on a ph
     ),
   ).toBe(true);
 });
+
+test("developer compares parameter meaning, completion, properties, composition and errors", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await enterExplorer(page);
+  await page
+    .getByRole("button", { name: "API ↔ SiLA mapping", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Rate", exact: true }).click();
+  await expect(page.getByLabel("Rate mapping")).toContainText("dimensionless");
+  await expect(page.getByText(/It is not 1 µL\/s/)).toBeVisible();
+  await page
+    .getByText("Inspect the actual mapping code", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Units and constraints", exact: true })
+    .click();
+  await expect(page.getByLabel("Mapping implementation source")).toContainText(
+    "_DIMENSIONLESS_RATE",
+  );
+  await expect(
+    page.getByRole("link", { name: "Open pinned implementation" }),
+  ).toHaveAttribute(
+    "href",
+    /2a9c3004400325d7816c80065a2282a4ad6b5b70.*#L80-L84$/,
+  );
+  for (const [capability, dimension, expected, answer] of [
+    [
+      "Move to a position",
+      "Default speed",
+      "speed if speed > 0 else None",
+      "Translate it to the vendor default representation",
+    ],
+    [
+      "Set a temperature",
+      "Accept a target",
+      "target acceptance",
+      "No, this command promises target acceptance; use the wait command for the controller target condition",
+    ],
+    [
+      "Read changing state",
+      "Missing target",
+      "target_active=false",
+      "There is no active target; zero is a placeholder",
+    ],
+    [
+      "Compose an operation",
+      "Operation boundary",
+      "shared operation lock",
+      "No; report the partial state and use an explicit recovery procedure",
+    ],
+    [
+      "Translate a failure",
+      "No response",
+      "ModuleNotRespondingError",
+      "Report uncertainty and reconcile observed state before deciding whether a retry is appropriate",
+    ],
+  ]) {
+    await page
+      .getByRole("button", { name: new RegExp("^" + capability) })
+      .click();
+    await page.getByRole("button", { name: dimension, exact: true }).click();
+    await expect(page.getByLabel(`${dimension} mapping`)).toContainText(
+      expected,
+    );
+    await page.getByRole("radio", { name: answer, exact: true }).check();
+    await page
+      .getByRole("button", { name: "Check this interpretation" })
+      .click();
+    await expect(
+      page.getByText("The contract supports that interpretation."),
+    ).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
+test("developer follows SDK, HTTP and protocol boundaries and six development deliverables", async ({
+  page,
+}) => {
+  await enterExplorer(page);
+  await page
+    .getByRole("button", { name: "Build a connector", exact: true })
+    .click();
+  await expect(page).toHaveURL(/#\/connector\/development$/);
+  await page
+    .getByRole("button", { name: "Connector explorer", exact: true })
+    .click();
+  await expect(page).toHaveURL(/#\/connector\/development$/);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Build a connector", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "HTTP API", exact: true }).click();
+  await expect(
+    page.getByText("Generic design pattern", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Follow the next boundary" }).click();
+  await expect(
+    page.getByText("Observe the vendor job until a defined outcome"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Follow the next boundary" }).click();
+  await expect(
+    page.getByText("Map progress, result or uncertainty"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Follow the next boundary" }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Device protocol", exact: true })
+    .click();
+  await expect(
+    page.getByText("Encode a documented device command"),
+  ).toBeVisible();
+  const expected = [
+    "Capability inventory",
+    "Feature and capability mapping",
+    "Controller / I/O implementation",
+    "Registered Feature with status and results",
+    "Offline adapter and SiLA client tests",
+    "Versioned acceptance record and recovery guide",
+  ];
+  for (let i = 0; i < expected.length; i++) {
+    await expect(page.getByText(expected[i], { exact: true })).toBeVisible();
+    if (i < expected.length - 1)
+      await page
+        .getByRole("button", { name: "Next development step", exact: true })
+        .click();
+  }
+  await expect(
+    page.getByRole("button", { name: "Next development step", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("radio", { name: "A command that sets a target", exact: true })
+    .check();
+  await expect(
+    page.getByText(/Setting a target changes the device/),
+  ).toBeVisible();
+  await page
+    .getByRole("radio", {
+      name: "An observable Property that reports state",
+      exact: true,
+    })
+    .check();
+  await expect(
+    page.getByText(/Expose reported state as a Property/),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Build a connector", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Return to API ↔ SiLA mapping", exact: true })
+    .click();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "API ↔ SiLA mapping", exact: true }),
+  ).toBeVisible();
+});
+
+test("developer mapping and build views fit a phone without hiding source", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterExplorer(page);
+  await page
+    .getByRole("button", { name: "API ↔ SiLA mapping", exact: true })
+    .click();
+  await page.getByRole("button", { name: /^Set a temperature/ }).click();
+  await page
+    .getByText("Inspect the actual mapping code", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Wait and cancellation", exact: true })
+    .click();
+  await expect(page.getByLabel("Mapping implementation source")).toContainText(
+    "await self._controller.deactivate()",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "Build a connector", exact: true })
+    .click();
+  await page.getByRole("button", { name: "HTTP API", exact: true }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});

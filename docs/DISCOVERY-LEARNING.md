@@ -21,3 +21,9 @@ Future ingestion should retain DOI, publication/correction version, method evide
 ## Runtime boundary
 
 A brief specifies objective, variables, measurement, next-step decision, controls, method order and gantry concept. To become runnable it still needs concrete units, validated labware/material compatibility, device capabilities, calibration, motion constraints and a qualified execution plan. The existing teaching exercise and future Ubuntu Matterix gateway remain distinct execution paths. Connector diagrams do not send commands or display live device telemetry.
+
+## Developer views in Connector Explorer
+
+API ↔ SiLA mapping compares six source-grounded capabilities: aspiration parameters/units, motion types/defaults, temperature completion semantics, observable state and missing values, composed transfer operations, and defined error translation. Each mapping has selectable dimensions, implementation excerpts and a scenario question. The native column describes calls made by this connector; it is not a copied vendor SDK implementation. The custom Feature identifiers do not claim cross-vendor semantic equivalence.
+
+Build a connector distinguishes SDK, HTTP and message-protocol access, then teaches six development steps with inspectable deliverables and committed code/test references. HTTP and protocol traces are generic teaching patterns, not added transports. Source links demonstrate the development structure; visiting the tutorial is not execution, test acceptance or deployment. Developer tabs have refreshable hash URLs. The 12 additional snippets are pinned in `briefs/connector-development-source.json`.

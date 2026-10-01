@@ -1439,6 +1439,8 @@ export default function App() {
     window.scrollTo(0, 0);
   };
   const nav = (target: string) => {
+    // Keep the active connector subpage when reselecting its sidebar section.
+    if (target === "connector" && view === "connector") return;
     if (leaveGuard.current && !leaveGuard.current()) return;
     navigationEpoch.current += 1;
     setView(target);

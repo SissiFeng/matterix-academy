@@ -20,6 +20,7 @@ import {
   type ExcerptId,
 } from "./connectorContent";
 import styles from "./ConnectorExplorer.module.css";
+import { CapabilityMap, DevelopmentPath } from "./ConnectorDevelopment";
 
 function SourcePanel({ id }: { id: ExcerptId }) {
   const excerpt = connectorExcerpts.find((item) => item.id === id)!;
@@ -421,7 +422,21 @@ function SourceMap() {
 }
 
 export default function ConnectorExplorer() {
-  const [view, setView] = useState<"course" | "map">("course");
+  type View = "course" | "map" | "mapping" | "development";
+  const [view, setCurrentView] = useState<View>(() => {
+    const part = window.location.hash.split("/")[2];
+    return part === "map" || part === "mapping" || part === "development"
+      ? part
+      : "course";
+  });
+  const setView = (next: View) => {
+    setCurrentView(next);
+    window.history.replaceState(
+      {},
+      "",
+      next === "course" ? "/#/connector" : `/#/connector/${next}`,
+    );
+  };
   const [moduleIndex, setModuleIndex] = useState(0);
   const [understood, setUnderstood] = useState<string[]>([]);
   const current = connectorModules[moduleIndex];
@@ -436,9 +451,9 @@ export default function ConnectorExplorer() {
             to an instrument action.
           </h1>
           <p>
-            Explore the OTFlex connector through one aspiration request. Follow
-            the actors, inspect the code and learn what a result actually
-            proves.
+            Follow an action, compare the native API with its SiLA contract, and
+            see how to build and verify a connector. Start with the guided
+            course or open the developer views.
           </p>
         </div>
         <div className={styles.heroStamp}>
@@ -449,8 +464,9 @@ export default function ConnectorExplorer() {
             explorer
           </strong>
           <span>
-            4 short modules
-            <br />1 inspectable source map
+            Learn · Compare · Build
+            <br />
+            Inspect the real source
           </span>
         </div>
       </header>
@@ -467,16 +483,33 @@ export default function ConnectorExplorer() {
             <BookOpen size={16} />
             Guided course
           </button>
+          <button
+            onClick={() => setView("mapping")}
+            aria-pressed={view === "mapping"}
+          >
+            <Code2 size={16} /> API ↔ SiLA mapping
+          </button>
+          <button
+            onClick={() => setView("development")}
+            aria-pressed={view === "development"}
+          >
+            <ArrowRight size={16} /> Build a connector
+          </button>
           <button onClick={() => setView("map")} aria-pressed={view === "map"}>
             <GitBranch size={16} />
             Source map
           </button>
         </div>
         <span>
-          {understood.length} / 4 ideas checked <small>in this visit</small>
+          {understood.length} / 4 ideas checked{" "}
+          <small>Guided course · in this visit</small>
         </span>
       </div>
-      {view === "map" ? (
+      {view === "mapping" ? (
+        <CapabilityMap onBuild={() => setView("development")} />
+      ) : view === "development" ? (
+        <DevelopmentPath onMapping={() => setView("mapping")} />
+      ) : view === "map" ? (
         <SourceMap />
       ) : (
         <>

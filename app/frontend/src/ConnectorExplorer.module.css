@@ -873,3 +873,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+.tabs {
+  flex-wrap: wrap;
+}
+.courseBar {
+  flex-wrap: wrap;
+}
