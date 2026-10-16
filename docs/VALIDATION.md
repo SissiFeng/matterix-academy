@@ -1,3 +1,13 @@
+# Repository fixes and preflight validation — 2026-10-16
+
+Branch `codex/workcell-onboarding` (local, not pushed). Backend: **407 passed** with the `native-worker` extra on Python 3.12 (Linux, cloud workspace); 394 passed + 13 `aiortc` skips on the Linux VM. Ruff lint/format, TypeScript, Prettier and `scripts/build-lambda.sh` passed. Vite main bundle fell from about 521 kB to 344 kB with no size warning.
+
+Playwright: **35 of 36 journeys passed** against a preinstalled Chromium build 1194 (the pinned Playwright expects 1228, which could not be downloaded here). `workcell.spec.ts` "workspace pages fit a phone…" fails identically on the unmodified baseline commit `3e27fca` in this environment, so it is not attributed to this change; re-run on the pinned browser. Lazy loading exposed a real race in `SimulationLab` (a deep-link hash change before the lazily loaded page attached its listener); fixed and repeated 3× green.
+
+Terraform: all `.tf` files parse (python-hcl2). `terraform fmt`/`validate` could not run because no Terraform binary was reachable from either workspace; CI runs both. The new alert and budget resources default to off, so the existing plan is unchanged until variables are set.
+
+No AWS account was selected, nothing was deployed, and no native, GPU, media or physical behavior is established by this change.
+
 # Workcell onboarding workspace validation — 2026-10-02
 
 Verified locally against baseline `9840ed7` plus the uncommitted workcell onboarding changes: **392 backend tests** and **36 Chromium journeys** passed. The added coverage exercises owner-scoped device declarations on SQLite and mocked DynamoDB, version conflicts, concurrent atomic twin creation, rejected client-supplied authority fields, reset invalidation and the separation of teaching results from physical readiness. Five new browser journeys cover wizard persistence, the paired teaching execution loop, lost-receipt reconciliation without replay, conflicting edits, unsaved navigation and step protection, old paired trials outside the recent list window, deep links, and 390px layouts.

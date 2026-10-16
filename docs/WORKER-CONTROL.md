@@ -89,7 +89,7 @@ Qualification record schema:
 }
 ```
 
-Do not mark this example as evidence. After actual native verification, the operator runs `worker_admin qualify` with the same account/table/worker arguments and `--qualification-record PATH`. Enable the Terraform feature flag only after the evidence is reviewed. The operator owns unresolved outcomes and failed cleanup; acceptance is a fresh clean scene for the next learner, not just a restarted service. No completion deadline can be set until host access and the installed gateway are supplied.
+Do not mark this example as evidence. After actual native verification, the operator runs `worker_admin qualify` with the same account/table/worker arguments and `--qualification-record PATH`. Enable the Terraform feature flag only after the evidence is reviewed. The record must list `scenes` explicitly (there is no default). A `flex-first-transfer` scene must also declare `capabilities.flex-first-transfer`: allowed slots per logical labware (`tips`, `stock`, `plate`, `waste`), wells, the qualified volume range, maximum starting stock and maximum action count. Learner submissions and claims are preflighted against these declarations (`native_plan.py`); a plan no scene supports exactly as saved is rejected with explicit issues, never adapted. The operator owns unresolved outcomes and failed cleanup; acceptance is a fresh clean scene for the next learner, not just a restarted service. No completion deadline can be set until host access and the installed gateway are supplied.
 
 ## Operator recovery after revocation, expiry or journal loss
 

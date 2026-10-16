@@ -219,6 +219,8 @@ UpdateItem run#<run_id>
 
 ## 6. 媒体平面（3D 画面）
 
+> **实施说明（2026-10-16）**：已实现的是方案 A 的一个变体，而不是下面推荐的“B 为主”。主机侧 `native_media.py` 从共享内存读取 Isaac RGB 帧，经 Amazon Kinesis Video Streams（KVS）WebRTC 信令发布；浏览器用 VIEWER 身份连接，ICE 只走 KVS TURN 中继，主机无需入站端口。Academy API 按运行签发 MASTER / VIEWER 授权（`media.py`），viewer 租约 35 秒，发布端在已建立的连接上也持续核对 allowlist。§6.3 的自签 media token 由这套 KVS 授权取代。方案 B（浏览器端渲染）仍是可选的后续工作。以上仍未经真实 GPU 画面验收，见 [ISAAC-WEB-TOPOLOGY.md](ISAAC-WEB-TOPOLOGY.md) 与 [STATUS.md](STATUS.md)。
+
 ### 6.1 不能给学生远程桌面的原因
 
 远程桌面（VNC/RDP/NoMachine 等）给出的是整台主机的桌面：文件系统、终端、Isaac 编辑器里的 Python 脚本编辑器、其他学员的会话。这等同把主机交给学生，只能留给运维。
