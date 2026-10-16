@@ -50,3 +50,69 @@ def test_malformed_function_configuration_is_rejected_before_aws(release, monkey
     monkeypatch.setattr(release.boto3, "Session", lambda **kw: pytest.fail("AWS was accessed"))
     with pytest.raises(ValueError):
         release.publish()
+
+
+def configure(monkeypatch):
+    monkeypatch.setenv("LAMBDA_FUNCTION", "academy")
+    monkeypatch.setenv("WORKER_LAMBDA_FUNCTIONS", '["w", "a", "r"]')
+    monkeypatch.setenv("AWS_ACCOUNT_ID", "123456789012")
+    monkeypatch.setenv("AWS_REGION", "ca-central-1")
+    monkeypatch.setenv("WEB_BUCKET", "bucket")
+    monkeypatch.setenv("DISTRIBUTION_ID", "E1")
+    monkeypatch.setenv("APP_URL", "https://abc123.cloudfront.net")
+
+
+class FakeLambda:
+    def __init__(self, gate):
+        self.gate, self.updated = gate, []
+
+    def get_function_configuration(self, FunctionName):
+        return {"Environment": {"Variables": {"ACADEMY_REMOTE_ENABLED": self.gate}}}
+
+    def update_function_code(self, **kwargs):
+        self.updated.append(kwargs["FunctionName"])
+        raise RuntimeError("stop after the preflight")
+
+
+class FakeSession:
+    def __init__(self, gate):
+        self.functions = FakeLambda(gate)
+
+    def client(self, name):
+        if name == "sts":
+            return type("STS", (), {"get_caller_identity": lambda s: {"Account": "123456789012"}})()
+        return self.functions
+
+
+@pytest.mark.parametrize("value", ["yes", "1", "TRUE"])
+def test_native_gate_declaration_is_validated_before_aws(release, monkeypatch, value):
+    configure(monkeypatch)
+    monkeypatch.setenv("NATIVE_EXECUTION_EXPECTED", value)
+    monkeypatch.setattr(release.boto3, "Session", lambda **kw: pytest.fail("AWS was accessed"))
+    with pytest.raises(ValueError):
+        release.publish()
+
+
+@pytest.mark.parametrize(
+    "declared,actual,proceeds",
+    [
+        (None, "false", True),
+        (None, "true", False),
+        ("true", "true", True),
+        ("true", "false", False),
+    ],
+)
+def test_native_gate_must_match_declared_state(release, monkeypatch, declared, actual, proceeds):
+    configure(monkeypatch)
+    if declared:
+        monkeypatch.setenv("NATIVE_EXECUTION_EXPECTED", declared)
+    session = FakeSession(actual)
+    monkeypatch.setattr(release.boto3, "Session", lambda **kw: session)
+    if proceeds:
+        with pytest.raises(RuntimeError, match="preflight"):
+            release.publish()
+        assert session.functions.updated == ["academy"]
+    else:
+        with pytest.raises(ValueError, match="NATIVE_EXECUTION_EXPECTED"):
+            release.publish()
+        assert session.functions.updated == []

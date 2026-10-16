@@ -29,6 +29,15 @@ from fastapi.testclient import TestClient
 from test_learning import lesson
 from test_remote_run import report
 
+ALL_SLOTS = [f"{row}{col}" for row in "ABCD" for col in (1, 2, 3)]
+FIXTURE_CAPABILITY = {
+    "slots": {"tips": ALL_SLOTS, "stock": ALL_SLOTS, "plate": ALL_SLOTS, "waste": ["D3"]},
+    "wells": ["A1", "A2", "A3"],
+    "volume_ul": {"min": 1, "max": 300},
+    "max_source_ul": 1500,
+    "max_steps": 64,
+}
+
 
 def worker(store, name="lab-1", **changes):
     token = name + "." + "s" * 40
@@ -45,6 +54,8 @@ def worker(store, name="lab-1", **changes):
         controls=["pause", "resume"],
         engine_version="fixture-engine",
         asset_version="fixture-assets",
+        scenes=["flex-first-transfer"],
+        capabilities={"flex-first-transfer": FIXTURE_CAPABILITY},
     )
     item.update(changes)
     store.put(WORKERS, name, item, None)
@@ -353,6 +364,7 @@ def test_http_submission_locks_teaching_mutations(client, app):
 
     session = ready(client, create(client))
     app.state.runs.enabled = True
+    worker(app.state.store)
     response = client.post(
         "/api/runs",
         json={

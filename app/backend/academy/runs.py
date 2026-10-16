@@ -17,6 +17,7 @@ from pydantic import Field, model_validator
 
 from .learning import readiness
 from .models import StrictModel
+from .native_plan import FIRST_TRANSFER, TransferCapability, intent_for, preflight
 from .recipes import MIXING, parse_plan
 from .remote_run import RemoteRunRequest, RemoteRunSnapshot, check_run_snapshot, workflow_digest
 from .store import Conflict, Write
@@ -85,6 +86,14 @@ class CleanupRequest(LeaseRequest):
 
 def revised(record: dict, **changes) -> dict:
     return {**copy.deepcopy(record), **changes, "version": record["version"] + 1}
+
+
+def transfer_issues(worker, plan) -> list | None:
+    """Preflight issues for this worker's declared scene, or None when it declares none."""
+    declared = (worker.get("capabilities") or {}).get(FIRST_TRANSFER)
+    if not declared:
+        return None
+    return preflight(intent_for(plan), TransferCapability.model_validate(declared))
 
 
 def worker_credential(store, authorization: str, now=None):
@@ -188,6 +197,8 @@ class RunService:
             raise HTTPException(
                 409, "Complete lesson preparation and prediction before native execution"
             )
+        if plan.course_id == FIRST_TRANSFER:
+            self.check_supported(plan)
         pointer = self.store.get(owner, f"remote#{session_id}")
         if pointer and not pointer["released"]:
             raise HTTPException(
@@ -230,6 +241,34 @@ class RunService:
         )
         return self.public(run)
 
+    def check_supported(self, plan):
+        """Reject a learner plan no qualified scene can run exactly as saved."""
+        declared = [
+            worker
+            for worker in self.store.partition(WORKERS)
+            if worker.get("qualified")
+            and not worker.get("revoked", True)
+            and FIRST_TRANSFER in worker.get("scenes", [])
+        ]
+        if not declared:
+            raise HTTPException(503, "No qualified simulation host supports this lesson yet")
+        closest = None
+        for worker in declared:
+            issues = transfer_issues(worker, plan)
+            if issues == []:
+                return
+            if issues and (closest is None or len(issues) < len(closest)):
+                closest = issues
+        if closest is None:
+            raise HTTPException(503, "No qualified simulation host declares this lesson's scene")
+        raise HTTPException(
+            422,
+            {
+                "message": "The simulation scene cannot run this plan exactly as saved",
+                "issues": [issue.model_dump() for issue in closest],
+            },
+        )
+
     def worker(self, worker_id):
         worker = self.store.get(WORKERS, worker_id)
         if (
@@ -253,7 +292,12 @@ class RunService:
             run = self.raw(candidate["run_id"])
             if run["status"] != "queued":
                 continue
-            if run["plan"]["course_id"] not in worker.get("scenes", ["flex-first-transfer"]):
+            if run["plan"]["course_id"] not in worker.get("scenes", []):
+                continue
+            if run["plan"]["course_id"] == FIRST_TRANSFER and (
+                transfer_issues(worker, parse_plan(run["plan"])) != []
+            ):
+                # Another qualified scene may support this exact plan; never adapt it here.
                 continue
             now = self.clock()
             claimed = revised(

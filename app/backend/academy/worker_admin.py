@@ -23,6 +23,7 @@ import boto3
 from pydantic import Field, StrictBool, model_validator
 
 from .models import StrictModel
+from .native_plan import TransferCapability
 from .runs import RUNS, TERMINAL, WORKERS, RunService, revised
 from .store import Conflict, DynamoStore, Write
 
@@ -278,6 +279,67 @@ def reconcile(store, data: Reconciliation, identity, expected_account, clock=tim
     )
 
 
+QUALIFICATION_CHECKS = {
+    "session_isolation",
+    "plan_binding",
+    "at_most_once",
+    "native_observations",
+    "reset_verification",
+    "release",
+    "restart_recovery",
+    "no_hardware",
+}
+
+
+def qualification_changes(old: dict, evidence: dict) -> dict:
+    """Validate a native qualification record; return the worker fields it grants."""
+    required = QUALIFICATION_CHECKS
+    if (
+        evidence.get("evidence") != "native"
+        or set(evidence.get("checks", {})) != required
+        or not all(value is True for value in evidence["checks"].values())
+    ):
+        raise ValueError("All native acceptance checks must be explicitly verified")
+    if any(
+        evidence.get(k) != old[k] for k in ("worker_id", "engine_version", "asset_version")
+    ) or not evidence.get("report_uri"):
+        raise ValueError(
+            "Qualification must bind this worker, installed versions and an evidence report"
+        )
+    controls = evidence.get("controls", [])
+    if not isinstance(controls, list) or not set(controls) <= {"pause", "resume", "cancel"}:
+        raise ValueError("Invalid qualified control list")
+    scenes = evidence.get("scenes")
+    if (
+        not isinstance(scenes, list)
+        or not scenes
+        or not set(scenes) <= {"flex-first-transfer", "flex-mixing"}
+    ):
+        raise ValueError("Invalid qualified scene list")
+    if "flex-mixing" in scenes and evidence.get("mixing_and_media_verified") is not True:
+        raise ValueError("Mixing qualification requires a verified native mixing and media report")
+    capabilities = {}
+    if "flex-first-transfer" in scenes:
+        try:
+            declared = TransferCapability.model_validate(
+                (evidence.get("capabilities") or {}).get("flex-first-transfer")
+            )
+        except ValueError:
+            raise ValueError(
+                "First-transfer qualification must declare the scene's supported slots, "
+                "wells and volume range"
+            ) from None
+        capabilities["flex-first-transfer"] = declared.model_dump()
+    return {
+        "qualified": True,
+        "state": "ready",
+        "controls": controls,
+        "scenes": scenes,
+        "capabilities": capabilities,
+        "qualification": evidence,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["enroll", "qualify", "revoke", "inspect", "reconcile"])
@@ -368,51 +430,14 @@ def main():
         if not args.qualification_record:
             parser.error("Native qualification evidence file is required")
         evidence = json.loads(Path(args.qualification_record).read_text())
-        required = {
-            "session_isolation",
-            "plan_binding",
-            "at_most_once",
-            "native_observations",
-            "reset_verification",
-            "release",
-            "restart_recovery",
-            "no_hardware",
-        }
-        if (
-            evidence.get("evidence") != "native"
-            or set(evidence.get("checks", {})) != required
-            or not all(value is True for value in evidence["checks"].values())
-        ):
-            parser.error("All native acceptance checks must be explicitly verified")
-        if any(
-            evidence.get(k) != old[k] for k in ("worker_id", "engine_version", "asset_version")
-        ) or not evidence.get("report_uri"):
-            parser.error(
-                "Qualification must bind this worker, installed versions and an evidence report"
-            )
-        controls = evidence.get("controls", [])
-        if not isinstance(controls, list) or not set(controls) <= {"pause", "resume", "cancel"}:
-            parser.error("Invalid qualified control list")
-        scenes = evidence.get("scenes", ["flex-first-transfer"])
-        if (
-            not isinstance(scenes, list)
-            or not scenes
-            or not set(scenes) <= {"flex-first-transfer", "flex-mixing"}
-        ):
-            parser.error("Invalid qualified scene list")
-        if "flex-mixing" in scenes and evidence.get("mixing_and_media_verified") is not True:
-            parser.error("Mixing qualification requires a verified native mixing and media report")
+        try:
+            changes = qualification_changes(old, evidence)
+        except ValueError as error:
+            parser.error(str(error))
         store.put(
             WORKERS,
             args.worker_id,
-            revised(
-                old,
-                qualified=True,
-                state="ready",
-                controls=controls,
-                scenes=scenes,
-                qualification=evidence,
-            ),
+            revised(old, **changes),
             old["version"],
         )
         print("Worker qualification recorded. The separate deployment feature gate still applies.")
