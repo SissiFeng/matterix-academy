@@ -1,5 +1,5 @@
 .developer {
-  color: #254d3f;
+  color: var(--brand-strong);
   min-width: 0;
 }
 .developer h2 {
@@ -13,7 +13,7 @@
   letter-spacing: -0.4px;
 }
 .developer p {
-  color: #617064;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.75;
 }
@@ -21,7 +21,7 @@
   font: inherit;
 }
 .developer a {
-  color: #365e46;
+  color: var(--brand-text);
   text-underline-offset: 4px;
   overflow-wrap: anywhere;
 }
@@ -32,7 +32,7 @@
   font-weight: 700;
   line-height: 1.7;
   text-transform: uppercase;
-  color: #50634f;
+  color: var(--brand-text);
 }
 .heading {
   max-width: 790px;
@@ -43,8 +43,8 @@
   align-items: flex-start;
   gap: 17px;
   padding: 22px 24px;
-  background: #edf0e7;
-  border: 1px solid #d4ddcc;
+  background: var(--surface-3);
+  border: var(--hairline) solid var(--line);
   border-radius: 8px;
   margin-bottom: 24px;
 }
@@ -66,15 +66,15 @@
 }
 .capabilities button {
   padding: 17px 18px;
-  border: 1px solid #d6ddcf;
-  background: #fffef9;
+  border: var(--hairline) solid var(--line);
+  background: var(--surface-1);
   border-radius: 6px;
   text-align: left;
 }
 .capabilities button[aria-pressed="true"] {
-  background: #365445;
-  color: #fffef9;
-  border-color: #365445;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--brand);
 }
 .capabilities strong {
   display: block;
@@ -87,9 +87,9 @@
   opacity: 0.8;
 }
 .detail {
-  border: 1px solid #d6ddcf;
+  border: var(--hairline) solid var(--line);
   border-radius: 10px;
-  background: #fffef9;
+  background: var(--surface-1);
   padding: 28px;
 }
 .detailHeading {
@@ -105,16 +105,16 @@
   margin: 22px 0;
 }
 .fields button {
-  border: 1px solid #d4ddcc;
+  border: var(--hairline) solid var(--line);
   border-radius: 5px;
   padding: 9px 13px;
   font-size: 12px;
   background: transparent;
 }
 .fields button[aria-pressed="true"] {
-  background: #e7ecde;
+  background: var(--surface-3);
   border-color: #71866a;
-  color: #264c33;
+  color: var(--brand-text);
   font-weight: 700;
 }
 .mappingGrid {
@@ -124,12 +124,12 @@
 }
 .mappingGrid article {
   padding: 21px 18px;
-  background: #f1f2e9;
-  border: 1px solid #d8dfd0;
+  background: var(--surface-3);
+  border: var(--hairline) solid var(--line);
   border-radius: 7px;
 }
 .mappingGrid article.adapter {
-  background: #f2e9d9;
+  background: var(--warn-soft);
   border-color: #e2cfb4;
 }
 .mappingGrid h4 {
@@ -146,13 +146,13 @@
 .arrow {
   display: grid;
   align-content: center;
-  color: #8a9c7a;
+  color: var(--faint);
 }
 .meaning {
   margin-top: 20px;
   padding: 18px 20px;
-  border-left: 3px solid #b78a47;
-  background: #f7f3e9;
+  border-left: 3px solid var(--accent);
+  background: var(--warn-soft);
 }
 .meaning strong {
   font-size: 13px;
@@ -163,7 +163,7 @@
 }
 .implementation {
   margin: 25px 0;
-  border: 1px solid #d8dfd0;
+  border: var(--hairline) solid var(--line);
   border-radius: 7px;
   padding: 17px;
 }
@@ -210,14 +210,14 @@
 }
 .scenario {
   border: 0;
-  border-top: 1px solid #d5decd;
+  border-top: var(--hairline) solid var(--line);
   margin: 28px 0 0;
   padding: 18px 0 0;
   min-width: 0;
 }
 .scenario legend {
   font-size: 11px;
-  color: #6c7d62;
+  color: var(--muted);
   padding-right: 12px;
 }
 .scenario h3 {
@@ -243,25 +243,25 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #d0dac7;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 5px;
   padding: 12px 16px;
   min-height: 44px;
   font-size: 12px !important;
 }
 .primary {
-  background: #365445;
-  border-color: #365445;
-  color: #fffef9;
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
 }
 .secondary {
-  background: #fffef9;
-  color: #365445;
+  background: var(--surface-1);
+  color: var(--brand-text);
 }
 .feedback {
   margin-top: 17px;
   padding: 15px 18px;
-  background: #e9efdf;
+  background: var(--surface-3);
   border-radius: 5px;
   font-size: 13px;
   line-height: 1.7;
@@ -273,7 +273,7 @@
 .reference {
   margin: 25px 0;
   padding: 22px;
-  background: #edf0e6;
+  background: var(--surface-3);
   border-radius: 8px;
 }
 .reference a {
@@ -281,8 +281,8 @@
 }
 .interface {
   padding: 25px;
-  background: #fffef9;
-  border: 1px solid #d5ddcd;
+  background: var(--surface-1);
+  border: var(--hairline) solid var(--line);
   border-radius: 8px;
   margin-bottom: 32px;
 }
@@ -297,7 +297,7 @@
   display: block;
   margin-top: 10px;
   font-size: 11px;
-  color: #6b7a63;
+  color: var(--muted);
   line-height: 1.7;
 }
 .transport {
@@ -308,16 +308,16 @@
 }
 .transport span,
 .transport strong {
-  border: 1px solid #cad6bd;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 6px;
   padding: 15px;
   font-size: 13px;
   text-align: center;
   flex: 1;
-  background: #f1f4e9;
+  background: var(--surface-3);
 }
 .transport strong {
-  background: #e5ebda;
+  background: var(--surface-3);
 }
 .transport svg {
   flex-shrink: 0;
@@ -328,13 +328,13 @@
   gap: 13px;
   margin: 0 0 18px;
   padding: 14px 16px;
-  background: #f3e9d8;
+  background: var(--warn-soft);
   border-radius: 5px;
 }
 .packet > span {
   font-size: 12px;
   flex-shrink: 0;
-  color: #8a6639;
+  color: var(--accent);
 }
 .packet strong {
   font-size: 13px;
@@ -359,15 +359,15 @@
   align-items: center;
   gap: 12px;
   text-align: left;
-  border: 1px solid #d1dbc7;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 5px;
   padding: 15px 13px;
-  background: #f0f2e8;
+  background: var(--surface-3);
 }
 .sequence button[aria-current="step"] {
-  background: #365445;
-  color: #fffef9;
-  border-color: #365445;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--brand);
 }
 .sequence button > span {
   font-size: 22px;
@@ -387,9 +387,9 @@
   grid-template-columns: 0.85fr 1.4fr;
   gap: 28px;
   padding: 30px;
-  border: 1px solid #d1dbc7;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 8px;
-  background: #fffef9;
+  background: var(--surface-1);
 }
 .stageIntro h3 {
   margin: 15px 0 24px;
@@ -401,8 +401,8 @@
   align-items: flex-start;
   gap: 9px;
   padding: 21px;
-  background: #edf1e5;
-  border: 1px solid #d1dbc7;
+  background: var(--surface-3);
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 6px;
 }
 .artifact > span {
@@ -425,12 +425,12 @@
 .stageWork li {
   padding-left: 6px;
   margin: 0 0 13px;
-  color: #617064;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.8;
 }
 .evidence {
-  border-top: 1px solid #d5decb;
+  border-top: var(--hairline) solid var(--line);
   padding-top: 20px;
 }
 .evidence p {
@@ -458,8 +458,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 30px;
-  background: #edf0e6;
-  border: 1px solid #d2dbca;
+  background: var(--surface-3);
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 8px;
   padding: 25px;
 }

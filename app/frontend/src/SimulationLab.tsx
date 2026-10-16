@@ -178,6 +178,17 @@ export default function SimulationLab() {
     delayed ||
     (!!run && !terminalRuns.has(run.status) && run.stale_seconds > 10);
   const locked = !!run && !run.cleanup?.reset_verified;
+  const total = plan?.actions.length ?? 5;
+  const confirmed = run?.completed_steps ?? 0;
+  const tone = stale
+    ? "stale"
+    : run?.status === "failed" || run?.status === "outcome_unknown"
+      ? "fault"
+      : run && !terminalRuns.has(run.status)
+        ? "live"
+        : run?.status === "completed"
+          ? "done"
+          : "idle";
   const hasEnded = !!run && terminalRuns.has(run.status);
   return (
     <div className={s.page}>
@@ -241,14 +252,25 @@ export default function SimulationLab() {
         <aside className={s.progress}>
           <div className={s.sectionTitle}>
             <h2>Experiment progress</h2>
-            <span>{run?.completed_steps ?? 0} / 5</span>
+            <span>
+              {confirmed} / {total}
+            </span>
           </div>
-          <div className={s.statusRow}>
-            <i
-              className={
-                stale ? s.waitDot : run?.snapshot ? s.liveDot : s.waitDot
-              }
+          <div
+            className={s.progressTrack}
+            role="progressbar"
+            aria-label="Confirmed native steps"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={confirmed}
+          >
+            <span
+              data-tone={tone}
+              style={{ width: `${(100 * confirmed) / Math.max(total, 1)}%` }}
             />
+          </div>
+          <div className={s.statusRow} data-tone={tone}>
+            <i className={s.statusDot} />
             <span>
               {stale
                 ? "Status delayed"
@@ -256,12 +278,30 @@ export default function SimulationLab() {
                   ? (labels[run.status] ?? run.status)
                   : "Ready to prepare"}
             </span>
+            {run && !terminalRuns.has(run.status) && (
+              <span className={s.freshness}>
+                {run.stale_seconds <= 2
+                  ? "updated just now"
+                  : `updated ${run.stale_seconds}s ago`}
+              </span>
+            )}
           </div>
           <ol className={s.steps}>
             {plan?.actions.map((step, index) => {
               const status = run?.snapshot?.steps[index]?.status ?? "pending";
+              const current =
+                tone === "live" &&
+                status !== "completed" &&
+                (run?.snapshot?.steps ?? []).findIndex(
+                  (item) => item.status !== "completed",
+                ) === index;
               return (
-                <li key={index} data-status={status}>
+                <li
+                  key={index}
+                  data-status={status}
+                  data-current={current || undefined}
+                  aria-current={current ? "step" : undefined}
+                >
                   <span className={s.stepNumber}>
                     {status === "completed" ? <Check size={15} /> : index + 1}
                   </span>

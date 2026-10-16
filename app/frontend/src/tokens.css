@@ -1,0 +1,216 @@
+/*
+ * Lab Onboarding design tokens.
+ * Method: a small ladder of low-contrast surfaces, hairline borders, a single brand
+ * green, semantic status colors and shared radius/motion scales. Components read
+ * tokens only; light and dark themes swap values here.
+ * Theme: follows the OS unless <html data-theme="light|dark"> is set.
+ */
+:root {
+  color-scheme: light;
+
+  /* Surfaces: page → card → subtle fill → selected/soft */
+  --surface-0: #f5f4ef;
+  --surface-1: #fffefa;
+  --surface-2: #f1f3ea;
+  --surface-3: #eaede4;
+  --surface-sunken: #eceee5;
+  --overlay: rgb(20 28 24 / 0.42);
+
+  /* Text */
+  --ink: #25332d;
+  --ink-2: #44554b;
+  --ink-brand: #254d3f;
+  --muted: #64716a;
+  --faint: #8a967f;
+  --on-brand: #fffefa;
+
+  /* Lines */
+  --line: #dedfd5;
+  --line-strong: #c9d2bf;
+  --line-emph: #93a889;
+  --hairline: 1px;
+
+  /* Brand */
+  --brand: #365445;
+  --brand-strong: #254d3f;
+  --brand-text: #345c43;
+  --brand-soft: #dfe6d6;
+  --accent: #b94825;
+  --accent-soft: #f6ead9;
+  --focus: #b94825;
+
+  /* Status (state freshness, run outcomes) */
+  --ok: #3f7a52;
+  --ok-soft: #e3eedf;
+  --warn: #9a6a12;
+  --warn-soft: #f7eedb;
+  --danger: #a64722;
+  --danger-soft: #f9e8df;
+  --info: #3b6e86;
+  --info-soft: #e1ecee;
+
+  /* Elevation: hairline ring + soft drop */
+  --ring: 0 0 0 var(--hairline) var(--line);
+  --shadow-1: 0 1px 2px rgb(37 51 45 / 0.06);
+  --shadow-2:
+    0 0 0 var(--hairline) rgb(37 51 45 / 0.06), 0 8px 24px rgb(37 51 45 / 0.1);
+  --shadow-3:
+    0 0 0 var(--hairline) rgb(37 51 45 / 0.08), 0 18px 48px rgb(37 51 45 / 0.18);
+
+  /* Shape */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 999px;
+  --space: 8px;
+
+  /* Motion: tactile feedback, geometry, panels */
+  --dur-1: 70ms;
+  --dur-2: 140ms;
+  --dur-3: 280ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Legacy aliases still referenced by module CSS */
+  --paper: var(--surface-0);
+  --surface: var(--surface-1);
+  --green: var(--brand);
+  --soft: var(--surface-3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #111513;
+    --surface-1: #181d1a;
+    --surface-2: #1e2420;
+    --surface-3: #262e29;
+    --surface-sunken: #0d100e;
+    --overlay: rgb(0 0 0 / 0.6);
+    --ink: #e5eae4;
+    --ink-2: #c4cdc5;
+    --ink-brand: #cfe3d5;
+    --muted: #9ba79f;
+    --faint: #75817a;
+    --on-brand: #f4f7f2;
+    --line: #2c3530;
+    --line-strong: #3b463f;
+    --line-emph: #55695c;
+    --brand: #3f6b55;
+    --brand-strong: #4d7d64;
+    --brand-text: #93c2a5;
+    --brand-soft: #24342b;
+    --accent: #e0865f;
+    --accent-soft: #3a261c;
+    --focus: #e0865f;
+    --ok: #7cc293;
+    --ok-soft: #1f3226;
+    --warn: #e2b55a;
+    --warn-soft: #362c17;
+    --danger: #ef8f6b;
+    --danger-soft: #3a211a;
+    --info: #85bdd3;
+    --info-soft: #1b2e36;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2:
+      0 0 0 var(--hairline) rgb(255 255 255 / 0.04),
+      0 8px 24px rgb(0 0 0 / 0.45);
+    --shadow-3:
+      0 0 0 var(--hairline) rgb(255 255 255 / 0.06),
+      0 18px 48px rgb(0 0 0 / 0.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #111513;
+  --surface-1: #181d1a;
+  --surface-2: #1e2420;
+  --surface-3: #262e29;
+  --surface-sunken: #0d100e;
+  --overlay: rgb(0 0 0 / 0.6);
+  --ink: #e5eae4;
+  --ink-2: #c4cdc5;
+  --ink-brand: #cfe3d5;
+  --muted: #9ba79f;
+  --faint: #75817a;
+  --on-brand: #f4f7f2;
+  --line: #2c3530;
+  --line-strong: #3b463f;
+  --line-emph: #55695c;
+  --brand: #3f6b55;
+  --brand-strong: #4d7d64;
+  --brand-text: #93c2a5;
+  --brand-soft: #24342b;
+  --accent: #e0865f;
+  --accent-soft: #3a261c;
+  --focus: #e0865f;
+  --ok: #7cc293;
+  --ok-soft: #1f3226;
+  --warn: #e2b55a;
+  --warn-soft: #362c17;
+  --danger: #ef8f6b;
+  --danger-soft: #3a211a;
+  --info: #85bdd3;
+  --info-soft: #1b2e36;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2:
+    0 0 0 var(--hairline) rgb(255 255 255 / 0.04), 0 8px 24px rgb(0 0 0 / 0.45);
+  --shadow-3:
+    0 0 0 var(--hairline) rgb(255 255 255 / 0.06), 0 18px 48px rgb(0 0 0 / 0.6);
+}
+
+/* Thin, crisp borders on high-density screens. */
+@media (min-resolution: 2dppx) {
+  :root {
+    --hairline: 0.5px;
+  }
+}
+
+html {
+  background: var(--surface-0);
+  color: var(--ink);
+}
+/* Text renders heavier on dark backgrounds; compensate slightly. */
+:root[data-theme="dark"] body {
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body {
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Shared status indicators */
+@keyframes lab-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+@keyframes lab-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.lab-skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    105deg,
+    var(--surface-3) 30%,
+    var(--surface-2) 50%,
+    var(--surface-3) 70%
+  );
+  background-size: 300% 100%;
+  animation: lab-shimmer 1.6s linear infinite;
+}

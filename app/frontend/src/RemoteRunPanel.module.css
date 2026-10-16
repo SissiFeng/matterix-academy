@@ -1,10 +1,10 @@
 .panel {
-  --remote-ink: #253b2c;
-  --remote-muted: #5e6f62;
-  --remote-line: #d5ddcf;
-  --remote-green: #345c43;
-  --remote-paper: #fffdf6;
-  --remote-warning: #8a411f;
+  --remote-ink: var(--ink);
+  --remote-muted: var(--muted);
+  --remote-line: var(--line);
+  --remote-green: var(--brand);
+  --remote-paper: var(--surface-1);
+  --remote-warning: var(--danger);
   --remote-gap: 18px;
   padding: 28px;
   min-height: 320px;

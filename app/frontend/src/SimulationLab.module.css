@@ -39,7 +39,7 @@
 }
 .primary {
   background: var(--green);
-  color: #fffefa;
+  color: var(--on-brand);
   padding: 13px 19px;
   border: 0;
   border-radius: 5px;
@@ -50,17 +50,17 @@
   font-weight: 600;
 }
 .notice {
-  background: #f1eadd;
-  border-left: 3px solid #bd9f5d;
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
   padding: 12px 16px;
-  color: #625538;
+  color: var(--ink-2);
   font-size: 13px;
   line-height: 1.6;
   margin-bottom: 20px;
 }
 .alert {
-  background: #f9e8df;
-  color: #842f1d;
+  background: var(--danger-soft);
+  color: var(--danger);
   padding: 15px;
   margin-bottom: 20px;
   display: flex;
@@ -105,18 +105,72 @@
   opacity: 0.65;
 }
 .liveDot,
-.waitDot {
-  width: 6px;
-  height: 6px;
+.waitDot,
+.statusDot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
 }
 .liveDot {
   background: #7eaf88;
+  animation: lab-breathe 2.4s var(--ease-in-out) infinite;
 }
 .waitDot {
   background: #bd9f5d;
+}
+/* Status tone: live breathes, stale and fault hold still so they read as a stop. */
+.statusDot {
+  background: var(--faint);
+}
+[data-tone="live"] > .statusDot {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+  animation: lab-breathe 2.4s var(--ease-in-out) infinite;
+}
+[data-tone="done"] > .statusDot {
+  background: var(--ok);
+}
+[data-tone="stale"] > .statusDot {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px var(--warn-soft);
+}
+[data-tone="fault"] > .statusDot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+[data-tone="stale"] {
+  color: var(--warn);
+}
+.freshness {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.progressTrack {
+  margin-top: 14px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.progressTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width var(--dur-3) var(--ease-out);
+}
+.progressTrack > [data-tone="stale"] {
+  background: var(--warn);
+}
+.progressTrack > [data-tone="fault"] {
+  background: var(--danger);
+}
+.progressTrack > [data-tone="done"] {
+  background: var(--ok);
 }
 .videoStage {
   position: relative;
@@ -142,7 +196,7 @@
   background: #13221bea;
 }
 .videoEmpty > svg {
-  color: #83a88b;
+  color: var(--faint);
 }
 .videoEmpty strong {
   font:
@@ -153,7 +207,7 @@
   max-width: 340px;
   font-size: 12px;
   line-height: 1.7;
-  color: #9db0a3;
+  color: var(--faint);
 }
 .videoEmpty button {
   display: flex;
@@ -171,10 +225,10 @@
   gap: 16px;
   padding: 14px 18px;
   font-size: 10px;
-  color: #9db0a3;
+  color: var(--faint);
 }
 .progress {
-  border: 1px solid var(--line);
+  border: var(--hairline) solid var(--line);
   border-radius: 7px;
   background: var(--surface);
   padding: 20px;
@@ -200,7 +254,7 @@
   font-size: 12px;
   color: var(--muted);
   padding: 16px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--hairline) solid var(--line);
 }
 .steps {
   list-style: none;
@@ -231,7 +285,7 @@
   border-radius: 50%;
   width: 24px;
   height: 24px;
-  border: 1px solid var(--line);
+  border: var(--hairline) solid var(--line);
   flex-shrink: 0;
   font-size: 10px;
   color: var(--muted);
@@ -239,11 +293,17 @@
 .steps [data-status="completed"] .stepNumber {
   background: var(--green);
   border-color: var(--green);
-  color: white;
+  color: var(--on-brand);
 }
-.steps [data-status="running"] .stepNumber {
+.steps [data-status="running"] .stepNumber,
+.steps [data-current] .stepNumber {
   border: 2px solid var(--accent);
   color: var(--accent);
+}
+.steps [data-current] {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .stepStatus {
   display: block;
@@ -254,7 +314,7 @@
   margin-top: 4px;
 }
 .currentAction {
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline) solid var(--line);
   padding-top: 14px;
 }
 .currentAction > span {
@@ -275,7 +335,7 @@
   margin-top: 28px;
   padding: 24px;
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: var(--hairline) solid var(--line);
   border-radius: 7px;
 }
 .observations h2 {
@@ -295,7 +355,7 @@
   flex-direction: column;
   gap: 9px;
   padding: 0 20px;
-  border-left: 1px solid var(--line);
+  border-left: var(--hairline) solid var(--line);
 }
 .metrics > div:first-child {
   padding-left: 0;
@@ -321,13 +381,13 @@
 }
 .vial {
   padding: 13px 10px;
-  background: #f4f4ee;
+  background: var(--surface-3);
   border: 1px solid transparent;
   border-radius: 4px;
 }
 .vial[data-selected="true"] {
-  border-color: #bbccbb;
-  background: #edf1e8;
+  border-color: var(--line-strong);
+  background: var(--surface-3);
 }
 .vial > span {
   display: flex;
@@ -348,7 +408,7 @@
 }
 .volumeTrack {
   height: 3px;
-  background: #dde3d8;
+  background: var(--brand-soft);
   margin-top: 12px;
 }
 .volumeTrack i {
@@ -364,7 +424,7 @@
 }
 .receipt {
   padding: 20px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--hairline) solid var(--line);
   font-size: 12px;
 }
 .receipt > div {
@@ -411,7 +471,7 @@
   align-items: center;
   gap: 16px;
   border: 0;
-  border-top: 1px solid var(--line);
+  border-top: var(--hairline) solid var(--line);
   background: transparent;
   padding: 13px 0;
   text-align: left;
@@ -474,5 +534,20 @@
   }
   .receipt dd {
     margin-bottom: 8px;
+  }
+}
+.steps [data-current] {
+  padding: 6px 8px;
+  margin: -6px -8px;
+}
+@keyframes lab-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
   }
 }

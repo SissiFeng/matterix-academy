@@ -45,6 +45,7 @@ import {
 import { Deck } from "./deck";
 import { FirstLessonCard } from "./FirstLessonCard";
 import { DiscoveryInvitation } from "./DiscoveryInvitation";
+import ThemeToggle from "./ThemeToggle";
 
 const SimulationLab = lazy(() => import("./SimulationLab"));
 const LearningLab = lazy(() => import("./LearningLab"));
@@ -786,6 +787,7 @@ export default function App() {
               <button className={s.helpButton} onClick={() => setHelp(true)}>
                 <CircleHelp size={17} /> About this learning lab
               </button>
+              <ThemeToggle />
               <div className={s.user}>
                 <span>{profile.name.slice(0, 1).toUpperCase()}</span>
                 <div>
