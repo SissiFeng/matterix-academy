@@ -29,8 +29,16 @@ jobs:
       - run: npm --prefix app/frontend ci --include=optional
       - run: bash scripts/build-lambda.sh
       - run: bash scripts/verify.sh
-      - run: npx playwright install --with-deps chromium
+      - name: Install Chromium for browser journeys
         working-directory: app/frontend
+        # apt mirrors occasionally stall; bound each attempt instead of hanging the job.
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "Playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
       - run: npm run test:e2e
         working-directory: app/frontend
       - name: Bind the tested files to this commit
@@ -75,6 +83,7 @@ jobs:
       LAMBDA_FUNCTION: ${{ vars.LAMBDA_FUNCTION }}
       WORKER_LAMBDA_FUNCTIONS: ${{ vars.WORKER_LAMBDA_FUNCTIONS }}
       APP_URL: ${{ vars.APP_URL }}
+      NATIVE_EXECUTION_EXPECTED: ${{ vars.NATIVE_EXECUTION_EXPECTED || 'false' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Skip a superseded commit

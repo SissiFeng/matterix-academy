@@ -30,8 +30,16 @@ jobs:
       - run: npm --prefix app/frontend ci --include=optional
       - run: bash scripts/build-lambda.sh
       - run: bash scripts/verify.sh
-      - run: npx playwright install --with-deps chromium
+      - name: Install Chromium for browser journeys
         working-directory: app/frontend
+        # apt mirrors occasionally stall; bound each attempt instead of hanging the job.
+        run: |
+          for attempt in 1 2 3; do
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "Playwright install attempt $attempt failed; retrying"
+            sleep 15
+          done
+          exit 1
       - run: npm run test:e2e
         working-directory: app/frontend
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
