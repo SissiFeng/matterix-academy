@@ -54,6 +54,12 @@ import {
 } from "./Discovery";
 import { workflows, type Workflow } from "./discoveryContent";
 import ConnectorExplorer from "./ConnectorExplorer";
+import Workcell from "./Workcell";
+import {
+  workspaceLabels,
+  workspaceViews,
+  type WorkspaceView,
+} from "./workcellTypes";
 
 const LABWARE: Record<string, { name: string; detail: string }> = {
   stock: { name: "Stock solution", detail: "1,500 µL vial" },
@@ -1369,7 +1375,8 @@ export default function App() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null);
-  const [view, setView] = useState("learn");
+  const [view, setView] = useState("overview");
+  const [workspaceRouteRevision, setWorkspaceRouteRevision] = useState(0);
   const [discoverySeed, setDiscoverySeed] = useState<Workflow | undefined>();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -1382,6 +1389,24 @@ export default function App() {
   const identityEpoch = useRef(0);
   const registerLeaveGuard = useCallback((guard: (() => boolean) | null) => {
     leaveGuard.current = guard;
+  }, []);
+  useEffect(() => {
+    const routeChanged = (event: HashChangeEvent) => {
+      const route = window.location.hash.match(
+        /^#\/(overview|onboard|twin|readiness|runs)(?:\/([a-z0-9-]+))?$/,
+      );
+      if (!route && window.location.hash) return;
+      if (leaveGuard.current && !leaveGuard.current()) {
+        window.history.replaceState({}, "", event.oldURL);
+        return;
+      }
+      navigationEpoch.current += 1;
+      setSession(null);
+      setView(route?.[1] ?? "overview");
+      setWorkspaceRouteRevision((current) => current + 1);
+    };
+    window.addEventListener("hashchange", routeChanged);
+    return () => window.removeEventListener("hashchange", routeChanged);
   }, []);
   const refresh = useCallback(async () => {
     const [p, c, r] = await Promise.all([
@@ -1398,7 +1423,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(marketplace|discovery|connector|history|sim)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -1455,15 +1480,21 @@ export default function App() {
   };
   const nav = (target: string) => {
     // Preserve the selected subpage/run when reselecting its sidebar section.
-    if ((target === "connector" || target === "sim") && view === target) return;
+    if (
+      (target === "connector" ||
+        target === "sim" ||
+        workspaceViews.includes(target as WorkspaceView)) &&
+      view === target
+    )
+      return;
     if (leaveGuard.current && !leaveGuard.current()) return;
     navigationEpoch.current += 1;
-    setView(target);
+    setView(target.split("/")[0]);
     setSession(null);
     window.history.replaceState(
       {},
       "",
-      target === "learn" ? "/" : `/#/${target}`,
+      target === "overview" ? "/" : `/#/${target}`,
     );
     if (target === "discovery") setDiscoverySeed(undefined);
     window.scrollTo(0, 0);
@@ -1554,8 +1585,27 @@ export default function App() {
         <div className={s.shell}>
           <aside className={s.sidebar}>
             <Brand small />
-            <div className={s.sidebarLabel}>YOUR TRAINING</div>
-            <nav>
+            <div className={s.sidebarLabel}>YOUR WORKCELL</div>
+            <nav aria-label="Workcell navigation">
+              {workspaceViews.map((target, index) => {
+                const Icon = [LayoutGrid, Plus, Layers3, ShieldCheck, History][
+                  index
+                ];
+                return (
+                  <button
+                    key={target}
+                    className={view === target ? s.activeNav : ""}
+                    aria-current={view === target ? "page" : undefined}
+                    onClick={() => nav(target)}
+                  >
+                    <Icon size={18} />
+                    {workspaceLabels[target]}
+                  </button>
+                );
+              })}
+            </nav>
+            <div className={s.sidebarLabel}>LEARN & EXPLORE</div>
+            <nav aria-label="Learning navigation">
               <button
                 className={view === "sim" ? s.activeNav : ""}
                 onClick={() => nav("sim")}
@@ -1627,6 +1677,7 @@ export default function App() {
                       setProfile(null);
                       setSession(null);
                       setSessions([]);
+                      setView("overview");
                       window.history.replaceState({}, "", "/");
                     } catch (e) {
                       setError((e as Error).message);
@@ -1643,19 +1694,20 @@ export default function App() {
               <span>
                 <LayoutGrid size={15} /> Lab Onboarding{" "}
                 <ChevronRight size={13} />{" "}
-                {view === "lab"
-                  ? "Flex foundations"
-                  : view === "history"
-                    ? "My experiments"
-                    : view === "discovery"
-                      ? "Discovery studio"
-                      : view === "marketplace"
-                        ? "Workflow marketplace"
-                        : view === "connector"
-                          ? "Connector explorer"
-                          : view === "sim"
-                            ? "Simulation lab"
-                            : "Learning lab"}
+                {workspaceLabels[view] ??
+                  (view === "lab"
+                    ? "Flex foundations"
+                    : view === "history"
+                      ? "My experiments"
+                      : view === "discovery"
+                        ? "Discovery studio"
+                        : view === "marketplace"
+                          ? "Workflow marketplace"
+                          : view === "connector"
+                            ? "Connector explorer"
+                            : view === "sim"
+                              ? "Simulation lab"
+                              : "Learning lab")}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -1664,7 +1716,29 @@ export default function App() {
                   : "Training workspace"}
               </span>
             </header>
-            {view === "sim" ? (
+            {workspaceViews.includes(view as WorkspaceView) ? (
+              <Workcell
+                key={`${view}:${workspaceRouteRevision}`}
+                view={view as WorkspaceView}
+                name={profile.name}
+                onNavigate={nav}
+                onOpen={open}
+                onSessionsLoaded={setSessions}
+                onSessionSaved={updateSession}
+                onFirstLesson={() => {
+                  if (busy) return;
+                  const existing = sessions.find(
+                    (run) => run.experiment.course_id === "flex-first-transfer",
+                  );
+                  if (existing) open(existing);
+                  else create(true);
+                }}
+                onCreate={() => {
+                  if (!busy) create();
+                }}
+                registerLeaveGuard={registerLeaveGuard}
+              />
+            ) : view === "sim" ? (
               <SimulationLab />
             ) : view === "marketplace" ? (
               <WorkflowMarketplace
@@ -1738,9 +1812,11 @@ export default function App() {
               <span>LAB ONBOARDING</span>
               <span>Explore freely. Learn deliberately.</span>
               <span>
-                {view === "sim"
-                  ? "Isaac / Matterix · v0.1"
-                  : "Teaching model · v0.1"}
+                {workspaceViews.includes(view as WorkspaceView)
+                  ? "Physical readiness · unverified"
+                  : view === "sim"
+                    ? "Isaac / Matterix · v0.1"
+                    : "Teaching model · v0.1"}
               </span>
             </footer>
           </main>

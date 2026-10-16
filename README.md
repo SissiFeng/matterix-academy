@@ -10,6 +10,8 @@ The interface remains English. The implementation uses React + TypeScript and Fa
 
 ## Run locally
 
+The workspace now opens on **Overview → Onboard → Twin → Sim → Real → Runs**. Register a Flex, save its connection plan and capability declarations, pair a teaching session, and inspect saved trial evidence next to explicitly missing physical observations. The five-step device wizard persists progress and protects concurrent edits. See [workcell onboarding](docs/WORKCELL-ONBOARDING.md) for the user flow and evidence boundaries. Existing lessons and native simulation remain available under **Learn & Explore**.
+
 Requirements: Node.js 22.12+, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```sh

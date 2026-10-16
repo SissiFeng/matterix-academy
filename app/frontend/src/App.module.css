@@ -608,6 +608,12 @@
   display: grid;
   gap: 5px;
 }
+.sidebar nav + .sidebarLabel {
+  margin-top: 28px;
+}
+.sidebar nav + .sidebarLabel + nav {
+  margin-top: 8px;
+}
 .sidebar nav button {
   display: flex;
   align-items: center;

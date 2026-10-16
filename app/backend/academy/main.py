@@ -12,6 +12,7 @@ from .gateway import GatewayUnavailable, MatterixGateway
 from .learning import present, readiness
 from .media import MediaService, ViewerRequest
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
+from .onboarding import DeviceUpdate, OnboardingService, TwinCreate
 from .recipes import MIXING, CreateMixing, MixingPlan, mixing_session
 from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
@@ -35,6 +36,7 @@ def create_app(settings: Settings | None = None, store=None):
         else SQLiteStore(settings.data_path)
     )
     app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
+    app.state.onboarding = OnboardingService(app.state.store)
     app.state.media = MediaService(app.state.runs)
     if settings.runtime == "local":
         app.add_middleware(
@@ -173,6 +175,23 @@ def create_app(settings: Settings | None = None, store=None):
     @app.get("/api/courses")
     def courses(owner: str = Depends(identify)):
         return COURSES
+
+    @app.get("/api/devices")
+    def devices(owner: str = Depends(identify)):
+        return app.state.onboarding.list(owner)
+
+    @app.get("/api/devices/{device_id}")
+    def device(device_id: UUID, owner: str = Depends(identify)):
+        service = app.state.onboarding
+        return service.describe(owner, service.get(owner, device_id))
+
+    @app.put("/api/devices/{device_id}")
+    def save_device(device_id: UUID, data: DeviceUpdate, owner: str = Depends(identify)):
+        return app.state.onboarding.save(owner, device_id, data)
+
+    @app.post("/api/devices/{device_id}/twin")
+    def create_twin(device_id: UUID, data: TwinCreate, owner: str = Depends(identify)):
+        return app.state.onboarding.create_twin(owner, device_id, data)
 
     @app.get("/api/remote/status")
     def remote_status(owner: str = Depends(identify)):
