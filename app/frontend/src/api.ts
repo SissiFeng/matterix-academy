@@ -67,7 +67,16 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
         ? body.detail
         : Array.isArray(body.detail)
           ? body.detail.map((d: { msg: string }) => d.msg).join("; ")
-          : "The request could not be completed.";
+          : typeof body.detail?.message === "string"
+            ? [
+                body.detail.message,
+                ...(Array.isArray(body.detail.issues)
+                  ? body.detail.issues.map(
+                      (i: { message: string }) => i.message,
+                    )
+                  : []),
+              ].join(" · ")
+            : "The request could not be completed.";
     throw new ApiError(response.status, detail);
   }
   return response.json();

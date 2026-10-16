@@ -121,6 +121,9 @@ export default function SimulationLab() {
       if (id !== selectedId) select(id);
     };
     window.addEventListener("hashchange", changed);
+    // This page loads lazily; a hash change that landed before the listener
+    // was attached must still select the linked experiment.
+    if (window.location.hash.startsWith("#/sim")) changed();
     return () => window.removeEventListener("hashchange", changed);
   }, [selectedId]);
   const start = async () => {

@@ -177,6 +177,16 @@ export default function RemoteRunPanel({
       const current = await api<Session>(`/sessions/${session.id}`);
       if (alive.current) onChange(current);
     } catch (e) {
+      if (
+        e instanceof ApiError &&
+        (e.status === 422 || e.status === 503) &&
+        alive.current
+      ) {
+        // Rejected before any run record was written: nothing to recover.
+        sessionStorage.removeItem(key);
+        setError(e.message);
+        return;
+      }
       if (e instanceof ApiError && e.status === 409 && alive.current) {
         const cached = sessionStorage.getItem(key);
         if (cached) {

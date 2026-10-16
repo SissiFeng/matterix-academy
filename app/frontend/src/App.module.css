@@ -2264,3 +2264,8 @@
     padding: 12px 5px;
   }
 }
+.pageLoading {
+  padding: 48px 24px;
+  color: #687366;
+  font-size: 14px;
+}
