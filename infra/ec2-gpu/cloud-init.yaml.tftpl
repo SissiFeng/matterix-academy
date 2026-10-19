@@ -1,0 +1,17 @@
+#cloud-config
+# This installs no runtime, creates no credential, and starts no native execution.
+# The prepared image must already contain driver/runtime/code, user and IMDS firewall.
+write_files:
+  - path: /etc/systemd/system/academy-native.service
+    owner: root:root
+    permissions: '0644'
+    encoding: b64
+    content: ${unit_b64}
+  - path: /etc/academy-native/worker.env
+    owner: root:root
+    permissions: '0600'
+    content: |
+      ACADEMY_WORKER_API_URL=${worker_api_url}
+runcmd:
+  - [systemctl, disable, academy-native.service]
+  - [systemctl, daemon-reload]

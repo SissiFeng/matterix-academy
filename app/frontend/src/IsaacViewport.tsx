@@ -68,7 +68,12 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
     const renew = async () => {
       try {
         await api(`/runs/${runId}/viewer/renew`, {
-          ...json({ client_id: clientId, frame_received: hasFrame }),
+          ...json({
+            client_id: clientId,
+            frame_received: hasFrame,
+            frames_decoded:
+              video.current?.getVideoPlaybackQuality().totalVideoFrames ?? 0,
+          }),
           signal: abort.signal,
         });
         if (alive) renewTimer = window.setTimeout(renew, 10000);

@@ -101,3 +101,12 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 `terraform validate` verifies provider schema and internal references. It does not establish IAM entitlement, regional capacity, account quota, successful apply, OAuth behavior or live service health. Tests use mocked DynamoDB. A real plan/apply and deployed two-user exercise are required before claiming AWS deployment success.
 
 Primary references: [Cognito PKCE authorization](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html), [API Gateway JWT validation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html), [DynamoDB concurrency](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BestPractices_OptimisticLocking.html), [Isaac Sim streaming](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/manual_livestream_clients.html).
+
+## Prepared single EC2 GPU pilot (not deployed)
+
+The [EC2 GPU pilot plan](EC2-GPU-PILOT.md) adds a separate, default-disabled
+Terraform root at `infra/ec2-gpu/`. It reuses the worker API for one fixed native
+scene. The ordinary application deployment does not apply it or enable native
+execution. Current pricing evidence, image inputs and commissioning/browser
+acceptance steps are recorded there. `bash scripts/verify-ec2-gpu.sh` is an
+offline zero-resource check; it needs no selected AWS account.

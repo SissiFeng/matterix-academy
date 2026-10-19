@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "status": "pending-native-acceptance",
+  "evidence": "not-collected",
+  "worker_id": "ec2-flex-pilot-1",
+  "instance_id": null,
+  "ami_id": null,
+  "image_manifest_sha256": null,
+  "engine_commit": null,
+  "asset_commit": null,
+  "recipe": "mix_four_vials",
+  "task": "Matterix-Flex-Mixing-v1",
+  "seed": 42,
+  "num_envs": 1,
+  "run_id": null,
+  "native_session_id": null,
+  "gates": {
+    "account_network_quota_and_budget_review": "pending",
+    "image_versions_gpu_and_imports": "pending",
+    "operator_native_commissioning": "pending",
+    "browser_same_run_and_live_video": "pending",
+    "five_confirmed_actions_and_observations": "pending",
+    "disconnect_and_restart_no_replay": "pending",
+    "reset_release_and_second_run": "pending",
+    "two_user_isolation": "pending",
+    "drain_stop_and_cost_check": "pending"
+  },
+  "artifacts": [],
+  "notes": "This planning template is not a worker qualification record. Never fill passing checks without native evidence."
+}

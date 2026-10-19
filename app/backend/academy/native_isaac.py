@@ -111,8 +111,10 @@ def run(folder):
     confirmations = {}
     final_snapshot = None
 
+    frame_count = 0
+
     def capture():
-        nonlocal last_render
+        nonlocal last_render, frame_count
         if time.monotonic() - last_render < 1 / 15:
             return False
         env.sim.render()
@@ -120,7 +122,24 @@ def run(folder):
         last_render = time.monotonic()
         if rgb is None or rgb.shape[:2] != (540, 960) or float(np.mean(rgb)) <= 1:
             return False
-        frame.write(np.asarray(rgb[..., :3], dtype=np.uint8).tobytes(), tick)
+        pixels = np.asarray(rgb[..., :3], dtype=np.uint8).tobytes()
+        frame.write(pixels, tick)
+        frame_count += 1
+        if frame_count % 15 == 0:
+            import hashlib
+
+            write_json(
+                folder / "frame-proof.json",
+                {
+                    "run_id": request["run_id"],
+                    "native_session_id": binding["native_session_id"],
+                    "plan_hash": request["plan_hash"],
+                    "source": "native-renderer",
+                    "nonblack_frames": frame_count,
+                    "simulation_tick": tick,
+                    "rgb_sha256": hashlib.sha256(pixels).hexdigest(),
+                },
+            )
         return True
 
     def observe(status, error=None):

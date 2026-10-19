@@ -1,3 +1,135 @@
+# Academy 0.2.0 and GPU image preparation — 2026-10-19
+
+The complete Isaac dependency resolution exposed a conflict missed by top-level
+version comparison: Sim 6.0.1.0 requires torchvision 0.26.0, which requires torch
+2.11.0. The candidate is corrected to torch 2.11.0+cu128 / torchvision 0.26.0+cu128.
+Lab also requires Pydantic <2.12, so the native environment uses 2.11.10 and the
+independent Academy agent retains its existing frozen 2.13.5. No private repository
+was modified to force compatibility. Older dated candidate notes below are historical.
+
+Linux CPython 3.12 / manylinux_2_35 resolution produced a **245-package hashed
+runtime lock**. Frozen Academy export produced a **39-package agent closure**.
+Both passed hash-enforced Linux install dry runs; this does not prove an actual
+Linux installation. The sdist-only flatdict build uses pinned bootstrap tools.
+The official 595.58.03 driver installer was downloaded outside Academy and verified
+against the publisher's SHA256. It was not installed and licenses were not accepted.
+
+Private engine and materialized LFS assets were exported to a protected external
+input directory, then restored in a temporary directory. The restored sources passed
+exact commit, clean Git tree, fixed-scene and materialized-payload checks. No local
+Git credential helpers, remotes, hooks, untracked files or external data submodule
+were exported. Source repositories remain independent and unchanged.
+
+The Packer 1.16.1 / Amazon plugin 1.8.3 recipe passed formatting, syntax and full
+plugin-schema validation in a temporary copy with fake credentials/inputs and
+blocked cloud connectivity. The full schema check caught an unsupported account
+attribute, which was replaced with an explicit guarded build wrapper. The wrapper
+verifies the exact frozen credentials through a pinned official STS endpoint before
+Packer; tests cover a spoofed STS override and wrong-account rejection. This wrapper
+was not run against AWS. Build consent and license flags default false.
+
+Architecture review's bootstrap-hash extraction and worker-readability findings
+were fixed and regression-tested. Security review's IMDS token-probe improvement
+and STS endpoint finding were also addressed. No deferred review blocker remains.
+
+**Local verification:** 482 backend tests, 42 Playwright journeys, lint/format,
+frontend build, Lambda packaging, both Terraform validations and the disabled
+zero-resource plan passed. Packer schema validation uses no real account or build.
+The actual GPU image, installed driver, scene/render probe, browser/native video,
+five-step workflow and reset/recovery acceptance have **not run**. Neither local
+source release nor image inputs deploy the existing Onboarding application.
+
+See [GPU-IMAGE-BUILD.md](GPU-IMAGE-BUILD.md) and [COMMISSIONING.md](COMMISSIONING.md).
+
+---
+
+# Internal Flex commissioning preparation — 2026-10-19
+
+Compatibility was rechecked against clean internal Flex code at
+`18a96b78ee989fbf4e480e9db6a588c148c6adbe` and internal assets at
+`c57f12a04079a5f99405e1fcb818a3b7ccc52e5b`, not the unrelated OT2 checkout.
+The earlier Lab 2.3 / Sim 5.1 candidate is superseded by the pinned Python 3.12 /
+Lab 3.0.0b2.post1 / Sim 6.0.1.0 profile. Public wheel metadata and source audit
+are retained under `docs/evidence/ec2-gpu/`; source audit passes pins/payloads
+but correctly fails runtime/GPU readiness on the local Mac.
+
+`bash scripts/verify.sh` passed **463 backend tests**, lint/format, frontend
+build/format, the live-harness response-correlation unit test and both Terraform
+validations, including an isolated disabled plan with **zero resources**.
+All **42 Playwright browser journeys passed** (1.7 minutes), including the
+explicitly synthetic commissioning submit/refresh/cleanup journey. It checks the
+control path without asserting native video or qualifying its fixture worker.
+`bash scripts/build-lambda.sh` passed. After tightening operator preflight input
+validation, the 20 commissioning/evidence tests and Lambda packaging passed again.
+The live harness now follows actual POST submission and session remote-run polling
+URLs, rejects unrelated/stale responses, and checks origin. This corrects the
+architecture review finding. Security review found no concrete findings.
+
+No cloud administrative write, live browser commissioning, Isaac runtime execution,
+AMI build or resource creation was performed. The native frame proof, decoded video,
+cleanup and two-run browser acceptance still require an authorized GPU host.
+The browser/evidence checker never sets qualification; image provenance, isolation
+and interruption/recovery remain independent operator acceptance requirements.
+See [COMMISSIONING.md](COMMISSIONING.md) for the complete procedure.
+
+---
+
+# EC2 GPU pilot preparation validation — 2026-10-19
+
+Prepared in the attached `workflow-readiness-course` worktree without selecting an
+AWS account or creating paid resources. The public AWS Linux On-Demand/EBS price
+snapshot and hashes are saved in `docs/evidence/ec2-gpu/prices-2026-10-19.json`.
+This work adds an independent default-disabled `infra/ec2-gpu` root, a prepared-image
+contract, fixed-runner service, manifest renderer and acceptance matrix.
+
+`bash scripts/verify.sh` passed: **436 backend tests**, Ruff lint/format,
+TypeScript/Vite build, Prettier and both Terraform roots' validation. This includes
+**19 new offline preparation tests** on image pin validation, runner schema
+compatibility, price arithmetic/catalog gaps and rejecting the pending acceptance
+template as a qualification record. `bash scripts/build-lambda.sh` passed.
+`bash -n scripts/verify-ec2-gpu.sh` and `git diff --check` passed.
+
+`bash scripts/verify-ec2-gpu.sh` passed a fresh-state disabled plan with zero
+resources and no account discovery; it was also tested with ambient
+`TF_VAR_enabled=true` and an invalid AWS profile to verify the command-line false
+opt-in and profile isolation. Terraform 1.5.7 / locked AWS provider 6.66.0 were used.
+Independent security/architecture reviews reported no findings in this preparation
+scope. Current changes do not alter browser flows; the preceding course's 41
+Chromium journeys remain the separately recorded browser evidence, not GPU proof.
+
+No enabled/live Terraform plan, apply, EC2 launch, AMI build, worker enrollment,
+qualification, KVS probe/channel creation, native gate change, GPU frame, actual
+browser-to-Isaac run, native recovery or physical validation occurred. The exact
+approved image/accounts/network inputs and supervised GPU commissioning remain
+prerequisites. See [the pilot runbook](EC2-GPU-PILOT.md).
+
+# Workflow judgment course validation — 2026-10-19
+
+Validated locally in the attached `workflow-readiness-course` worktree against
+baseline `1e7f767` plus the uncommitted course changes. `bash scripts/build-lambda.sh`
+passed and produced the Python 3.12 / Linux x86_64 Lambda package.
+`bash scripts/verify.sh` passed: **417 backend tests**, Ruff lint/format, TypeScript /
+Vite production build, Prettier, Terraform formatting and configuration validation.
+Terraform used a fresh temporary `TF_DATA_DIR` with backend-disabled initialization;
+no AWS account selection or infrastructure apply occurred. Node 22.15.0 was used.
+
+All **41 Chromium journeys passed**, including five new course journeys. Course
+coverage includes incorrect gap/repair/recovery/conclusion answers, complete flow,
+refresh resume, restart, stale records, unsaved navigation, lost save response without
+replay, blocked reconciliation and recovery, and a 390px dark-theme viewport.
+Ten new backend cases run across SQLite and mocked DynamoDB, covering synthetic
+trial results, stage enforcement, forged-result rejection, version conflicts,
+authentication, ownership and origin isolation. Security and architecture reviews
+reported no findings. Desktop completion and mobile dark review screenshots were
+visually inspected; neither viewport showed horizontal overflow.
+
+The written explanation is not scientifically graded: completion requires the
+correct evidence-boundary choice and a nonblank explanation of at least 20 characters.
+All numerical and incident evidence is synthetic. No CI run, commit, push, AWS
+publication, native Isaac/GPU run or physical-device acceptance is established.
+Local preview uses loopback ports 5176/8003 and a separate demonstration database.
+See [the course contract](WORKFLOW-JUDGMENT-COURSE.md).
+
 # Repository fixes and preflight validation — 2026-10-16
 
 Branch `codex/workcell-onboarding` (local, not pushed). Backend: **407 passed** with the `native-worker` extra on Python 3.12 (Linux, cloud workspace); 394 passed + 13 `aiortc` skips on the Linux VM. Ruff lint/format, TypeScript, Prettier and `scripts/build-lambda.sh` passed. Vite main bundle fell from about 521 kB to 344 kB with no size warning.

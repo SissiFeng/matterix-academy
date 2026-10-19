@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "status": "prepared-not-qualified",
+  "worker_id": "ec2-flex-pilot-1",
+  "ubuntu_version": "24.04",
+  "python_version": "3.12",
+  "isaacsim_version": "6.0.1.0",
+  "isaaclab_version": "3.0.0b2.post1",
+  "isaaclab_source_commit": "ffff603eafc6b74264a5261cc0183d6a65390d78",
+  "driver_version": "595.58.03",
+  "academy_commit": "",
+  "engine_commit": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+  "asset_commit": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+  "simulation_only": true,
+  "controls": [],
+  "engine_repository": "ac-rad/Matterix-Internal",
+  "asset_repository": "ac-rad/Matterix_assets_internal",
+  "torch_version": "2.11.0+cu128",
+  "torchvision_version": "0.26.0+cu128",
+  "isaaclab_wheel_sha256": "dd32886588479ffd70f7348019aeac1582eb9ad16c40244f41d9f458f96f73c3"
+}

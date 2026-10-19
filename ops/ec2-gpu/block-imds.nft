@@ -1,0 +1,9 @@
+# Include in the prepared image's persistent nftables ruleset.
+# Root SSM can use its instance role; the worker/native children cannot.
+table inet academy_imds {
+  chain output {
+    type filter hook output priority -10; policy accept;
+    ip daddr 169.254.169.254 meta skuid != 0 reject
+    ip6 daddr fd00:ec2::254 meta skuid != 0 reject
+  }
+}

@@ -1,6 +1,6 @@
 [project]
 name = "matterix-academy"
-version = "0.1.0"
+version = "0.2.0"
 description = "Laboratory training workspace with AWS deployment and a Matterix integration contract"
 requires-python = ">=3.12"
 dependencies = [

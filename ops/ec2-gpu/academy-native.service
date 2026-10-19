@@ -1,0 +1,38 @@
+[Unit]
+Description=Academy fixed Isaac mixing worker (simulation only)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/academy-native/worker.token
+ConditionPathExists=/etc/academy-native/native-config.json
+ConditionPathExists=/etc/academy-native/image-manifest.json
+
+[Service]
+Type=simple
+User=academy-native
+Group=academy-native
+SupplementaryGroups=video render
+WorkingDirectory=/opt/academy-agent
+EnvironmentFile=/etc/academy-native/worker.env
+LoadCredential=worker.token:/etc/academy-native/worker.token
+ExecStart=/opt/academy-agent/.venv/bin/python -m academy.native_runner --config /etc/academy-native/native-config.json --api-url ${ACADEMY_WORKER_API_URL} --credential-file %d/worker.token --journal /var/lib/academy-native/journal.sqlite
+Restart=on-failure
+RestartSec=10
+StateDirectory=academy-native
+StateDirectoryMode=0700
+RuntimeDirectory=academy-native
+RuntimeDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/academy-native /run/academy-native /var/cache/academy-native
+Environment=HOME=/var/cache/academy-native
+Environment=XDG_CACHE_HOME=/var/cache/academy-native
+CacheDirectory=academy-native
+CacheDirectoryMode=0700
+# Do not set PrivateDevices: Isaac needs the GPU device nodes.
+# Unprivileged IMDS blocking belongs to the prepared-image firewall (see runbook).
+
+[Install]
+WantedBy=multi-user.target

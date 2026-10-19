@@ -15,10 +15,11 @@ from uuid import UUID
 from fastapi import HTTPException
 from pydantic import Field, model_validator
 
+from .commissioning import active_grant, reserve
 from .learning import readiness
 from .models import StrictModel
 from .native_plan import FIRST_TRANSFER, TransferCapability, intent_for, preflight
-from .recipes import MIXING, parse_plan
+from .recipes import MIXING, MixingPlan, parse_plan
 from .remote_run import RemoteRunRequest, RemoteRunSnapshot, check_run_snapshot, workflow_digest
 from .store import Conflict, Write
 
@@ -123,6 +124,23 @@ class RunService:
         self.enabled = enabled
         self.clock = clock
 
+    def commissioning(self, owner=None, worker=None, run=None):
+        return active_grant(self.store, self.clock(), subject=owner, worker=worker, run=run)
+
+    def execution_allowed(self, worker, run):
+        if run.get("commissioning_id"):
+            return self.commissioning(worker=worker, run=run) is not None
+        return self.enabled and worker.get("qualified", False)
+
+    def availability(self, owner):
+        grant = self.commissioning(owner)
+        return {
+            "enabled": self.enabled
+            or bool(grant and len(grant["run_ids"]) < grant["request"]["max_runs"]),
+            "commissioning": bool(grant),
+            "commissioning_expires": grant["expires"] if grant else None,
+        }
+
     def raw(self, run_id):
         record = self.store.get(RUNS, str(run_id))
         if record is None:
@@ -149,6 +167,7 @@ class RunService:
             )
         } | {
             "evidence": "native" if snapshot else "pending",
+            "commissioning": bool(run.get("commissioning_id")),
             "completed_steps": sum(s["status"] == "completed" for s in snapshot["steps"])
             if snapshot
             else 0,
@@ -183,7 +202,8 @@ class RunService:
             ):
                 raise Conflict
             return self.public(existing)
-        if not self.enabled:
+        grant = self.commissioning(owner)
+        if not self.enabled and not grant:
             raise HTTPException(503, "Native execution awaits Ubuntu qualification")
         session = self.store.get(owner, f"session#{session_id}")
         if not session:
@@ -191,6 +211,8 @@ class RunService:
         if session["version"] != data.expected_version or session["status"] == "running":
             raise Conflict
         plan = parse_plan(session["experiment"])
+        if grant and plan != MixingPlan():
+            raise HTTPException(422, "Commissioning permits only the fixed seed-42 mixing scene")
         if plan.course_id not in {"flex-first-transfer", MIXING}:
             raise HTTPException(422, "Only the qualified first-transfer scene is supported")
         if plan.course_id == "flex-first-transfer" and not readiness(session)["ready"]:
@@ -217,6 +239,7 @@ class RunService:
             "created_at": now,
             "updated_at": now,
             "snapshot": None,
+            "commissioning_id": grant["request"]["grant_id"] if grant else None,
             "control": None,
             "cleanup": None,
             "queue_key": f"{now:020.6f}#{run_id}",
@@ -226,8 +249,13 @@ class RunService:
             "run_id": run_id,
             "released": False,
         }
+        try:
+            commission_write = [reserve(grant, run_id)] if grant else []
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
         self.store.transact(
             [
+                *commission_write,
                 Write(
                     owner,
                     f"session#{session_id}",
@@ -281,18 +309,23 @@ class RunService:
 
     def claim(self, worker_id):
         worker = self.worker(worker_id)
-        if not self.enabled or not worker.get("qualified"):
-            raise HTTPException(403, "Native worker qualification is required")
+        grant = self.commissioning(worker=worker)
+        if not (self.enabled and worker.get("qualified")) and not grant:
+            raise HTTPException(
+                403, "Native worker qualification or commissioning authority is required"
+            )
         if worker.get("active_run"):
             # Recover a lost claim response; never assign a second instance/run.
             return self.machine_view(self.raw(worker["active_run"]), worker_id)
-        if worker["state"] != "ready":
+        if worker["state"] != "ready" and not (grant and worker["state"] == "quarantined"):
             return None
         for candidate in self.store.partition(QUEUE):
             run = self.raw(candidate["run_id"])
-            if run["status"] != "queued":
+            if run["status"] != "queued" or not self.execution_allowed(worker, run):
                 continue
-            if run["plan"]["course_id"] not in worker.get("scenes", []):
+            if not run.get("commissioning_id") and run["plan"]["course_id"] not in worker.get(
+                "scenes", []
+            ):
                 continue
             if run["plan"]["course_id"] == FIRST_TRANSFER and (
                 transfer_issues(worker, parse_plan(run["plan"])) != []
@@ -305,8 +338,12 @@ class RunService:
                 status="claimed",
                 worker_id=worker_id,
                 claim_token=secrets.token_urlsafe(32),
-                lease_expires=now + LEASE_SECONDS,
-                deadline=now + MAX_RUN_SECONDS,
+                lease_expires=min(now + LEASE_SECONDS, grant["expires"])
+                if run.get("commissioning_id")
+                else now + LEASE_SECONDS,
+                deadline=min(now + MAX_RUN_SECONDS, grant["expires"])
+                if run.get("commissioning_id")
+                else now + MAX_RUN_SECONDS,
                 updated_at=now,
                 runtime_manifest={
                     "engine_version": worker["engine_version"],
@@ -365,8 +402,8 @@ class RunService:
 
     def start(self, worker_id, run_id, data: StartRequest):
         worker, run = self.owned(worker_id, run_id, data.claim_token)
-        if not self.enabled or not worker.get("qualified"):
-            raise HTTPException(403, "Native execution is not qualified")
+        if not self.execution_allowed(worker, run):
+            raise HTTPException(403, "Native execution is not authorized")
         if run.get("start_command_id") == str(data.command_id):
             return self.machine_view(run, worker_id)
         if run["status"] != "claimed":
@@ -384,7 +421,7 @@ class RunService:
 
     def bind(self, worker_id, run_id, data: BindRequest):
         worker, run = self.owned(worker_id, run_id, data.claim_token)
-        if not worker.get("qualified") or (data.engine_version, data.asset_version) != (
+        if not self.execution_allowed(worker, run) or (data.engine_version, data.asset_version) != (
             worker["engine_version"],
             worker["asset_version"],
         ):
@@ -600,7 +637,7 @@ class RunService:
                 worker_id,
                 revised(
                     worker,
-                    state="ready" if verified else "quarantined",
+                    state="ready" if verified and worker.get("qualified") else "quarantined",
                     active_run=None if verified else run["run_id"],
                 ),
                 worker["version"],
