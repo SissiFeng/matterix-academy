@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "academy_commit": "674c1e22808a0b4ad3cca09b90204f0a370ee74f",
+  "archive_sha256": "d1cdf5ec4f0391e3a3563b61ec6b7c07a5e6b12c8ede7b560f4564635b636c6a",
+  "manifest_sha256": "50f51dc64a45b4595378fa04e86e7162d965e4013369f9f6930707334e502882",
+  "dependency_hashes": {
+    "uv.lock": "d14496619d62e5f5401a88c2f5b3e617198dc44fe75faa6e6a75d1ecd966565e",
+    "app/frontend/package-lock.json": "803dd066ed600367e3789db543eeabd71106d8d2fa9428d8737e0afa42cded69",
+    "ops/ec2-gpu/runtime-linux-x86_64.lock": "e185b481fae6bbedf045ca0b7ae6153c36c12ff37c9409068a2a6eec7e6e4884",
+    "ops/ec2-gpu/agent-requirements.lock": "596787966ddde8b29cc7f5b45e4a24fa33789c676de0c525a17243d4d71f150e"
+  },
+  "status": "source-release-not-gpu-qualified",
+  "academy_version": "0.2.0",
+  "local_tag": "academy-v0.2.0-internal-flex",
+  "validation": {
+    "backend_tests": 482,
+    "browser_journeys": 42,
+    "packer_plugin_schema": "passed offline",
+    "disabled_terraform_plan": "zero resources"
+  },
+  "deployment_status": "not-deployed",
+  "image_status": "not-built",
+  "browser_native_acceptance": "pending-authorized-host"
+}
