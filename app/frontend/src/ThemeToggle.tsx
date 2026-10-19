@@ -36,12 +36,11 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(stored);
   useEffect(() => apply(theme), [theme]);
   return (
-    <div className={s.track} role="radiogroup" aria-label="Color theme">
+    <div className={s.track} role="group" aria-label="Color theme">
       {options.map(({ value, label, Icon }) => (
         <button
           key={value}
-          role="radio"
-          aria-checked={theme === value}
+          aria-pressed={theme === value}
           aria-label={label}
           title={label}
           className={theme === value ? s.active : undefined}

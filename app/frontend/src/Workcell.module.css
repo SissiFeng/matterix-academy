@@ -1,4 +1,5 @@
 .page {
+  width: 100%;
   max-width: 1440px;
   margin: auto;
   padding: 42px 4.3% 70px;
@@ -772,7 +773,7 @@
   display: block;
   font-size: 55px;
   font-weight: 400;
-  color: #8b633c;
+  color: var(--warn);
 }
 .readinessCount span {
   display: block;

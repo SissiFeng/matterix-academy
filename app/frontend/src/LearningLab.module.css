@@ -130,7 +130,7 @@
   border: var(--hairline) solid var(--line-strong);
   border-radius: 4px;
   background: var(--surface-3);
-  color: #606431;
+  color: var(--brand-text);
   font-size: 10px;
 }
 .heading {

@@ -1040,7 +1040,7 @@
 }
 .paused {
   background: var(--warn-soft);
-  color: #766c34;
+  color: var(--warn);
 }
 .appFooter {
   margin-top: auto;

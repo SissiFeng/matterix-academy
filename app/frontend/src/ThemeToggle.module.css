@@ -32,6 +32,7 @@
   .track {
     grid-template-columns: 1fr;
     width: 34px;
+    margin-inline: auto;
     border-radius: var(--radius-lg);
   }
 }

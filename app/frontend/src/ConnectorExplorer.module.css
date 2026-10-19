@@ -308,9 +308,9 @@
   color: var(--muted);
 }
 .actorActive {
-  background: var(--ink);
+  background: var(--brand);
   color: var(--on-brand);
-  border-color: var(--ink);
+  border-color: var(--brand);
 }
 .flowArrow {
   color: #c4cebb;
@@ -394,9 +394,9 @@
   font-weight: 600 !important;
 }
 .primary {
-  background: var(--ink);
+  background: var(--brand);
   color: var(--on-brand);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--brand);
 }
 .primary:hover:not(:disabled) {
   background: var(--brand-strong);

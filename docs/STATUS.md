@@ -39,4 +39,4 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 
 - The enrolled machine credential for `borealis-flex-mixing` sits in ignored `build/native-installer/`. Move it to the host's credential store after install, or revoke and re-enroll if the install route changes.
 - `Claude outputs/dashboard-nav.patch` is an unapplied navigation-animation patch from an earlier session; apply or discard deliberately.
-- Branch `codex/workcell-onboarding` holds the workcell work and this round of fixes; it is local until pushed and reviewed.
+- Workcell onboarding and this round of fixes are tracked in [PR #4](https://github.com/SissiFeng/matterix-academy/pull/4); publication is verified separately by the deployment workflow and the live version manifest.

@@ -9,7 +9,7 @@ jobs:
   build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     outputs:
       artifact_name: ${{ steps.release.outputs.name }}
     steps:
