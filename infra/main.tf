@@ -321,5 +321,6 @@ resource "aws_cloudwatch_metric_alarm" "api_errors" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
   dimensions          = { FunctionName = aws_lambda_function.api.function_name }
-  # Wire an operator-owned SNS topic before production use.
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
 }

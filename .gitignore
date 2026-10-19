@@ -20,3 +20,7 @@ artifacts/
 !*.tfvars.example
 build/
 .DS_Store
+
+# Local agent planning notes and chat exports
+.planning/
+Claude outputs/

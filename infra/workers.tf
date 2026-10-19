@@ -134,4 +134,6 @@ resource "aws_cloudwatch_metric_alarm" "worker_errors" {
   threshold           = 5
   treat_missing_data  = "notBreaching"
   dimensions          = { FunctionName = aws_lambda_function.worker[each.key].function_name }
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
 }

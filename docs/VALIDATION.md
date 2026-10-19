@@ -1,3 +1,23 @@
+# Repository fixes and preflight validation — 2026-10-16
+
+Branch `codex/workcell-onboarding` (local, not pushed). Backend: **407 passed** with the `native-worker` extra on Python 3.12 (Linux, cloud workspace); 394 passed + 13 `aiortc` skips on the Linux VM. Ruff lint/format, TypeScript, Prettier and `scripts/build-lambda.sh` passed. Vite main bundle fell from about 521 kB to 344 kB with no size warning.
+
+Playwright: **35 of 36 journeys passed** against a preinstalled Chromium build 1194 (the pinned Playwright expects 1228, which could not be downloaded here). `workcell.spec.ts` "workspace pages fit a phone…" fails identically on the unmodified baseline commit `3e27fca` in this environment, so it is not attributed to this change; re-run on the pinned browser. Lazy loading exposed a real race in `SimulationLab` (a deep-link hash change before the lazily loaded page attached its listener); fixed and repeated 3× green.
+
+Terraform: all `.tf` files parse (python-hcl2). `terraform fmt`/`validate` could not run because no Terraform binary was reachable from either workspace; CI runs both. The new alert and budget resources default to off, so the existing plan is unchanged until variables are set.
+
+No AWS account was selected, nothing was deployed, and no native, GPU, media or physical behavior is established by this change.
+
+# Workcell onboarding workspace validation — 2026-10-02
+
+Verified locally against baseline `9840ed7` plus the uncommitted workcell onboarding changes: **392 backend tests** and **36 Chromium journeys** passed. The added coverage exercises owner-scoped device declarations on SQLite and mocked DynamoDB, version conflicts, concurrent atomic twin creation, rejected client-supplied authority fields, reset invalidation and the separation of teaching results from physical readiness. Five new browser journeys cover wizard persistence, the paired teaching execution loop, lost-receipt reconciliation without replay, conflicting edits, unsaved navigation and step protection, old paired trials outside the recent list window, deep links, and 390px layouts.
+
+`scripts/build-lambda.sh` produced the Linux x86_64 package. `scripts/verify.sh` passed with an empty temporary `TF_DATA_DIR`; the existing cached Terraform backend otherwise requested S3 credentials despite backend-disabled initialization. No AWS account was selected and no infrastructure operation was run. The final frontend build/format checks and all browser journeys were repeated after the route and wizard protection changes. The build reports a non-fatal main-bundle size warning (about 521 kB before gzip); the two existing upstream Python deprecation warnings remain.
+
+Desktop and phone Twin screenshots were inspected. The in-app browser completed a separate local guest flow, registered **Demo Flex / Demo workcell**, declared its intended capabilities, created its paired teaching session and opened the Twin view. This preview uses `.data/workcell-preview.sqlite` on loopback ports 5175/8002 and contains demonstration records only. Physical values remained unknown and physical execution remained disabled.
+
+This is local application and synthetic teaching evidence. No commit, push, CI run, AWS publication, live device connection, native Isaac/GPU execution, synchronization or physical validation is established by this change. See [workcell onboarding](WORKCELL-ONBOARDING.md) for implemented behavior and limitations.
+
 # AC deployment and outbound worker validation — 2026-10-01
 
 The control plane and learner site are deployed to AC account 247893369214 in ca-central-1. Initial deployment-time local validation passed **194 backend tests and 23 Chromium journeys**, plus Lambda packaging, frontend build and Terraform validation. Terraform created 54 resources and the post-deployment plan has no changes. Live machine authentication/revocation and DynamoDB persistence/conditional rollback passed. Learner handler checks used synthetic authorizer context; actual Cognito login, two-real-user isolation and all native/GPU/media acceptance remain pending. Native execution is disabled. See [the deployment evidence record](DEPLOYMENT-2026-10-01.md) for exact scope and artifacts. Earlier entries below describe their historical validation boundaries.

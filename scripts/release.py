@@ -65,6 +65,18 @@ def verify():
     return release
 
 
+def expected_native_gate() -> str:
+    """The deployment environment must state the gate it expects; default is disabled.
+
+    Enabling native execution is a reviewed Terraform change plus this explicit
+    declaration. Per-worker qualification still decides whether any run is dispatched.
+    """
+    value = os.environ.get("NATIVE_EXECUTION_EXPECTED", "false")
+    if value not in {"true", "false"}:
+        raise ValueError("NATIVE_EXECUTION_EXPECTED must be 'true' or 'false'")
+    return value
+
+
 def publish():
     release = verify()
     workers = json.loads(os.environ["WORKER_LAMBDA_FUNCTIONS"])
@@ -79,6 +91,7 @@ def publish():
         or len(set(names)) != 4
     ):
         raise ValueError("Exactly four distinct Lambda names are required")
+    native = expected_native_gate()
     expected_account = os.environ["AWS_ACCOUNT_ID"]
     if not re.fullmatch(r"[0-9]{12}", expected_account):
         raise ValueError("A pinned AWS account is required")
@@ -92,10 +105,14 @@ def publish():
     lambda_client = session.client("lambda")
     expected_code = base64.b64encode(bytes.fromhex(release["lambda_sha256"])).decode()
     # Preflight all functions before the first update, including the native gate.
+    # Terraform owns the gate; a release only proceeds when it matches the declared state.
     for name in names:
         current = lambda_client.get_function_configuration(FunctionName=name)
-        if current["Environment"]["Variables"].get("ACADEMY_REMOTE_ENABLED") != "false":
-            raise ValueError("This development pipeline requires native execution disabled")
+        if current["Environment"]["Variables"].get("ACADEMY_REMOTE_ENABLED") != native:
+            raise ValueError(
+                "Native execution gate differs from NATIVE_EXECUTION_EXPECTED; "
+                "reconcile Terraform and the deployment environment first"
+            )
     for name in names:
         lambda_client.update_function_code(FunctionName=name, ZipFile=LAMBDA.read_bytes())
         lambda_client.get_waiter("function_updated_v2").wait(

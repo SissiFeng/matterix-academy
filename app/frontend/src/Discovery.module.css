@@ -25,15 +25,15 @@
 .page p,
 .invitation p {
   line-height: 1.65;
-  color: #5c6b61;
+  color: var(--muted);
 }
 .page a {
-  color: #305a48;
+  color: var(--brand-text);
   text-underline-offset: 3px;
   overflow-wrap: anywhere;
 }
 .page small {
-  color: #617064;
+  color: var(--muted);
   line-height: 1.55;
 }
 .page svg {
@@ -44,7 +44,7 @@
   font-size: 10px;
   letter-spacing: 1.8px;
   font-weight: 700;
-  color: #63765e;
+  color: var(--muted);
   line-height: 1.6;
 }
 .hero {
@@ -70,19 +70,19 @@
   border-radius: 6px;
   padding: 12px 17px;
   min-height: 44px;
-  border: 1px solid #d6dccf;
+  border: var(--hairline) solid var(--line);
   font-weight: 600 !important;
 }
 .primary {
-  background: #365445;
-  color: #fffefa;
-  border-color: #365445;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--brand);
 }
 .primary:hover {
-  background: #294735;
+  background: var(--brand-strong);
 }
 .secondary {
-  background: #fffefa;
+  background: var(--surface-1);
 }
 .textButton {
   background: transparent;
@@ -95,8 +95,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 36px;
   padding: 34px;
-  background: #e9ede3;
-  border: 1px solid #d4dccb;
+  background: var(--surface-3);
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 12px;
 }
 .invitation h2 {
@@ -118,9 +118,9 @@
   text-align: left;
   align-items: center;
   gap: 15px;
-  background: #fffefa;
+  background: var(--surface-1);
   padding: 17px;
-  border: 1px solid #d2daca;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 7px;
   width: 100%;
   margin-top: 12px;
@@ -134,7 +134,7 @@
 }
 .invitePaths small {
   margin-top: 4px;
-  color: #617064;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -157,9 +157,9 @@
   flex: 1;
   align-items: center;
   padding-left: 16px;
-  border: 1px solid #d6dccf;
+  border: var(--hairline) solid var(--line);
   border-radius: 7px;
-  background: #fffefa;
+  background: var(--surface-1);
 }
 .searchBar input {
   flex: 1;
@@ -182,7 +182,7 @@
   margin-bottom: 20px;
 }
 .sectionHeading > span {
-  color: #667363;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -195,10 +195,10 @@
   gap: 24px;
 }
 .workflowCard {
-  border: 1px solid #d9ddd2;
+  border: var(--hairline) solid var(--line);
   border-radius: 11px;
   overflow: hidden;
-  background: #fffefa;
+  background: var(--surface-1);
   display: flex;
   flex-direction: column;
   transition:
@@ -206,13 +206,13 @@
     transform 0.2s;
 }
 .workflowCard:hover {
-  border-color: #9daf96;
+  border-color: var(--line-emph);
   transform: translateY(-3px);
 }
 .art {
   width: 100%;
   display: block;
-  background: #eeeee4;
+  background: var(--surface-3);
 }
 .art text {
   fill: currentColor;
@@ -231,7 +231,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #6b7569;
+  color: var(--muted);
   margin-bottom: 13px;
 }
 .cardBody h2 {
@@ -249,10 +249,10 @@
   margin-top: auto;
 }
 .tags span {
-  background: #eff1e9;
+  background: var(--surface-3);
   padding: 5px 8px;
   border-radius: 4px;
-  color: #53694f;
+  color: var(--muted);
   font-size: 10px;
 }
 .cardBody button {
@@ -264,7 +264,7 @@
   padding: 17px 0;
   margin-top: 20px;
   border: 0;
-  border-top: 1px solid #dfe3d8;
+  border-top: var(--hairline) solid var(--line);
   background: transparent;
   font-weight: 600;
   font-size: 13px;
@@ -276,7 +276,7 @@
 }
 .empty {
   text-align: center;
-  border: 1px dashed #adbda7;
+  border: 1px dashed var(--line-emph);
   padding: 50px 20px;
   border-radius: 8px;
 }
@@ -301,8 +301,8 @@
   display: flex;
   gap: 18px;
   padding: 25px;
-  background: #fffefa;
-  border: 1px solid #d9ddd2;
+  background: var(--surface-1);
+  border: var(--hairline) solid var(--line);
   border-radius: 8px;
 }
 .source h2 {
@@ -328,11 +328,11 @@
   gap: 20px;
 }
 .phases article {
-  border-top: 3px solid #b8c4ad;
+  border-top: 3px solid var(--line-strong);
   padding-top: 18px;
 }
 .phases article > span {
-  color: #8c9b80;
+  color: var(--faint);
   font-size: 30px;
   font-weight: 300;
 }
@@ -347,7 +347,7 @@
   grid-template-columns: 1.4fr 1fr;
   gap: 36px;
   margin-top: 40px;
-  background: #e9ede3;
+  background: var(--surface-3);
   border-radius: 10px;
   padding: 32px;
 }
@@ -361,7 +361,7 @@
   font-size: 14px;
 }
 .adaptation aside {
-  border-left: 1px solid #c9d2bf;
+  border-left: var(--hairline) solid var(--line-strong);
   padding-left: 32px;
 }
 .adaptation aside h3 {
@@ -374,8 +374,8 @@
   display: block;
 }
 .loopLesson {
-  background: #fffefa;
-  border: 1px solid #d6dccf;
+  background: var(--surface-1);
+  border: var(--hairline) solid var(--line);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -385,8 +385,8 @@
 }
 .stageNav button {
   border: 0;
-  border-right: 1px solid #d6dccf;
-  background: #edf0e7;
+  border-right: var(--hairline) solid var(--line);
+  background: var(--surface-3);
   padding: 21px 18px;
   display: flex;
   align-items: center;
@@ -395,15 +395,15 @@
   text-align: left;
 }
 .stageNav button > span {
-  color: #879878;
+  color: var(--faint);
   font-size: 19px;
 }
 .stageNav button > svg {
   margin-left: auto;
 }
 .stageNav button.active {
-  background: #365445;
-  color: #fffefa;
+  background: var(--brand);
+  color: var(--on-brand);
 }
 .stageNav button.active > span {
   color: #d4dab8;
@@ -427,7 +427,7 @@
   align-items: center;
   margin-top: 22px;
   padding-top: 18px;
-  border-top: 1px solid #dce0d5;
+  border-top: var(--hairline) solid var(--line);
   font-size: 11px;
   line-height: 1.6;
 }
@@ -460,8 +460,8 @@
   width: 56px;
   height: 90px;
   background: #e3ddc3;
-  border: 2px solid #71927f;
-  border-top: 7px solid #557261;
+  border: 2px solid var(--line-emph);
+  border-top: 7px solid var(--brand);
   margin: 15px auto;
   border-radius: 4px 4px 14px 14px;
   position: relative;
@@ -484,13 +484,13 @@
 .observations td {
   text-align: left;
   padding: 10px 8px;
-  border-bottom: 1px solid #d9dfd1;
+  border-bottom: var(--hairline) solid var(--line);
 }
 .observations p {
   font-size: 12px;
 }
 .question {
-  border: 1px solid #d0d9c7;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 6px;
   padding: 16px;
   min-width: 0;
@@ -513,7 +513,7 @@
   flex-shrink: 0;
 }
 .question p {
-  background: #edf1e7;
+  background: var(--surface-3);
   padding: 12px;
   font-size: 12px;
 }
@@ -521,7 +521,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  background: #e9eee0;
+  background: var(--surface-3);
   padding: 16px;
   margin-bottom: 20px;
   border-radius: 6px;
@@ -539,14 +539,14 @@
 .methodGrid > button {
   position: relative;
   text-align: left;
-  background: #fffefa;
-  border: 1px solid #d6dccf;
+  background: var(--surface-1);
+  border: var(--hairline) solid var(--line);
   padding: 19px 17px;
   border-radius: 7px;
 }
 .methodGrid > button.selectedMethod {
   border: 1px solid #557858;
-  background: #eaf0e3;
+  background: var(--surface-3);
   box-shadow: inset 0 0 0 1px #557858;
 }
 .methodGrid small {
@@ -568,13 +568,13 @@
   position: absolute;
   top: 15px;
   right: 12px;
-  color: #365b40;
+  color: var(--brand-text);
 }
 .route {
   margin-top: 22px;
   padding: 25px;
-  background: #fffefa;
-  border: 1px solid #d6dccf;
+  background: var(--surface-1);
+  border: var(--hairline) solid var(--line);
   border-radius: 8px;
 }
 .route ol {
@@ -587,11 +587,11 @@
   gap: 15px;
   align-items: flex-start;
   padding: 15px 0;
-  border-bottom: 1px solid #e0e4d9;
+  border-bottom: var(--hairline) solid var(--line);
 }
 .order {
-  background: #e6ecdf;
-  color: #4c6747;
+  background: var(--surface-3);
+  color: var(--brand-text);
   width: 25px;
   height: 25px;
   border-radius: 50%;
@@ -617,7 +617,7 @@
 .reorder button {
   display: grid;
   place-items: center;
-  border: 1px solid #d9dfd0;
+  border: var(--hairline) solid var(--line);
   border-radius: 4px;
   background: transparent;
   width: 32px;
@@ -627,7 +627,7 @@
   display: grid;
   grid-template-columns: 0.8fr 1.2fr 1fr;
   gap: 24px;
-  background: #e9ede3;
+  background: var(--surface-3);
   padding: 28px;
   border-radius: 10px;
 }
@@ -638,15 +638,15 @@
 }
 .gantryOptions button {
   padding: 13px;
-  border: 1px solid #cad5c2;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 6px;
-  background: #f8f8f2;
+  background: var(--surface-2);
   text-align: left;
 }
 .gantryOptions button.active {
-  background: #365445;
-  color: #fffefa;
-  border-color: #365445;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--brand);
 }
 .gantryOptions strong {
   font-size: 12px;
@@ -668,7 +668,7 @@
   width: 100%;
 }
 .gantryBoard svg text {
-  fill: #305340;
+  fill: var(--brand-text);
   font:
     10px "DM Sans",
     sans-serif;
@@ -700,7 +700,7 @@
   grid-template-columns: 0.7fr 1.3fr;
   gap: 40px;
   margin-top: 44px;
-  border-top: 1px solid #d0d8c7;
+  border-top: var(--hairline) solid var(--line-strong);
   padding-top: 35px;
 }
 .briefSection h2 {
@@ -728,18 +728,18 @@
     sans-serif;
   font-weight: 400;
   width: 100%;
-  border: 1px solid #cdd6c4;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 5px;
   padding: 12px;
-  background: #fffefa;
-  color: #25332d;
+  background: var(--surface-1);
+  color: var(--ink);
 }
 .briefForm textarea {
   resize: vertical;
   line-height: 1.6;
 }
 .briefForm textarea:focus-visible {
-  outline: 3px solid #b94825;
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
 .saveBar {
@@ -752,8 +752,8 @@
   font-size: 11px;
 }
 .success {
-  color: #305b3c !important;
-  background: #e4eedc;
+  color: var(--brand-text) !important;
+  background: var(--surface-3);
   padding: 12px 15px;
   border-radius: 6px;
 }
@@ -768,7 +768,7 @@
 .practice {
   margin-top: 28px;
   padding: 23px;
-  border: 1px solid #d4dccb;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 8px;
 }
 .practice h3 {
@@ -784,10 +784,10 @@
   gap: 12px;
 }
 .notebook button {
-  border: 1px solid #d4dccb;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 6px;
   padding: 18px;
-  background: #fffefa;
+  background: var(--surface-1);
   display: flex;
   align-items: center;
   gap: 15px;
@@ -845,7 +845,7 @@
   }
   .adaptation aside {
     border-left: 0;
-    border-top: 1px solid #c9d2bf;
+    border-top: var(--hairline) solid var(--line-strong);
     padding: 23px 0 0;
   }
   .detailHero .art {

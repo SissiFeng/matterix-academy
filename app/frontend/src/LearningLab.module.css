@@ -1,11 +1,11 @@
 .workspace {
-  --lesson-ink: #253b2c;
-  --lesson-muted: #5e6f62;
-  --lesson-line: #d5ddcf;
-  --lesson-green: #345c43;
-  --lesson-accent: #a64722;
-  --lesson-paper: #fffdf6;
-  --lesson-soft: #e9eee2;
+  --lesson-ink: var(--ink);
+  --lesson-muted: var(--muted);
+  --lesson-line: var(--line);
+  --lesson-green: var(--brand);
+  --lesson-accent: var(--danger);
+  --lesson-paper: var(--surface-1);
+  --lesson-soft: var(--surface-3);
   --lesson-radius: 9px;
   --lesson-gap: 22px;
   color: var(--lesson-ink);
@@ -15,7 +15,7 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.7px;
-  color: #586d55;
+  color: var(--muted);
 }
 .primary,
 .secondary {
@@ -31,25 +31,25 @@
   line-height: 1.5;
 }
 .primary {
-  background: #345c43;
-  color: #fffdf6;
+  background: var(--brand);
+  color: var(--on-brand);
 }
 .primary:hover:not(:disabled) {
-  background: #254b33;
+  background: var(--brand-strong);
 }
 .secondary {
-  background: #fffdf6;
-  border-color: #c6d2c0;
-  color: #345c43;
+  background: var(--surface-1);
+  border-color: var(--line-strong);
+  color: var(--brand-text);
 }
 .secondary:hover:not(:disabled) {
-  background: #edf2e5;
+  background: var(--surface-3);
 }
 .lessonCard {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
-  background: #e8eee0;
-  border: 1px solid #d5dfcb;
+  background: var(--surface-3);
+  border: var(--hairline) solid var(--line);
   border-radius: 12px;
   margin: 24px 0 28px;
   padding: 35px;
@@ -63,10 +63,10 @@
 }
 .lessonCard h2 em {
   font-style: normal;
-  color: #3c6349;
+  color: var(--brand-text);
 }
 .lessonCard p {
-  color: #536a57;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.9;
   margin-bottom: 20px;
@@ -75,7 +75,7 @@
   display: block;
   margin-top: 13px;
   font-size: 11px;
-  color: #5a6c57;
+  color: var(--muted);
 }
 .lessonIndex {
   align-self: center;
@@ -85,12 +85,12 @@
   gap: 16px;
   align-items: center;
   padding: 15px 0;
-  border-bottom: 1px solid #cdd7c4;
+  border-bottom: var(--hairline) solid var(--line-strong);
 }
 .lessonIndex > div > span {
   font-family: "Manrope", sans-serif;
   font-size: 13px;
-  color: #6b8063;
+  color: var(--muted);
 }
 .lessonIndex > div > div {
   flex: 1;
@@ -104,7 +104,7 @@
 }
 .lessonIndex small {
   font-size: 11px;
-  color: #61705b;
+  color: var(--muted);
   margin-top: 4px;
 }
 .breadcrumb {
@@ -127,10 +127,10 @@
 .source {
   margin-left: auto;
   padding: 6px 10px;
-  border: 1px solid #d5d7bb;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 4px;
-  background: #eeefdd;
-  color: #606431;
+  background: var(--surface-3);
+  color: var(--brand-text);
   font-size: 10px;
 }
 .heading {
@@ -148,7 +148,7 @@
 }
 .heading h1 em {
   font-style: normal;
-  color: #627358;
+  color: var(--muted);
 }
 .heading p {
   font-size: 12px;
@@ -160,7 +160,7 @@
   flex: 0 0 74px;
   width: 74px;
   height: 74px;
-  border: 3px solid #cad8bd;
+  border: 3px solid var(--line-strong);
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -207,7 +207,7 @@
 }
 .phaseNav > button.currentPhase {
   background: var(--lesson-soft);
-  border-color: #d1dbc7;
+  border-color: var(--line-strong);
 }
 .phaseNav strong {
   font-size: 12px;
@@ -226,23 +226,23 @@
   justify-content: center;
   min-width: 23px;
   height: 23px;
-  border: 1px solid #c9d1c1;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 50%;
   font:
     10px "Manrope",
     sans-serif;
-  color: #64795e;
+  color: var(--muted);
 }
 .currentPhase .phaseNumber {
-  background: #345c43;
-  color: #fffdf6;
-  border-color: #345c43;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--brand);
 }
 .pathNote {
   margin: 22px 8px;
   border-top: 1px solid var(--lesson-line);
   padding-top: 25px;
-  color: #728068;
+  color: var(--muted);
 }
 .pathNote p {
   margin-top: 11px;
@@ -252,7 +252,7 @@
 .phaseNav > a {
   display: inline-block;
   font-size: 10px;
-  color: #51694a;
+  color: var(--brand-text);
   padding: 8px;
 }
 .stage {
@@ -283,15 +283,15 @@
   font-size: 11px;
 }
 .viewTabs button[aria-pressed="true"] {
-  border-bottom-color: #426345;
-  color: #345c43;
+  border-bottom-color: var(--brand);
+  color: var(--brand-text);
   font-weight: 700;
 }
 .viewTabs button span {
   font-size: 8px;
   font-weight: 400;
-  background: #e8eddf;
-  color: #5b6d51;
+  background: var(--surface-3);
+  color: var(--muted);
   padding: 3px 4px;
   border-radius: 3px;
 }
@@ -315,15 +315,15 @@
   align-items: center;
   gap: 4px;
   background: transparent;
-  border: 1px solid #d4dccb;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 4px;
   padding: 7px 8px;
   font-size: 10px;
 }
 .objectButtons button[aria-pressed="true"] {
-  background: #f6ead9;
+  background: var(--warn-soft);
   border-color: #be7747;
-  color: #884424;
+  color: var(--accent);
 }
 .objectDot {
   width: 5px;
@@ -337,7 +337,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #f1f2e7;
+  background: var(--surface-3);
   font-size: 10px;
   color: var(--lesson-muted);
   border-top: 1px solid var(--lesson-line);
@@ -405,7 +405,7 @@
 .timeline {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background: #eff2e8;
+  background: var(--surface-3);
   padding: 14px 10px;
   border-top: 1px solid var(--lesson-line);
 }
@@ -416,10 +416,10 @@
   align-items: center;
   gap: 6px;
   font-size: 10px;
-  color: #71816a;
+  color: var(--muted);
 }
 .timeline > div > span {
-  border: 1px solid #bdc8b4;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: 50%;
   width: 20px;
   height: 20px;
@@ -434,19 +434,19 @@
   font-size: 8px;
 }
 .timeline .executed {
-  color: #3e6542;
+  color: var(--brand-text);
 }
 .timeline .executed > span {
-  color: #fffdf6;
-  background: #547653;
-  border-color: #547653;
+  color: var(--on-brand);
+  background: var(--brand);
+  border-color: var(--brand);
 }
 .timeline .nextAction {
-  color: #a04b27;
+  color: var(--accent);
   font-weight: 700;
 }
 .timeline .nextAction > span {
-  border-color: #b66b39;
+  border-color: var(--accent);
 }
 .companion {
   background: var(--lesson-paper);
@@ -470,12 +470,12 @@
     sans-serif;
   margin-top: 5px;
   letter-spacing: 1px;
-  color: #6c7a64;
+  color: var(--muted);
 }
 .companion p {
   font-size: 12px;
   line-height: 1.9;
-  color: #53664f;
+  color: var(--brand-text);
 }
 .companion h3 {
   font-size: 12px;
@@ -486,7 +486,7 @@
   color: var(--lesson-muted);
 }
 .comparison {
-  border-left: 2px solid #a2b994;
+  border-left: 2px solid var(--line-emph);
   padding: 4px 0 4px 13px;
   display: flex;
   flex-direction: column;
@@ -498,20 +498,20 @@
   color: var(--lesson-muted);
 }
 .comparison svg {
-  color: #7c9471;
+  color: var(--faint);
 }
 .note {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  background: #f1f0e4;
+  background: var(--surface-3);
   border-radius: 5px;
   padding: 12px;
 }
 .note svg {
   flex-shrink: 0;
   margin-top: 3px;
-  color: #78805d;
+  color: var(--muted);
 }
 .note p {
   font-size: 10px;
@@ -541,13 +541,13 @@
 }
 .companion input[type="radio"],
 .companion input[type="checkbox"] {
-  accent-color: #426546;
+  accent-color: var(--brand-text);
   flex: 0 0 auto;
   margin: 3px 0 0;
 }
 .companion .feedback {
   font-size: 11px;
-  color: #8b4d2d;
+  color: var(--accent);
   min-height: 20px;
 }
 .checklist {
@@ -637,7 +637,7 @@
   flex-direction: column;
   gap: 9px;
   padding: 14px;
-  background: #eaf0e2;
+  background: var(--surface-3);
   border-left: 2px solid #769765;
 }
 .expected span {
@@ -676,8 +676,8 @@
 }
 .success {
   padding: 17px;
-  border: 1px solid #bbd0ab;
-  background: #e9f1df;
+  border: var(--hairline) solid var(--line-strong);
+  background: var(--surface-3);
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -697,10 +697,10 @@
   justify-content: center;
   text-align: center;
   gap: 17px;
-  background: #eef1e8;
+  background: var(--surface-3);
 }
 .remote > svg {
-  color: #78916c;
+  color: var(--muted);
 }
 .remote h3 {
   font-size: 21px;
@@ -725,7 +725,7 @@
 }
 .connectionPath span {
   padding: 7px;
-  background: #dfe7d6;
+  background: var(--brand-soft);
   border-radius: 4px;
 }
 .lessonFooter {
@@ -855,5 +855,16 @@
   .primary,
   .secondary {
     transition: background-color 0.15s ease;
+  }
+}
+/* The teaching illustration keeps its light palette; soften it on dark surfaces. */
+:global(:root[data-theme="dark"]) .diagram {
+  filter: brightness(0.86) saturate(0.9);
+  border-radius: var(--radius);
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .diagram {
+    filter: brightness(0.86) saturate(0.9);
+    border-radius: var(--radius);
   }
 }

@@ -4,11 +4,13 @@ A laboratory automation onboarding and training platform spanning simulation pra
 
 The interface remains English. The implementation uses React + TypeScript and FastAPI, with independently deployable AWS infrastructure. See [product scope and training paths](docs/PRODUCT-SCOPE.md) for the distinction between simulation, physical-device training and currently available execution.
 
-**Current release:** a guided English-language first-transfer lesson plus the original three-stage serial dilution workspace. Explore the Flex, check the deck, predict liquid movement, run a 100 µL transfer step by step, explain the result and retry at 50 µL. Both exercises are explicitly synthetic: no physical robot, GPU physics, collision checks or chemical predictions are connected. The remote Ubuntu contract client supports capability checks, session/command requests and read-only reconciliation; live sessions remain disabled until the server implementation and streaming are connected and qualified.
+**Current release:** a guided English-language first-transfer lesson, the original three-stage serial dilution workspace, workflow discovery, connector learning and a workcell onboarding workspace. Lesson execution in the browser uses an explicitly synthetic teaching model: no physical robot, GPU physics, collision checks or chemical predictions are connected. A durable outbound-worker control plane, a pinned native Flex mixing adapter and KVS WebRTC viewer are implemented, but native execution stays disabled until a real Ubuntu host passes qualification. **See [docs/STATUS.md](docs/STATUS.md) for what is verified, what is only implemented, and what is blocked.**
 
 **AC development deployment:** [Open Academy](https://d2m3yolcjdy6d2.cloudfront.net). Infrastructure and application publication are verified; a learner invitation is needed for sign-in. The durable outbound-worker control plane is implemented, while native execution stays disabled pending Ubuntu qualification. See [deployment evidence and remaining acceptance](docs/DEPLOYMENT-2026-10-01.md) and [worker operations](docs/WORKER-CONTROL.md).
 
 ## Run locally
+
+The workspace now opens on **Overview → Onboard → Twin → Sim → Real → Runs**. Register a Flex, save its connection plan and capability declarations, pair a teaching session, and inspect saved trial evidence next to explicitly missing physical observations. The five-step device wizard persists progress and protects concurrent edits. See [workcell onboarding](docs/WORKCELL-ONBOARDING.md) for the user flow and evidence boundaries. Existing lessons and native simulation remain available under **Learn & Explore**.
 
 Requirements: Node.js 22.12+, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
@@ -64,5 +66,8 @@ Tests cover teaching behavior, conservation, error recovery, ownership, stale an
 | `docs/ARCHITECTURE.md` | State ownership, limitations and design choices |
 | `docs/LEARNING-EXPERIENCE.md` | Novice curriculum, target experience and implementation boundaries |
 | `docs/REMOTE-UBUNTU.md` | Administrator handoff for connecting the existing Ubuntu host |
+| `docs/STATUS.md` | Single current status: verified, implemented-but-unverified and blocked work |
+| `docs/ENDPOINT-COMMUNICATION.md` | Communication design across browser, AWS, host agent, Isaac runner, media and operator |
+| `app/backend/academy/native_plan.py` | Learner plan → native intent translation and scene-capability preflight |
 
 The existing Matterix code and asset repositories remain independent. Do not duplicate its physics or robot execution logic here.
