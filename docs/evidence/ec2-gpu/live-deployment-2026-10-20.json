@@ -1,0 +1,56 @@
+{
+  "checked_at_utc": "2026-10-20T13:21:33.693173+00:00",
+  "account": "247893369214",
+  "region": "ca-central-1",
+  "app_url": "https://d2m3yolcjdy6d2.cloudfront.net",
+  "deployed_commit": "674c1e22808a0b4ad3cca09b90204f0a370ee74f",
+  "web_files": 35,
+  "lambda_functions": {
+    "matterix-academy-dev": {
+      "sha256_base64": "9xaM1lvBjj2UVavD5MxHtUG42D6KehfXvIhboHDvNM4=",
+      "state": "Active",
+      "last_update": "Successful",
+      "remote_enabled": "false"
+    },
+    "matterix-academy-dev-authorizer": {
+      "sha256_base64": "9xaM1lvBjj2UVavD5MxHtUG42D6KehfXvIhboHDvNM4=",
+      "state": "Active",
+      "last_update": "Successful",
+      "remote_enabled": "false"
+    },
+    "matterix-academy-dev-reaper": {
+      "sha256_base64": "9xaM1lvBjj2UVavD5MxHtUG42D6KehfXvIhboHDvNM4=",
+      "state": "Active",
+      "last_update": "Successful",
+      "remote_enabled": "false"
+    },
+    "matterix-academy-dev-worker": {
+      "sha256_base64": "9xaM1lvBjj2UVavD5MxHtUG42D6KehfXvIhboHDvNM4=",
+      "state": "Active",
+      "last_update": "Successful",
+      "remote_enabled": "false"
+    }
+  },
+  "gpu_quota_vcpu": 0.0,
+  "quota_request": {
+    "Id": "03c9709eda424a1490b2f1451ef3feb3SWYBcdvl",
+    "Status": "CASE_OPENED",
+    "CaseId": "179250244900163",
+    "DesiredValue": 16.0
+  },
+  "existing_gpu_instances": [],
+  "new_gpu_instances": [],
+  "ami_built": false,
+  "native_video_accepted": false,
+  "refresh_recovery_accepted": false,
+  "reset_accepted": false,
+  "second_native_run_accepted": false,
+  "blocker": "AWS G/VT On-Demand quota is zero; support quota increase approval is required before starting a GPU build instance.",
+  "http_status": {
+    "/api/health": 200,
+    "/api/config": 200,
+    "/api/me": 401,
+    "/api/simulations": 401,
+    "/api/commissioning/report": 401
+  }
+}

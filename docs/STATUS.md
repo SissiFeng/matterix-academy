@@ -1,6 +1,6 @@
 # Status
 
-Single source for current project status. Updated 2026-10-19. Dated evidence lives in [VALIDATION.md](VALIDATION.md) and [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md); this page only summarizes it. When this page and an older document disagree, this page wins and the older document should be corrected.
+Single source for current project status. Updated 2026-10-20. Dated evidence lives in [VALIDATION.md](VALIDATION.md) and [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md); this page only summarizes it. When this page and an older document disagree, this page wins and the older document should be corrected.
 
 Legend: **Verified** = observed in a real environment. **Implemented** = code and automated tests exist; no real-environment evidence. **Blocked** = waiting on something outside this repository.
 
@@ -22,7 +22,7 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 | utoronto.ca self-registration | Verified (infrastructure) | A real learner sign-in and two-account isolation test are still owed |
 | Machine API, worker authorizer, lease reaper | Verified with synthetic workers | Smoke test: 21 assertions |
 | Automatic release on `main` | Implemented, flaky | One run stalled installing Playwright system packages; workflows now bound and retry that step |
-| Internal Flex source release and image recipe | Implemented; native browser acceptance pending | Academy 0.2.0 local release, independent internal source pins, 245-package Isaac / 39-package agent hash locks, official driver checksum, guarded Packer build and fixed-scene render probe; see [image build](GPU-IMAGE-BUILD.md). No paid resource, AMI or live deployment created |
+| Academy 0.2.0 / internal Flex GPU acceptance | AWS application deployed; GPU blocked | Four Lambda hashes and 35 web files verified at source `674c1e2`; global gate stays false. AWS GPU quota is 0 vCPU; 16-vCPU request is CASE_OPENED, case 179250244900163. No AMI/EC2 or native acceptance yet. See [live record](DEPLOYMENT-2026-10-20.md) |
 | Native gate in release | Implemented | `release.py` requires the Lambda gate to equal `NATIVE_EXECUTION_EXPECTED` (default `false`) |
 | Alarm notifications and budget | Implemented, off | Set `alarm_email` / `monthly_budget_usd`, review and apply the plan. The budget filter requires the `Application` cost-allocation tag to be activated |
 | Lambda concurrency | Risk | Account quota is 10 and shared with other workloads. Request an increase before a cohort |
