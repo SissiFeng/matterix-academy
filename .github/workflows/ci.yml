@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -26,25 +26,26 @@ jobs:
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: '1.5.7'
+      - uses: hashicorp/setup-packer@1aa358be5cf73883762b302a3a03abd66e75b232
+        with:
+          version: '1.16.1'
+      - name: Install the pinned Amazon plugin for offline image validation
+        run: packer init ops/ec2-gpu/image
       - run: uv sync --frozen
       - run: npm --prefix app/frontend ci --include=optional
       - run: bash scripts/build-lambda.sh
       - run: bash scripts/verify.sh
+        env:
+          PACKER_BIN: packer
       - name: Install Chromium for browser journeys
-        working-directory: app/frontend
-        # apt mirrors occasionally stall; bound each attempt instead of hanging the job.
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium && exit 0
-            echo "Playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        run: bash scripts/install-browser-ci.sh
       - run: npm run test:e2e
         working-directory: app/frontend
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: failure()
         with:
           name: browser-test-results
-          path: app/frontend/test-results
+          path: |
+            app/frontend/test-results
+            build/browser-install-logs
           retention-days: 7

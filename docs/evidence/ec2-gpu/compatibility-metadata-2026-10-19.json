@@ -1,0 +1,32 @@
+{
+  "checked_on": "2026-10-19",
+  "evidence_scope": "Public metadata and local internal source only; no installed Isaac/GPU/AMI acceptance",
+  "wheel_url": "https://pypi.nvidia.com/isaaclab/isaaclab-3.0.0b2.post1-py3-none-any.whl",
+  "wheel_sha256": "dd32886588479ffd70f7348019aeac1582eb9ad16c40244f41d9f458f96f73c3",
+  "metadata": {
+    "Requires-Python": ">=3.12",
+    "isaacsim_extra": "isaacsim[all,extscache]==6.0.1.0",
+    "torch": ">=2.10",
+    "torchvision": ">=0.25"
+  },
+  "lab_tag": "v3.0.0-beta2.patch1",
+  "lab_tag_commit": "ffff603eafc6b74264a5261cc0183d6a65390d78",
+  "driver_candidate": "595.58.03",
+  "driver_source": "https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/requirements.html",
+  "image_status": "not-built; Academy 0.2.0 source release locked separately; AMI requires authorized build",
+  "resolved_runtime": {
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "pydantic": "2.11.10",
+    "reason": "isaacsim-core 6.0.1.0 pins torchvision 0.26.0; torchvision pins torch 2.11.0; Isaac Lab requires pydantic <2.12"
+  },
+  "lock_target": "CPython 3.12 / x86_64-manylinux_2_35",
+  "package_count": 245,
+  "agent_package_count": 39,
+  "validation": "uv pip compile with hashes and Linux dry-run --require-hashes --no-deps --no-build-isolation succeeded; no Linux installation or GPU execution",
+  "driver_sha256": "8c0d4f967b7932c4ab5714272aee8103392b0a702c92afa555176d36205829f9",
+  "lock_sha256": {
+    "runtime-linux-x86_64.lock": "e185b481fae6bbedf045ca0b7ae6153c36c12ff37c9409068a2a6eec7e6e4884",
+    "agent-requirements.lock": "596787966ddde8b29cc7f5b45e4a24fa33789c676de0c525a17243d4d71f150e"
+  }
+}

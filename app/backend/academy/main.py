@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from ._version import __version__
 from .auth import identify, local_signer
 from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
@@ -18,13 +19,15 @@ from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
 from .store import Conflict, DynamoStore, SQLiteStore
 from .teaching import InvalidTransition, control, execute_step, initial_state, new_session
+from .workflow_course import KEY as COURSE_KEY
+from .workflow_course import CourseCommand, initial, transition
 
 
 def create_app(settings: Settings | None = None, store=None):
     settings = settings or Settings.from_env()
     app = FastAPI(
         title="Lab Onboarding",
-        version="0.1.0",
+        version=__version__,
         docs_url="/api/docs" if settings.runtime == "local" else None,
         redoc_url=None,
         openapi_url="/api/openapi.json" if settings.runtime == "local" else None,
@@ -75,7 +78,7 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": "0.1.0"}
+        return {"status": "ok", "version": __version__}
 
     @app.post("/api/runs/{run_id}/viewer")
     def viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):
@@ -84,7 +87,12 @@ def create_app(settings: Settings | None = None, store=None):
     @app.post("/api/runs/{run_id}/viewer/renew")
     def renew_viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):
         return app.state.media.viewer(
-            owner, run_id, data.client_id, connect=False, frame_received=data.frame_received
+            owner,
+            run_id,
+            data.client_id,
+            connect=False,
+            frame_received=data.frame_received,
+            frames_decoded=data.frames_decoded,
         )
 
     @app.get("/api/config")
@@ -172,6 +180,19 @@ def create_app(settings: Settings | None = None, store=None):
         app.state.store.put(owner, "discovery", notebook, data.expected_version or None)
         return notebook
 
+    @app.get("/api/workflow-course")
+    def workflow_course(owner: str = Depends(identify)):
+        return app.state.store.get(owner, COURSE_KEY) or initial()
+
+    @app.post("/api/workflow-course")
+    def workflow_course_command(data: CourseCommand, owner: str = Depends(identify)):
+        saved = app.state.store.get(owner, COURSE_KEY) or initial()
+        if saved["version"] != data.expected_version:
+            raise Conflict
+        result = transition(saved, data)
+        app.state.store.put(owner, COURSE_KEY, result, data.expected_version or None)
+        return result
+
     @app.get("/api/courses")
     def courses(owner: str = Depends(identify)):
         return COURSES
@@ -221,6 +242,30 @@ def create_app(settings: Settings | None = None, store=None):
             "missing_actions": missing,
         }
 
+    @app.get("/api/commissioning/report")
+    def commissioning_report(owner: str = Depends(identify)):
+        from .commissioning import KEY, PARTITION
+
+        grant = app.state.store.get(PARTITION, KEY)
+        if not grant or grant["request"]["subject"] != owner:
+            raise HTTPException(404, "Commissioning window not found")
+        return {
+            "grant_id": grant["request"]["grant_id"],
+            "expires": grant["expires"],
+            "worker_qualified": bool(
+                (app.state.store.get("system#workers", grant["request"]["worker_id"]) or {}).get(
+                    "qualified"
+                )
+            ),
+            "runs": [
+                {
+                    "run": app.state.runs.get(owner, run_id),
+                    "browser": app.state.store.get("system#browser-evidence", run_id),
+                }
+                for run_id in grant["run_ids"]
+            ],
+        }
+
     @app.get("/api/runs/status")
     def run_status(owner: str = Depends(identify)):
         return {
@@ -257,7 +302,7 @@ def create_app(settings: Settings | None = None, store=None):
     @app.get("/api/simulations")
     def simulations(owner: str = Depends(identify)):
         return {
-            "enabled": settings.remote_enabled,
+            **app.state.runs.availability(owner),
             "recipe": MixingPlan().model_dump(mode="json"),
             "sessions": [
                 session

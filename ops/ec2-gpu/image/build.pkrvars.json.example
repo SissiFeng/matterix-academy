@@ -1,0 +1,13 @@
+{
+  "confirm_paid_build": false,
+  "accept_nvidia_eula": false,
+  "region": "ca-central-1",
+  "expected_account_id": "",
+  "source_ami": "",
+  "vpc_id": "",
+  "subnet_id": "",
+  "ssh_cidr": "",
+  "input_dir": "/protected/academy-image-input",
+  "release_sha256": "",
+  "manifest_sha256": ""
+}

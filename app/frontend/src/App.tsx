@@ -48,6 +48,7 @@ import { DiscoveryInvitation } from "./DiscoveryInvitation";
 import ThemeToggle from "./ThemeToggle";
 
 const SimulationLab = lazy(() => import("./SimulationLab"));
+const WorkflowCourse = lazy(() => import("./WorkflowCourse"));
 const LearningLab = lazy(() => import("./LearningLab"));
 const ConnectorExplorer = lazy(() => import("./ConnectorExplorer"));
 const Workcell = lazy(() => import("./Workcell"));
@@ -382,6 +383,22 @@ function Dashboard({
               (run) => run.experiment.course_id === "flex-first-transfer",
             )}
           />
+          <section className={s.modelNote}>
+            <ShieldCheck size={24} />
+            <div>
+              <h2>Can this workflow run?</h2>
+              <p>
+                Find capability gaps, repair a teaching plan and reconcile an
+                unknown outcome. Synthetic practice · 15–20 minutes.
+              </p>
+              <button
+                className={s.primary}
+                onClick={() => onNavigate("workflow-course")}
+              >
+                Open workflow judgment course <ArrowRight size={16} />
+              </button>
+            </div>
+          </section>
           <div className={s.courseFeature}>
             <section>
               <span className={s.courseTag}>01 · FLEX FOUNDATIONS</span>
@@ -520,7 +537,7 @@ export default function App() {
   useEffect(() => {
     const routeChanged = (event: HashChangeEvent) => {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|workflow-course)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -550,7 +567,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -740,7 +757,11 @@ export default function App() {
                 <FlaskConical size={18} /> Simulation lab
               </button>
               <button
-                className={view === "learn" ? s.activeNav : ""}
+                className={
+                  view === "learn" || view === "workflow-course"
+                    ? s.activeNav
+                    : ""
+                }
                 onClick={() => nav("learn")}
               >
                 <BookOpen size={18} /> Learning lab
@@ -901,6 +922,11 @@ export default function App() {
                   onPractice={() => {
                     if (!busy) create();
                   }}
+                />
+              ) : view === "workflow-course" ? (
+                <WorkflowCourse
+                  onBack={() => nav("learn")}
+                  registerLeaveGuard={registerLeaveGuard}
                 />
               ) : view === "connector" ? (
                 <ConnectorExplorer />

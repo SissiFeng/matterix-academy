@@ -24,6 +24,8 @@ const labels: Record<string, string> = {
 };
 
 type Catalog = {
+  commissioning?: boolean;
+  commissioning_expires?: number | null;
   enabled: boolean;
   recipe: MixingPlan;
   sessions: SimulationSession[];
@@ -227,6 +229,12 @@ export default function SimulationLab() {
           </small>
         </div>
       </header>
+      {catalog?.commissioning && (
+        <p className={s.notice}>
+          Operator commissioning window · fixed seed 42 · at most two runs. This
+          host is not yet qualified for general learner access.
+        </p>
+      )}
       {error && (
         <div role="alert" className={s.alert}>
           {error}

@@ -88,7 +88,7 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 ## Operations and rollback
 
 - DynamoDB stores profiles and experiments durably. A Lambda restart does not lose teaching state. Monitor Lambda errors/throttles, API Gateway errors, DynamoDB throttling and budget alarms before inviting a cohort.
-- The error alarm exists without an SNS destination. Attach an operator-owned notification channel and set an account budget before production use.
+- AC dev operational error/throttle alarms now use a confirmed SNS email destination. Controlled alarm and recovery emails were observed on 2026-10-23. The user canceled the additional US$400 account budget; keep Academy budget creation disabled and preserve the organization's existing budget. Application-scoped budgets require verified payer-side activation of the cost allocation tag.
 - Session data is keyed by Cognito subject; never reuse a user identity for multiple students. The first release has no teacher administration UI or cross-user data access.
 - Source maps and tokens are not published in diagnostics. Browser tokens are short-lived and stored in session storage; users sign in again after expiration.
 - Retain a known-good application commit. For application rollback, rebuild that reviewed commit and publish its Lambda artifact and `index.html`; hashed assets from previous deployments are retained. Infrastructure changes require a separate reviewed Terraform plan.
@@ -101,3 +101,12 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 `terraform validate` verifies provider schema and internal references. It does not establish IAM entitlement, regional capacity, account quota, successful apply, OAuth behavior or live service health. Tests use mocked DynamoDB. A real plan/apply and deployed two-user exercise are required before claiming AWS deployment success.
 
 Primary references: [Cognito PKCE authorization](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html), [API Gateway JWT validation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html), [DynamoDB concurrency](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BestPractices_OptimisticLocking.html), [Isaac Sim streaming](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/manual_livestream_clients.html).
+
+## Prepared single EC2 GPU pilot (not deployed)
+
+The [EC2 GPU pilot plan](EC2-GPU-PILOT.md) adds a separate, default-disabled
+Terraform root at `infra/ec2-gpu/`. It reuses the worker API for one fixed native
+scene. The ordinary application deployment does not apply it or enable native
+execution. Current pricing evidence, image inputs and commissioning/browser
+acceptance steps are recorded there. `bash scripts/verify-ec2-gpu.sh` is an
+offline zero-resource check; it needs no selected AWS account.

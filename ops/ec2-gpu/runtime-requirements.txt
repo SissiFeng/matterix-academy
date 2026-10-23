@@ -1,0 +1,22 @@
+# Candidate internal Flex profile. Install only on an approved prepared Ubuntu GPU host.
+# Resolver input. Install the committed runtime-linux-x86_64.lock with hashes.
+--extra-index-url https://pypi.nvidia.com
+--extra-index-url https://download.pytorch.org/whl/cu128
+isaaclab[isaacsim,all]==3.0.0b2.post1
+isaacsim[all,extscache]==6.0.1.0
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+
+# Internal source package requirements; source itself stays in independent checkouts.
+psutil
+toml
+protobuf>=3.20.2,<5
+scikit-learn
+tensorboard
+# Used by the Academy native adapter loaded through PYTHONPATH.
+pydantic==2.11.10
+# Deterministic source-package install/build tooling.
+pip==26.1.2
+setuptools==81.0.0
+wheel==0.47.0
+uv==0.11.18

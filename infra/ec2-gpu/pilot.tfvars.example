@@ -1,0 +1,14 @@
+# Preparation only. No account, subnet or AMI has been selected.
+enabled                = false
+region                 = "ca-central-1"
+instance_type          = "g6.4xlarge"
+root_volume_gib        = 300
+worker_id              = "ec2-flex-pilot-1"
+expected_account_id    = ""
+vpc_id                 = ""
+subnet_id              = ""
+prepared_ami_id        = ""
+prepared_ami_owner     = ""
+image_manifest_sha256  = ""
+worker_api_url         = ""
+expires_on             = ""

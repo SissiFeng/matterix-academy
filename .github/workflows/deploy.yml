@@ -8,8 +8,8 @@ permissions:
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     outputs:
       artifact_name: ${{ steps.release.outputs.name }}
     steps:
@@ -25,20 +25,19 @@ jobs:
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: '1.5.7'
+      - uses: hashicorp/setup-packer@1aa358be5cf73883762b302a3a03abd66e75b232
+        with:
+          version: '1.16.1'
+      - name: Install the pinned Amazon plugin for offline image validation
+        run: packer init ops/ec2-gpu/image
       - run: uv sync --frozen
       - run: npm --prefix app/frontend ci --include=optional
       - run: bash scripts/build-lambda.sh
       - run: bash scripts/verify.sh
+        env:
+          PACKER_BIN: packer
       - name: Install Chromium for browser journeys
-        working-directory: app/frontend
-        # apt mirrors occasionally stall; bound each attempt instead of hanging the job.
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium && exit 0
-            echo "Playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        run: bash scripts/install-browser-ci.sh
       - run: npm run test:e2e
         working-directory: app/frontend
       - name: Bind the tested files to this commit
@@ -59,12 +58,14 @@ jobs:
         if: failure()
         with:
           name: deployment-browser-results-${{ github.sha }}-${{ github.run_attempt }}
-          path: app/frontend/test-results
+          path: |
+            app/frontend/test-results
+            build/browser-install-logs
           retention-days: 7
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read

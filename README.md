@@ -24,6 +24,16 @@ Choose **Start learning Flex** for the guided first lesson. Its checks and predi
 
 The original **Start an experiment** opens the dilution sandbox. Its default method reaches 50%, 25% and 12.5% stock concentration under instantaneous ideal mixing. Delete the first tip pickup or set a transfer above the teaching model's 300 µL limit to explore failure feedback. This is not a physical mixing model or a specification for every Flex pipette.
 
+The Learning lab also includes **Can this workflow run?**, an English workflow
+judgment course: identify gaps, repair a synthetic dilution plan, inspect teaching
+results and reconcile a scripted timeout before concluding. Progress is saved per
+learner. See [course behavior and evidence boundary](docs/WORKFLOW-JUDGMENT-COURSE.md).
+
+The **0.2.0 internal Flex source release** includes bounded browser commissioning
+and a hash-locked GPU image recipe. See [image build and release inputs](docs/GPU-IMAGE-BUILD.md)
+and [browser commissioning](docs/COMMISSIONING.md). This does not enable the live
+GPU service or label teaching results as native evidence.
+
 ## What is included
 
 - Three-step account introduction followed by a five-stage, checkpoint-based novice lesson, equipment glossary, preparation checklist, predictions, step explanations and reflection.

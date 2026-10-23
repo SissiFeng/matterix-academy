@@ -1,7 +1,7 @@
 {
   "name": "matterix-academy-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -11,8 +11,11 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test:e2e": "playwright test",
-    "format": "prettier --write src tests *.ts *.json index.html",
-    "format:check": "prettier --check src tests *.ts *.json index.html"
+    "format": "prettier --write src tests *.mjs *.mts *.ts *.json index.html",
+    "format:check": "prettier --check src tests *.mjs *.mts *.ts *.json index.html",
+    "commissioning:live": "node commissioning.mjs",
+    "acceptance:learners": "node learner-acceptance.mjs",
+    "test:acceptance": "node --test learner-acceptance.test.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.0",

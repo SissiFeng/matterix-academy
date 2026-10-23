@@ -116,6 +116,20 @@ class Profile(StrictModel):
 
 COURSES = [
     {
+        "id": "workflow-readiness",
+        "number": "03",
+        "title": "Can this workflow run?",
+        "subtitle": "Find capability gaps, repair a synthetic plan and reconcile an unknown outcome.",
+        "duration": "15–20 min",
+        "level": "Workflow judgment",
+        "objectives": [
+            "Distinguish declarations from evidence",
+            "Repair and test a teaching workflow",
+            "Reconcile before retrying",
+        ],
+        "model_note": "Synthetic teaching and scripted incidents only. No hardware authorization.",
+    },
+    {
         "id": "flex-first-transfer",
         "number": "01",
         "title": "From manual pipetting to your first automated transfer",

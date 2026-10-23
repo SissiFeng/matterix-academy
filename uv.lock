@@ -654,7 +654,6 @@ wheels = [
 
 [[package]]
 name = "matterix-academy"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },

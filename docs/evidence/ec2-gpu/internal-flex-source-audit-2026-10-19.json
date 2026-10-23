@@ -1,0 +1,43 @@
+{
+  "profile": {
+    "engine_repository": "ac-rad/Matterix-Internal",
+    "engine_commit": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+    "asset_repository": "ac-rad/Matterix_assets_internal",
+    "asset_commit": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+    "isaaclab_source_commit": "ffff603eafc6b74264a5261cc0183d6a65390d78",
+    "driver_version": "595.58.03",
+    "python_version": "3.12",
+    "isaaclab_version": "3.0.0b2.post1",
+    "isaacsim_version": "6.0.1.0",
+    "torch_version": "2.11.0+cu128",
+    "torchvision_version": "0.26.0+cu128",
+    "isaaclab_wheel_sha256": "dd32886588479ffd70f7348019aeac1582eb9ad16c40244f41d9f458f96f73c3"
+  },
+  "checks": {
+    "engine_pin": true,
+    "assets_pin": true,
+    "fixed_scene_source": true,
+    "asset_payloads_materialized": true,
+    "runtime_versions": false,
+    "linux_x86_64": false,
+    "gpu_present": false
+  },
+  "issues": [
+    "Pinned Isaac Python environment could not be verified",
+    "No NVIDIA driver/GPU was observed on this host"
+  ],
+  "sources": {
+    "engine": {
+      "commit": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+      "clean": true
+    },
+    "assets": {
+      "commit": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+      "clean": true
+    }
+  },
+  "lfs_pointer_count": 0,
+  "ready_for_commissioning": false,
+  "native_verified": false,
+  "profile_sha256": "7dd5cfbafeebf8a5e51408b45f193ddf2c79cde5069bf2ce2563267b68c2f61b"
+}
