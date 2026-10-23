@@ -9,8 +9,12 @@ import ast
 import hashlib
 import json
 import re
+from itertools import islice
 from pathlib import PurePosixPath
 
+MAX_METADATA_BYTES = 4_000_000
+MAX_SOURCE_FILE_BYTES = 512_000
+_MAX_AST_NODES = 100_000
 _SHA = re.compile(r"[0-9a-f]{40}\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
@@ -46,6 +50,21 @@ def _hash(value):
 def _require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def serialized_candidate(candidate: dict) -> str:
+    """Use the same bounded UTF-8 JSON representation for generation and publishing."""
+    _require(isinstance(candidate, dict), "Candidate must be an object")
+    try:
+        text = (
+            json.dumps(candidate, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False)
+            + "\n"
+        )
+        size = len(text.encode("utf-8"))
+    except (TypeError, ValueError, UnicodeError, RecursionError) as error:
+        raise ValueError("Candidate must be bounded UTF-8 JSON") from error
+    _require(size <= MAX_METADATA_BYTES, "Candidate metadata byte limit exceeded")
+    return text
 
 
 def _path(value, *, prefix=False):
@@ -262,6 +281,10 @@ def _source_evidence(sources, tree, key, limits, *, metadata=False):
                 "bytes": len(raw),
             }
         total += result[path]["bytes"]
+        _require(
+            result[path]["bytes"] <= MAX_SOURCE_FILE_BYTES,
+            f"Source file byte limit exceeded: {path}",
+        )
         _require(total <= limits["max_source_bytes"], "Source byte limit exceeded")
     return result
 
@@ -322,6 +345,10 @@ def _discover(sources, evidence, key, revision):
                         "Computed or unpacked workflow keys require review.",
                     )
 
+        _require(
+            evidence[path]["bytes"] <= MAX_SOURCE_FILE_BYTES,
+            f"Source file byte limit exceeded before parsing: {path}",
+        )
         try:
             module = ast.parse(text, filename=path)
         except (SyntaxError, ValueError, RecursionError, MemoryError) as error:
@@ -331,8 +358,8 @@ def _discover(sources, evidence, key, revision):
                 "Python source could not be parsed; feature discovery is incomplete.",
             )
             continue
-        nodes = list(ast.walk(module))
-        _require(len(nodes) <= 100000, f"AST node limit exceeded: {path}")
+        nodes = list(islice(ast.walk(module), _MAX_AST_NODES + 1))
+        _require(len(nodes) <= _MAX_AST_NODES, f"AST node limit exceeded: {path}")
         aliases = {"gym": "gym", "gymnasium": "gymnasium"}
         for node in nodes:
             if isinstance(node, ast.Import):
@@ -699,7 +726,9 @@ def build_candidate(policy: dict, approved_profile: dict, engine: dict, assets: 
         diagnostics.extend(found)
     # A JSON round trip owns all nested values instead of leaking mutable policy aliases.
     return json.loads(
-        _json(_compose(policy, approved_profile, repositories, discoveries, diagnostics))
+        serialized_candidate(
+            _compose(policy, approved_profile, repositories, discoveries, diagnostics)
+        )
     )
 
 
@@ -707,6 +736,7 @@ def validate_candidate(candidate: dict, policy: dict, approved_profile: dict) ->
     """Check schema, identity and internal evidence consistency, not authenticity."""
     _context(policy, approved_profile)
     _require(isinstance(candidate, dict), "Candidate must be an object")
+    serialized_candidate(candidate)
     _require(
         candidate.get("status") == "candidate-unqualified"
         and candidate.get("activation_allowed") is False
@@ -942,4 +972,8 @@ def render_report(candidate: dict) -> str:
         "Fresh native evidence must cover the exact candidate engine/assets pair, real decoded browser video, refresh recovery of the same run, verified reset/release and a second complete run. Candidate generation provides none of that evidence.",
         "",
     ]
-    return "\n".join(lines)
+    report = "\n".join(lines)
+    _require(
+        len(report.encode("utf-8")) <= MAX_METADATA_BYTES, "Report metadata byte limit exceeded"
+    )
+    return report

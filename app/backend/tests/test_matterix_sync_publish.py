@@ -469,3 +469,96 @@ def test_cli_keeps_validation_diagnostics_out_of_publication_json(
         assert output.out == ""
         assert "Candidate publication failed" in output.err
         assert published == []
+
+
+@pytest.mark.parametrize("deleted", ["candidate", "report", "both", "neither"])
+def test_actual_ci_metadata_guard_validates_deletions_and_skips_unchanged(tmp_path, deleted):
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    step = workflow.split("      - name: Validate changed upstream candidate metadata\n", 1)[1]
+    step = step.split("\n      -", 1)[0]
+    script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull}
+
+    def git(*args):
+        return subprocess.run(
+            [
+                "git",
+                "-c",
+                "commit.gpgSign=false",
+                "-c",
+                "tag.gpgSign=false",
+                "-c",
+                f"core.hooksPath={os.devnull}",
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                *args,
+            ],
+            cwd=repository,
+            env=env,
+            check=True,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        ).stdout.strip()
+
+    git("init", "--initial-branch=main")
+    paths = {
+        "candidate": repository / "ops/matterix-sync/candidate.json",
+        "report": repository / "docs/evidence/matterix-sync/latest.md",
+    }
+    for path in paths.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("Synthetic metadata fixture\n")
+    git("add", ".")
+    git("commit", "-m", "Fixture baseline")
+    baseline = git("rev-parse", "HEAD")
+    for name, path in paths.items():
+        if deleted in {name, "both"}:
+            path.unlink()
+    # Always advance HEAD: the unchanged case must ignore unrelated changes.
+    (repository / "README.md").write_text("Unrelated fixture change\n")
+    git("add", "-A")
+    git("commit", "-m", "Fixture update")
+
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    uv = binaries / "uv"
+    uv.write_text(
+        '#!/bin/sh\nprintf "%s\\n" "$@" > "$VALIDATOR_CALLED"\n'
+        'test "$#" -eq 9 && test -f "$7" && test -f "$9"\n'
+    )
+    uv.chmod(0o700)
+    called = tmp_path / "validator-called"
+    result = subprocess.run(
+        ["bash", "-c", script],
+        cwd=repository,
+        env={
+            **env,
+            "PATH": f"{binaries}{os.pathsep}{os.environ['PATH']}",
+            "BASE_COMMIT": baseline,
+            "VALIDATOR_CALLED": str(called),
+        },
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    if deleted == "neither":
+        assert result.returncode == 0
+        assert not called.exists()
+    else:
+        assert result.returncode != 0
+        assert called.read_text().splitlines() == [
+            "run",
+            "--frozen",
+            "python",
+            "scripts/matterix-sync.py",
+            "check",
+            "--candidate",
+            "ops/matterix-sync/candidate.json",
+            "--report",
+            "docs/evidence/matterix-sync/latest.md",
+        ]

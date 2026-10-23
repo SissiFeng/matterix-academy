@@ -33,7 +33,17 @@ def fixture_repo(tmp_path):
     source.parent.mkdir()
     source.write_text("raise RuntimeError('Never import upstream')\n")
     git(root, "add", ".")
-    git(root, "commit", "--quiet", "-m", "Synthetic intake fixture")
+    git(
+        root,
+        "-c",
+        "commit.gpgSign=false",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "commit",
+        "--quiet",
+        "-m",
+        "Synthetic intake fixture",
+    )
     sha = git(root, "rev-parse", "HEAD")
     git(root, "update-ref", "refs/remotes/origin/main", sha)
     return root, source, sha

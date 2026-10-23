@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           candidate=ops/matterix-sync/candidate.json
           report=docs/evidence/matterix-sync/latest.md
-          if [ -f "$candidate" ] && ! git diff --quiet "$BASE_COMMIT" HEAD -- "$candidate" "$report"; then
+          if ! git diff --quiet "$BASE_COMMIT" HEAD -- "$candidate" "$report"; then
             uv run --frozen python scripts/matterix-sync.py check --candidate "$candidate" --report "$report"
           fi
       - run: npm --prefix app/frontend ci --include=optional

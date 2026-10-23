@@ -5,7 +5,13 @@ import hashlib
 import json
 
 import pytest
-from academy.matterix_sync import build_candidate, render_report, validate_candidate
+from academy import matterix_sync
+from academy.matterix_sync import (
+    build_candidate,
+    render_report,
+    serialized_candidate,
+    validate_candidate,
+)
 
 TASK = "source/matterix_tasks/tasks.py"
 ACTION = "source/matterix_sm/primitive_actions/pour.py"
@@ -472,4 +478,67 @@ def test_report_never_hides_an_activation_flag(inputs):
     candidate["activation_allowed"] = True
     resign(candidate)
     with pytest.raises(ValueError, match="cannot activate"):
+        render_report(candidate)
+
+
+@pytest.mark.parametrize("character", ["x", "π"])
+def test_oversized_source_is_rejected_before_ast_parse(inputs, monkeypatch, character):
+    text = "#" + character * (matterix_sync.MAX_SOURCE_FILE_BYTES // len(character.encode()) + 1)
+    inputs[2]["base_sources"][ACTION] = text
+    inputs[2]["base_tree"] = [item for item in inputs[2]["base_tree"] if item["path"] != ACTION]
+    inputs[2]["base_tree"].append(entry(ACTION, text))
+
+    def forbidden_parse(*args, **kwargs):
+        pytest.fail("Source size must be checked before parsing any oversized snapshot")
+
+    monkeypatch.setattr(matterix_sync.ast, "parse", forbidden_parse)
+    with pytest.raises(ValueError, match="Source file byte limit exceeded"):
+        build_candidate(*inputs)
+
+
+def test_ast_walk_stops_at_the_node_limit_instead_of_collecting_every_node(inputs, monkeypatch):
+    consumed = 0
+
+    def excessive_walk(module):
+        nonlocal consumed
+        while True:
+            consumed += 1
+            if consumed > 100_001:
+                pytest.fail("AST walk consumed beyond its bounded sentinel")
+            yield matterix_sync.ast.Pass()
+
+    monkeypatch.setattr(matterix_sync.ast, "walk", excessive_walk)
+    with pytest.raises(ValueError, match="AST node limit exceeded"):
+        build_candidate(*inputs)
+    assert consumed == 100_001
+
+
+@pytest.mark.parametrize("operation", ["build", "serialize", "validate"])
+def test_candidate_size_limit_matches_the_exact_pretty_utf8_artifact(
+    inputs, monkeypatch, operation
+):
+    candidate = build_candidate(*inputs)
+    serialized = serialized_candidate(candidate)
+    assert json.loads(serialized) == candidate
+    assert serialized.endswith("\n")
+    monkeypatch.setattr(matterix_sync, "MAX_METADATA_BYTES", len(serialized.encode("utf-8")) - 1)
+    with pytest.raises(ValueError, match="Candidate metadata byte limit exceeded"):
+        if operation == "build":
+            build_candidate(*inputs)
+        elif operation == "serialize":
+            serialized_candidate(candidate)
+        else:
+            validate_candidate(candidate, *inputs[:2])
+
+
+def test_report_enforces_utf8_byte_limit_and_accepts_exact_boundary(inputs, monkeypatch):
+    inputs[0]["surfaces"][0]["label"] = "Engine αβγ"
+    update(inputs[2], ACTION, "class Pour:\n    volume = 100\n")
+    candidate = build_candidate(*inputs)
+    report = render_report(candidate)
+    size = len(report.encode("utf-8"))
+    monkeypatch.setattr(matterix_sync, "MAX_METADATA_BYTES", size)
+    assert render_report(candidate) == report
+    monkeypatch.setattr(matterix_sync, "MAX_METADATA_BYTES", size - 1)
+    with pytest.raises(ValueError, match="Report metadata byte limit exceeded"):
         render_report(candidate)

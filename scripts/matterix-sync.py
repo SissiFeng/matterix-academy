@@ -15,7 +15,13 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "app/backend"))
 
-from academy.matterix_sync import build_candidate, render_report, validate_candidate  # noqa: E402
+from academy.matterix_sync import (  # noqa: E402
+    MAX_METADATA_BYTES,
+    build_candidate,
+    render_report,
+    serialized_candidate,
+    validate_candidate,
+)
 from academy.runtime_inventory import PROFILE  # noqa: E402
 
 POLICY_PATH = ROOT / "ops/matterix-sync/policy.json"
@@ -231,11 +237,10 @@ def main():
         assets = snapshot(args.assets_root, "assets", policy, profile, args.expected_assets_commit)
         candidate = build_candidate(policy, profile, engine, assets)
         validate_candidate(candidate, policy, profile)
-        write_output(
-            args.output_dir / "candidate.json",
-            json.dumps(candidate, indent=2, sort_keys=True) + "\n",
-        )
-        write_output(args.output_dir / "report.md", render_report(candidate))
+        candidate_text = serialized_candidate(candidate)
+        report_text = render_report(candidate)
+        write_output(args.output_dir / "candidate.json", candidate_text)
+        write_output(args.output_dir / "report.md", report_text)
         print(
             json.dumps(
                 {
@@ -247,12 +252,15 @@ def main():
             )
         )
     elif args.command == "check":
-        if args.candidate.stat().st_size > 40_000_000:
+        if args.candidate.stat().st_size > MAX_METADATA_BYTES:
             raise ValueError("Candidate exceeds the intake limit")
         candidate = json.loads(args.candidate.read_text())
         validate_candidate(candidate, policy, profile)
-        if args.report is not None and args.report.read_text() != render_report(candidate):
-            raise ValueError("Report does not match the validated candidate")
+        if args.report is not None:
+            if args.report.stat().st_size > MAX_METADATA_BYTES:
+                raise ValueError("Report exceeds the intake limit")
+            if args.report.read_text() != render_report(candidate):
+                raise ValueError("Report does not match the validated candidate")
         print("Candidate integrity and policy binding passed; runtime remains unqualified.")
     else:
         print("Internal repository policy and Academy integration paths are valid.")

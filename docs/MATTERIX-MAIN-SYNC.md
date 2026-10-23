@@ -18,6 +18,8 @@ The job is bounded to 20 minutes on a GitHub-hosted CPU runner. It has no AWS cr
 
 The candidate identity binds the source snapshots, policy, approved baseline, and Academy adapter evidence. Repeated identical observations reuse the candidate. An existing open **or closed** PR is not duplicated or reopened. A conflicting branch, unexpected extra change, changed evidence, stale Academy main, or denied access fails the publication. The publisher never force-pushes, overwrites a human branch, merges a PR, edits approved runtime pins, or marks a worker qualified.
 
+Intake rejects an individual Python source file above 512,000 UTF-8 bytes before parsing and stops AST traversal at 100,000 nodes. Each serialized candidate and report must fit the same 4,000,000-byte limit used by validation and publication. Exceeding a limit fails the scan rather than silently omitting source or producing an unpublishable report.
+
 ## First-time operator setup
 
 The credentials and activation variable are intentionally not configured by this implementation. Until they are configured, a run produces **`setup-required`**, with `upstream_checked: false` and `activation_allowed: false`. Disabled intake completes this setup check without accessing upstream; an explicitly enabled intake with missing credentials fails and preserves the setup report. Neither result is evidence of a successful upstream synchronization. The workflow does not fall back to a personal token or the operator's local login.

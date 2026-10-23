@@ -11,12 +11,15 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "app/backend"))
+
+from academy.matterix_sync import MAX_METADATA_BYTES  # noqa: E402
+
 REPOSITORY = "SissiFeng/matterix-academy"
 API = f"repos/{REPOSITORY}"
 CANDIDATE_PATH = "ops/matterix-sync/candidate.json"
 REPORT_PATH = "docs/evidence/matterix-sync/latest.md"
 SHA = re.compile(r"[0-9a-f]{40}")
-MAX_FILE_BYTES = 4_000_000
 
 
 class PublishError(RuntimeError):
@@ -116,7 +119,7 @@ def validate_sha(value):
 
 
 def read_file(path):
-    if path.stat().st_size > MAX_FILE_BYTES:
+    if path.stat().st_size > MAX_METADATA_BYTES:
         raise PublishError("Candidate metadata exceeds the size limit")
     return path.read_bytes()
 
