@@ -129,7 +129,8 @@ test("lost save response reconciles original record without replaying", async ({
   await page.route("**/api/workflow-course", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     posts++;
-    await route.fetch();
+    const committed = await route.fetch();
+    expect(committed.ok()).toBe(true);
     await route.abort("failed");
   });
   await page.getByLabel("Starting source volume (µL)").fill("100");
@@ -171,11 +172,16 @@ test("unresolved save outcome blocks edits until read-only recovery succeeds", a
 }) => {
   await enter(page);
   await diagnose(page);
+  let posts = 0;
+  let readsUnavailable = true;
   await page.route("**/api/workflow-course", async (route) => {
     if (route.request().method() === "POST") {
-      await route.fetch();
+      posts++;
+      const committed = await route.fetch();
+      expect(committed.ok()).toBe(true);
       await route.abort("failed");
-    } else await route.abort("failed");
+    } else if (readsUnavailable) await route.abort("failed");
+    else await route.continue();
   });
   await page.getByLabel("Starting source volume (µL)").fill("100");
   await page.getByLabel("Mixing approach").selectOption("ideal");
@@ -184,11 +190,13 @@ test("unresolved save outcome blocks edits until read-only recovery succeeds", a
     "saved outcome could not be checked",
   );
   await expect(page.getByLabel("Starting source volume (µL)")).toBeDisabled();
-  await page.unroute("**/api/workflow-course");
+  expect(posts).toBe(1);
+  readsUnavailable = false;
   await page.getByRole("button", { name: "Reload saved progress" }).click();
   await expect(
     page.getByRole("button", { name: "Run synthetic trial" }),
   ).toBeEnabled();
+  expect(posts).toBe(1);
 });
 
 test("mobile and dark theme keep the review usable without horizontal overflow", async ({
