@@ -34,10 +34,12 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 |---|---|---|
 | Single EC2 Ubuntu GPU pilot | Authorized capacity trial | Existing SDL0-DEV1 development account; sequential build and acceptance, at most one GPU. Installed image/render capacity and real browser workflow remain separate gates. See [capacity trial](GPU-CAPACITY-TRIAL.md) |
 | Pinned `mix_four_vials` adapter, journal, supervisor | Implemented | Fixed recipe; only the seed is learner-selectable |
+| Workflow Studio → native Flex | Implemented | Saved layout, action order, volumes and initial amounts compile into `workflow-studio-flex`; native observations, run-bound video, recovery and verified cleanup are wired. CPU/browser fixtures and a local GPU probe are prepared; no real GPU/browser acceptance is recorded. See [Studio native acceptance](STUDIO-NATIVE-ACCEPTANCE.md) |
+| Workflow Studio → native OT-2 | **Blocked** | OT-2 teaching designs work; the approved Flex asset pin has no OT-2 robot. A reviewed OT-2 image, deck mapping and separate qualification are required |
 | Learner first-transfer → native intent + scene preflight | Implemented | `native_plan.py`. Submission and claim reject plans a qualified scene cannot run exactly as saved. No native executor for this scene exists yet |
 | KVS WebRTC media (MASTER/VIEWER grants, relay-only ICE) | Partly verified | KVS signaling and TURN credentials verified with a temporary channel; no real Isaac frames |
 | Host agent install on the lab Ubuntu | **Blocked** | Tailscale SSH denies the operator account; Isaac Lab checkout is owned by another user (Git ownership check fails). See [ENDPOINT-COMMUNICATION.md](ENDPOINT-COMMUNICATION.md) for the proposed route that does not depend on SSH |
-| Worker qualification, native gate on | **Blocked** | Requires the host install and the acceptance records in [MATTERIX-CONTRACT.md](MATTERIX-CONTRACT.md) |
+| Worker qualification, native gate on | **Blocked** | Requires a working GPU host and the scene-specific acceptance records in [MATTERIX-CONTRACT.md](MATTERIX-CONTRACT.md). A bounded Studio commissioning grant permits only two approved designs on one worker while the global gate stays off; it does not qualify the worker |
 
 ## Open housekeeping
 

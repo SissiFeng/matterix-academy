@@ -1,4 +1,4 @@
-"""Pinned local process adapter for the qualified, simulation-only Flex recipe."""
+"""Pinned local process adapter for explicitly supported native Flex scenes."""
 
 import os
 import subprocess
@@ -12,8 +12,8 @@ from pydantic import Field
 from .gateway import GatewayUnavailable, RemoteOperationPending
 from .models import StrictModel
 from .native_files import read_json, write_json
-from .recipes import MixingPlan
-from .remote_run import RemoteRunSnapshot, check_run_snapshot
+from .recipes import MixingPlan, parse_plan
+from .remote_run import RemoteRunSnapshot, check_run_snapshot, workflow_digest
 from .runtime_inventory import source_tree_clean
 from .worker import GatewayRunner
 
@@ -81,7 +81,7 @@ class NativeFlexRunner(GatewayRunner):
         return Path(self.config.run_root) / str(UUID(local["run"]["run_id"]))
 
     def prepare(self, local, recovering=False):
-        MixingPlan.model_validate(local["run"]["plan"])
+        self.validate_plan(local)
         folder = self.folder(local)
         binding = {
             "native_session_id": str(UUID(local["allocation_id"])),
@@ -100,6 +100,21 @@ class NativeFlexRunner(GatewayRunner):
         folder.mkdir(parents=True, mode=0o700, exist_ok=False)
         write_json(path, binding)
         return binding
+
+    def validate_plan(self, local):
+        plan = parse_plan(local["run"]["plan"])
+        if workflow_digest(plan) != local["run"]["plan_hash"]:
+            raise GatewayUnavailable("Native allocation plan differs from its saved workflow hash")
+        if plan.course_id == "workflow-sandbox":
+            from .native_studio_runtime import compile_plan, validate_assets
+
+            try:
+                compile_plan(plan)
+                validate_assets(plan, self.config)
+            except ValueError as exc:
+                raise GatewayUnavailable(str(exc)) from exc
+        else:
+            MixingPlan.model_validate(local["run"]["plan"])
 
     def renew(self, local):
         if not local.get("binding"):
@@ -122,6 +137,7 @@ class NativeFlexRunner(GatewayRunner):
 
     def start(self, local):
         self.config.verify()
+        self.validate_plan(local)
         folder = self.folder(local)
         # Never replay a launch whose response was lost; Worker polls this ID.
         fd = os.open(folder / "launch-intent", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)

@@ -26,9 +26,14 @@ probe_status=0
 LC_ALL=C /usr/bin/time -v -o "$evidence/probe-time.txt" \
   timeout --signal=TERM --kill-after=30s 1800s \
   runuser -u academy-native -- env HOME=/var/cache/academy-native OMNI_KIT_ACCEPT_EULA=YES \
-  PYTHONPATH="$root/app/backend" /opt/matterix-isaac/bin/python -m academy.native_image_probe \
-  --confirm-native-probe --config /etc/academy-native/native-config.json \
-  --output /var/lib/academy-native/scene-render.json || probe_status=$?
+  PYTHONPATH="$root/app/backend" /bin/bash -c '
+    /opt/matterix-isaac/bin/python -m academy.native_image_probe \
+      --confirm-native-probe --config /etc/academy-native/native-config.json \
+      --output /var/lib/academy-native/scene-render.json &&
+    /opt/matterix-isaac/bin/python -m academy.native_studio_isaac \
+      --probe --config /etc/academy-native/native-config.json \
+      --output /var/lib/academy-native/studio-probe.json
+  ' || probe_status=$?
 gpu_sampler_complete=0
 if kill -0 "$gpu_sampler" 2>/dev/null; then gpu_sampler_complete=1; fi
 printf '%s\n' "$gpu_sampler_complete" > "$evidence/gpu-sampler-complete.txt"
@@ -53,6 +58,9 @@ PY
 install -m 644 /var/lib/academy-native/scene-render.json /etc/academy-native/evidence/scene-render.json
 printf 'ACADEMY_SCENE_RENDER_JSON='
 cat /etc/academy-native/evidence/scene-render.json
+install -m 644 /var/lib/academy-native/studio-probe.json /etc/academy-native/evidence/studio-probe.json
+printf 'ACADEMY_STUDIO_PROBE_JSON='
+cat /etc/academy-native/evidence/studio-probe.json
 
 "$root/.venv/bin/python" - <<'PY'
 from academy.native_runner import NativeConfig
@@ -85,4 +93,4 @@ chmod -R go-w /opt/academy-agent /opt/matterix-isaac /srv/matterix /srv/matterix
 rm -f /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys
 cloud-init clean --logs
 sync
-printf '%s\n' 'Image fingerprint passed. No native workflow ran and worker remains unqualified.'
+printf '%s\n' 'Image and local Studio probe passed. Browser acceptance remains pending; worker remains unqualified.'

@@ -291,6 +291,10 @@ def create_app(settings: Settings | None = None, store=None):
     def session_run(session_id: UUID, owner: str = Depends(identify)):
         return app.state.runs.for_session(owner, session_id)
 
+    @app.get("/api/sessions/{session_id}/native-preflight")
+    def native_preflight(session_id: UUID, owner: str = Depends(identify)):
+        return app.state.runs.studio_preflight(owner, str(session_id))
+
     @app.get("/api/sessions")
     def sessions(owner: str = Depends(identify)):
         return [

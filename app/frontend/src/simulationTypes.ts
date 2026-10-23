@@ -59,6 +59,16 @@ export type SimulationRun = {
       tip_attached: boolean | null;
       well_volumes_ul: Record<string, number | null>;
       mixing: MixingState | null;
+      studio?: {
+        instrument: "flex" | "ot2";
+        scene: "workflow-studio-flex" | "workflow-studio-ot2";
+        observation_model: "native-semantic";
+        labware_slots: Record<"tips" | "stock" | "plate" | "waste", string>;
+        waste_volume_ul: number;
+        native_action_index: number;
+        native_action_count: number;
+        native_action: string;
+      } | null;
     } | null;
   } | null;
 };

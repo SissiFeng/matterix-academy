@@ -15,7 +15,9 @@
     "format:check": "prettier --check src tests *.mjs *.mts *.ts *.json index.html",
     "commissioning:live": "node commissioning.mjs",
     "acceptance:learners": "node learner-acceptance.mjs",
-    "test:acceptance": "node --test learner-acceptance.test.mjs"
+    "test:acceptance": "node --test learner-acceptance.test.mjs",
+    "commissioning:studio": "node studio-commissioning.mjs",
+    "test:studio-commissioning": "node --test studio-commissioning.test.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.0",

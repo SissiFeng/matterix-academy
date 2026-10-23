@@ -11,7 +11,8 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, Field, model_validator
 
-from .models import StrictModel
+from .models import Experiment, StrictModel
+from .native_studio import STUDIO, studio_scene
 from .recipes import ExecutionPlan, MixingPlan
 
 TERMINAL_SNAPSHOT_STATUSES = frozenset({"completed", "failed", "unknown"})
@@ -93,6 +94,29 @@ class MixingObservation(StrictModel):
         return self
 
 
+class StudioObservation(StrictModel):
+    """Native motion and semantic liquid accounting; not fluid/chemical validation."""
+
+    instrument: Literal["flex", "ot2"]
+    scene: Literal["workflow-studio-flex", "workflow-studio-ot2"]
+    observation_model: Literal["native-semantic"]
+    waste_volume_ul: float = Field(ge=0)
+    labware_slots: dict[Literal["tips", "stock", "plate", "waste"], str]
+    native_action_index: int = Field(ge=0, le=1024)
+    native_action_count: int = Field(ge=1, le=1024)
+    native_action: str = Field(min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def bound_scene(self):
+        if self.scene != f"workflow-studio-{self.instrument}":
+            raise ValueError("Native scene and instrument differ")
+        if set(self.labware_slots) != {"tips", "stock", "plate", "waste"}:
+            raise ValueError("Report every native labware placement")
+        if self.native_action_index > self.native_action_count:
+            raise ValueError("Action index exceeds native workflow")
+        return self
+
+
 class RemoteNativeState(StrictModel):
     """Null means unobserved, never zero or a value filled by the teaching model."""
 
@@ -103,6 +127,7 @@ class RemoteNativeState(StrictModel):
     tip_attached: bool | None = None
     well_volumes_ul: dict[Literal["stock", "A1", "A2", "A3"], float | None]
     mixing: MixingObservation | None = None
+    studio: StudioObservation | None = None
 
     @model_validator(mode="after")
     def volumes_are_nonnegative(self):
@@ -231,6 +256,8 @@ def check_run_snapshot(
         raise ValueError("Progress does not belong to the submitted workflow and session")
     if isinstance(request.experiment, MixingPlan):
         check_mixing_observation(snapshot, request.experiment)
+    elif request.experiment.course_id == STUDIO:
+        check_studio_observation(snapshot, request.experiment)
     if previous is None:
         return
     check_run_snapshot(previous, session_id, request)
@@ -263,6 +290,76 @@ def check_run_snapshot(
         and snapshot.native_state != previous.native_state
     ):
         raise ValueError("The same native observation revision cannot describe different state")
+
+
+def check_studio_observation(snapshot: RemoteRunSnapshot, plan: Experiment) -> None:
+    state = snapshot.native_state
+    studio = state.studio if state else None
+    if studio is None:
+        if snapshot.completed_steps or snapshot.status in {"running", "paused", "completed"}:
+            raise ValueError("Studio progress requires native scene observations")
+        return
+    if studio.scene != studio_scene(plan) or studio.labware_slots != plan.layout:
+        raise ValueError("Native scene placements differ from the saved Studio plan")
+    if (
+        state.tip_attached is None
+        or state.pipette_volume_ul is None
+        or any(v is None for v in state.well_volumes_ul.values())
+    ):
+        raise ValueError("Studio execution requires native tip and liquid observations")
+    total = sum(state.well_volumes_ul.values()) + state.pipette_volume_ul + studio.waste_volume_ul
+    if abs(total - (plan.source_volume + 3 * plan.diluent_volume)) > 0.01:
+        raise ValueError("Native Studio liquid accounting does not conserve the initial volume")
+    completed = snapshot.completed_steps
+    if studio.native_action_index < completed or (
+        snapshot.status in {"loading", "queued"} and studio.native_action_index != 0
+    ):
+        raise ValueError("Native motion cannot precede its confirmed Studio steps")
+    if snapshot.status == "completed" and studio.native_action_index != studio.native_action_count:
+        raise ValueError("Native Studio completion requires finished motion")
+    expected = {
+        "stock": plan.source_volume,
+        **dict.fromkeys(("A1", "A2", "A3"), plan.diluent_volume),
+    }
+    tip, waste, attached = 0.0, 0.0, False
+    for action in plan.actions[:completed]:
+        if action.kind == "pickup":
+            attached = True
+        elif action.kind == "drop":
+            attached = False
+            waste += tip
+            tip = 0.0
+        else:
+            delta = action.volume * (1 if action.kind == "aspirate" else -1)
+            expected[action.well] -= delta
+            tip += delta
+    # A report may arrive midway through the single next action. Permit only
+    # that action's bounded native effects, never effects from a later step.
+    if completed < len(plan.actions) and snapshot.status not in {"loading", "queued"}:
+        action = plan.actions[completed]
+        if action.kind == "pickup":
+            attached = state.tip_attached
+        elif action.kind == "drop":
+            if not state.tip_attached:
+                attached = False
+                waste += tip
+                tip = 0.0
+        else:
+            delta = state.pipette_volume_ul - tip
+            moved = delta if action.kind == "aspirate" else -delta
+            if not -0.01 <= moved <= action.volume + 0.01:
+                raise ValueError("Observed Studio flow exceeds the next saved action")
+            expected[action.well] -= delta
+            tip += delta
+    if (
+        state.tip_attached != attached
+        or abs(state.pipette_volume_ul - tip) > 0.01
+        or abs(studio.waste_volume_ul - waste) > 0.01
+        or any(
+            abs(state.well_volumes_ul[well] - amount) > 0.01 for well, amount in expected.items()
+        )
+    ):
+        raise ValueError("Native Studio observations contradict the confirmed workflow prefix")
 
 
 def check_mixing_observation(snapshot: RemoteRunSnapshot, plan: MixingPlan) -> None:
