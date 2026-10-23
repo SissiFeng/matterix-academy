@@ -39,8 +39,8 @@ class ApprovedStudioPlan(StrictModel):
 class StudioCommissioningScope(StrictModel):
     """Two reviewed plans, not a general scene permission or qualification."""
 
-    scene: Literal["workflow-studio-flex", "workflow-studio-ot2"]
-    instrument: Literal["flex", "ot2"]
+    scene: Literal["workflow-studio-flex"]
+    instrument: Literal["flex"]
     capability: StudioCapability
     plans: list[ApprovedStudioPlan] = Field(min_length=2, max_length=2)
 

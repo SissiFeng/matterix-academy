@@ -398,3 +398,140 @@ test("dirty saved-plan checks cannot launch and a preflight mismatch never repla
   ).toBeEnabled();
   expect(submissions).toBe(0);
 });
+
+test("automatic polling recovery clears a transient connection alert after an earlier successful check", async ({
+  page,
+}) => {
+  const session = await savedStudio(page);
+  await page.clock.install();
+  let unavailable = false;
+  let posts = 0;
+  await page.route(`**/api/sessions/${session.id}/native-preflight`, (route) =>
+    unavailable
+      ? route.fulfill({
+          status: 503,
+          json: { detail: "Connection temporarily interrupted" },
+        })
+      : route.fulfill({ json: preflight(session) }),
+  );
+  await page.route(`**/api/sessions/${session.id}/remote-run`, (route) =>
+    route.fulfill({ json: null }),
+  );
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === "/api/runs"
+    )
+      posts++;
+  });
+  await page.goto(`/#/lab/${session.id}`);
+  await page.reload();
+  const panel = page.getByTestId("native-studio-run");
+  const submit = panel.getByRole("button", {
+    name: "Run saved workflow in Matterix",
+    exact: true,
+  });
+  await expect(submit).toBeEnabled();
+  unavailable = true;
+  await page.clock.runFor(8001);
+  await expect(panel.getByRole("alert")).toHaveText(
+    "Connection temporarily interrupted",
+  );
+  await expect(submit).toBeDisabled();
+  unavailable = false;
+  await page.clock.runFor(8001);
+  await expect(submit).toBeEnabled();
+  await expect(panel.getByRole("alert")).toHaveCount(0);
+  await expect(panel.getByText(/Connection checks are delayed/)).toHaveCount(0);
+  expect(posts).toBe(0);
+});
+
+test("an accepted native run stays confirmed and locked when the subsequent session read fails", async ({
+  page,
+}) => {
+  let session = await savedStudio(page);
+  await page.clock.install();
+  let run: ReturnType<typeof fixtureRun> | null = null;
+  let sessionReadFails = false;
+  let posts = 0;
+  await page.route(`**/api/sessions/${session.id}`, (route) =>
+    sessionReadFails
+      ? route.fulfill({
+          status: 500,
+          json: { detail: "Saved workflow details temporarily unavailable" },
+        })
+      : route.fulfill({ json: session }),
+  );
+  await page.route(`**/api/sessions/${session.id}/native-preflight`, (route) =>
+    route.fulfill({ json: preflight(session, !run) }),
+  );
+  await page.route(`**/api/sessions/${session.id}/remote-run`, (route) =>
+    route.fulfill({ json: run }),
+  );
+  await page.route("**/api/runs", async (route) => {
+    posts++;
+    run = fixtureRun(session, route.request().postDataJSON().run_id);
+    session = {
+      ...session,
+      version: session.version + 1,
+      remote_active_run: run.run_id,
+    };
+    sessionReadFails = true;
+    await route.fulfill({ status: 201, json: run });
+  });
+  await page.goto(`/#/lab/${session.id}`);
+  await page.reload();
+  const panel = page.getByTestId("native-studio-run");
+  await page.evaluate(() => {
+    const messages: string[] = [];
+    (window as Window & { observedAlerts?: string[] }).observedAlerts =
+      messages;
+    new MutationObserver(() => {
+      document
+        .querySelectorAll('[role="alert"]')
+        .forEach((element) => messages.push(element.textContent ?? ""));
+    }).observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  });
+  await panel
+    .getByRole("button", {
+      name: "Run saved workflow in Matterix",
+      exact: true,
+    })
+    .click();
+  await expect(
+    panel.getByText("Waiting for a qualified worker", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByRole("alert")).toHaveText(
+    "Saved workflow details temporarily unavailable",
+  );
+  await expect(page.getByLabel("Workflow name")).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Run teaching simulation", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    panel.getByRole("button", {
+      name: "Run saved workflow in Matterix",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  const alerts = await page.evaluate(
+    () =>
+      (window as Window & { observedAlerts?: string[] }).observedAlerts ?? [],
+  );
+  expect(alerts.some((text) => text.includes("No run was submitted"))).toBe(
+    false,
+  );
+  expect(posts).toBe(1);
+  sessionReadFails = false;
+  await page.clock.runFor(2001);
+  await expect(panel.getByRole("alert")).toHaveCount(0);
+  await expect(
+    panel.getByText("Waiting for a qualified worker", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Workflow name")).toBeDisabled();
+  expect(posts).toBe(1);
+});

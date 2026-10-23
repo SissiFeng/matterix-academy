@@ -109,6 +109,7 @@ export default function NativeStudioRun({
   const [reconnecting, setReconnecting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pollingError, setPollingError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const current = useRef({
     session,
@@ -228,8 +229,9 @@ export default function NativeStudioRun({
         acceptSession(freshSession);
         setLoaded(true);
         setReconnecting(false);
+        setPollingError("");
       } catch (cause) {
-        if (!active) return;
+        if (!active || epoch !== mutation.current) return;
         setReconnecting(true);
         if (
           cause instanceof SyntaxError ||
@@ -237,12 +239,11 @@ export default function NativeStudioRun({
             cause.message.startsWith("Saved submission"))
         )
           setUnreadable(true);
-        if (!loaded)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "The saved workflow could not be checked.",
-          );
+        setPollingError(
+          cause instanceof Error
+            ? cause.message
+            : "The saved workflow could not be checked.",
+        );
       } finally {
         if (active)
           timer = window.setTimeout(
@@ -302,7 +303,8 @@ export default function NativeStudioRun({
       if (!alive.current || current.current.session.id !== id) return;
       acceptRun(next);
       clearSubmission();
-      acceptSession(await api<Session>(`/sessions/${id}`));
+      // Session refresh belongs to the read-only poll. Its failure cannot undo
+      // this accepted submission or release the run reservation.
     } catch (cause) {
       if (!alive.current || current.current.session.id !== id) return;
       if (cause instanceof ApiError && [422, 503].includes(cause.status)) {
@@ -434,9 +436,9 @@ export default function NativeStudioRun({
           last confirmed native state.
         </p>
       )}
-      {error && (
+      {(error || pollingError) && (
         <p className={s.warning} role="alert">
-          {error}
+          {error || pollingError}
         </p>
       )}
       {(pending || unreadable) && (

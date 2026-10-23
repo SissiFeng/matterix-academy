@@ -26,7 +26,7 @@ from test_remote_run import report
 
 def capability(instrument="flex", **changes):
     waste = "D3" if instrument == "flex" else "12"
-    slots = sorted((SLOTS if instrument == "flex" else OT2_SLOTS) - {waste})
+    slots = sorted((SLOTS - {"A3"} if instrument == "flex" else OT2_SLOTS) - {waste})
     return StudioCapability.model_validate(
         {
             "scene": f"workflow-studio-{instrument}",
@@ -76,8 +76,8 @@ def setup(store, instrument="flex", **worker_changes):
     return RunService(store, enabled=True), session
 
 
-@pytest.mark.parametrize("instrument", ["flex", "ot2"])
-def test_saved_layout_amounts_order_and_instrument_bound_without_changes(instrument):
+def test_saved_layout_amounts_order_and_instrument_bound_without_changes():
+    instrument = "flex"
     plan = design(instrument)
     before = plan.model_dump()
     assert studio_preflight(plan, capability(instrument)) == []
@@ -125,6 +125,44 @@ def test_capabilities_are_instrument_specific_and_preflight_covers_layout_ranges
     ]:
         with pytest.raises(ValidationError):
             capability(**changes)
+
+
+def test_pinned_flex_cad_slot_cannot_be_advertised_or_marked_ready(store):
+    declared = capability().model_dump()
+    declared["slots"]["tips"].append("A3")
+    with pytest.raises(ValidationError):
+        StudioCapability.model_validate(declared)
+    service, session = setup(store)
+    plan = design()
+    plan.layout["tips"] = "A3"
+    session["experiment"] = plan.model_dump(mode="json")
+    store.put("alice", "session#" + session["id"], {**session, "version": 2}, 1)
+    result = service.studio_preflight("alice", session["id"])
+    assert not result["ready"] and "slot" in {issue["code"] for issue in result["issues"]}
+    # A stale or manually corrupted capability still fails closed on every read.
+    current = store.get(WORKERS, "lab-1")
+    store.put(
+        WORKERS,
+        "lab-1",
+        {
+            **current,
+            "version": current["version"] + 1,
+            "capabilities": {"workflow-studio-flex": declared},
+        },
+        current["version"],
+    )
+    assert not service.studio_preflight("alice", session["id"])["ready"]
+
+
+def test_ot2_declaration_cannot_enable_the_flex_runtime_profile(store):
+    plan = design("ot2")
+    assert {issue.code for issue in studio_preflight(plan, capability("ot2"))} == {"profile"}
+    service, session = setup(store, instrument="ot2")
+    assert not service.studio_preflight("alice", session["id"])["ready"]
+    with pytest.raises(HTTPException):
+        service.submit(
+            "alice", SubmitRun(run_id=uuid4(), session_id=session["id"], expected_version=1)
+        )
 
 
 def test_preflight_is_read_only_scoped_and_fails_closed(store):
@@ -235,6 +273,8 @@ def test_qualification_requires_independent_native_evidence_for_each_instrument(
     evidence["studio_and_media_verified"] = {scene: True}
     assert qualification_changes(old, evidence)["scenes"] == [scene]
     evidence["scenes"].append("workflow-studio-ot2")
+    evidence["studio_and_media_verified"]["workflow-studio-ot2"] = True
+    evidence["capabilities"]["workflow-studio-ot2"] = capability("ot2").model_dump()
     with pytest.raises(ValueError):
         qualification_changes(old, evidence)
 

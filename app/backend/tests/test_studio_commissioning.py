@@ -178,6 +178,31 @@ def test_studio_authority_is_exact_and_requires_reviewed_capability(case):
         CommissioningRequest.model_validate(request)
 
 
+def test_matching_ot2_scope_cannot_authorize_a_flex_only_runtime():
+    request = approved_request().model_dump(mode="json")
+    scope = request["studio"]
+    scope.update(scene="workflow-studio-ot2", instrument="ot2")
+    scope["capability"].update(
+        scene="workflow-studio-ot2",
+        instrument="ot2",
+        slots={
+            **{name: [str(slot) for slot in range(1, 12)] for name in ("tips", "stock", "plate")},
+            "waste": ["12"],
+        },
+    )
+    for approved in scope["plans"]:
+        plan = Experiment.model_validate(
+            {
+                **approved["experiment"],
+                "instrument": "ot2",
+                "layout": {"tips": "4", "stock": "1", "plate": "2", "waste": "12"},
+            }
+        )
+        approved.update(experiment=plan.model_dump(mode="json"), plan_hash=workflow_digest(plan))
+    with pytest.raises(ValidationError):
+        CommissioningRequest.model_validate(request)
+
+
 def test_legacy_scope_bytes_and_exact_approval_retry_are_preserved(store):
     request, grant, _ = setup_studio(store)
     assert authorize(store, request, clock=lambda: NOW + 60) == grant

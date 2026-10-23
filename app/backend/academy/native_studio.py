@@ -12,7 +12,8 @@ from .models import OT2_SLOTS, SLOTS, Experiment, StrictModel
 from .native_plan import VolumeRange
 
 STUDIO = "workflow-sandbox"
-STUDIO_SCENES = {"workflow-studio-flex", "workflow-studio-ot2"}
+STUDIO_SCENES = {"workflow-studio-flex"}
+FLEX_STUDIO_SLOTS = SLOTS - {"A3"}  # Pinned CAD occupies A3 with rear waste geometry.
 Labware = Literal["tips", "stock", "plate", "waste"]
 
 
@@ -45,7 +46,7 @@ class StudioCapability(StrictModel):
     def exact_scene(self):
         if self.scene != f"workflow-studio-{self.instrument}":
             raise ValueError("Studio scene and instrument must agree")
-        slots = SLOTS if self.instrument == "flex" else OT2_SLOTS
+        slots = FLEX_STUDIO_SLOTS if self.instrument == "flex" else OT2_SLOTS
         waste = "D3" if self.instrument == "flex" else "12"
         if set(self.slots) != {"tips", "stock", "plate", "waste"}:
             raise ValueError("Declare every Studio labware slot")
@@ -67,6 +68,13 @@ def studio_preflight(plan: Experiment, capability: StudioCapability) -> list[Stu
     def issue(code, message, step=None):
         issues.append(StudioIssue(code=code, message=message, step=step))
 
+    if studio_scene(plan) not in STUDIO_SCENES:
+        return [
+            StudioIssue(
+                code="profile",
+                message="The current native runtime supports Flex only; OT-2 requires its own qualified runtime profile",
+            )
+        ]
     if studio_scene(plan) != capability.scene:
         return [StudioIssue(code="instrument", message="This host supports a different instrument")]
     for name, slot in plan.layout.items():

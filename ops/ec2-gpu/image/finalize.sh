@@ -46,6 +46,17 @@ journalctl -k --since "@$probe_started" --no-pager -o cat \
   > "$evidence/probe-kernel.log" || journal_status=$?
 printf '%s\n' "$journal_status" > "$evidence/kernel-read-status.txt"
 probe_elapsed=$(( $(date +%s) - probe_started ))
+# Preserve available native diagnostics even when the capacity gate rejects the build.
+if [[ -f /var/lib/academy-native/scene-render.json ]]; then
+  install -m 644 /var/lib/academy-native/scene-render.json "$evidence/scene-render.json"
+  printf 'ACADEMY_SCENE_RENDER_JSON='
+  cat "$evidence/scene-render.json"
+fi
+if [[ -f /var/lib/academy-native/studio-probe.json ]]; then
+  install -m 644 /var/lib/academy-native/studio-probe.json "$evidence/studio-probe.json"
+  printf 'ACADEMY_STUDIO_PROBE_JSON='
+  cat "$evidence/studio-probe.json"
+fi
 # Emit a compact copy before any failure; Packer's local log survives instance cleanup.
 "$root/.venv/bin/python" - "$evidence" "$probe_status" "$probe_elapsed" <<'PY'
 import json,sys
@@ -55,12 +66,7 @@ report=capacity_report(Path(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3]))
 print('ACADEMY_CAPACITY_JSON='+json.dumps(report,sort_keys=True),flush=True)
 raise SystemExit(0 if report['capacity_probe_passed'] else 1)
 PY
-install -m 644 /var/lib/academy-native/scene-render.json /etc/academy-native/evidence/scene-render.json
-printf 'ACADEMY_SCENE_RENDER_JSON='
-cat /etc/academy-native/evidence/scene-render.json
-install -m 644 /var/lib/academy-native/studio-probe.json /etc/academy-native/evidence/studio-probe.json
-printf 'ACADEMY_STUDIO_PROBE_JSON='
-cat /etc/academy-native/evidence/studio-probe.json
+[[ -s "$evidence/scene-render.json" && -s "$evidence/studio-probe.json" ]]
 
 "$root/.venv/bin/python" - <<'PY'
 from academy.native_runner import NativeConfig

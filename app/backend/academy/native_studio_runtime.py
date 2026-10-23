@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .models import Experiment
+from .native_studio import FLEX_STUDIO_SLOTS
 
 SCENE_VERSION = "academy-flex-studio-v1"
 ENGINE_COMMIT = "18a96b78ee989fbf4e480e9db6a588c148c6adbe"
@@ -22,7 +23,7 @@ TIP_LENGTH = 0.0956
 TIP_OVERLAP = 0.0105
 TIP_CAPACITY = 300.0  # Deliberately below the installed 1000 uL native tip.
 WELL_CAPACITY = 1500.0
-SLOTS = tuple(f"{r}{c}" for r in "ABCD" for c in range(1, 4) if f"{r}{c}" not in {"A3", "D3"})
+SLOTS = tuple(sorted(FLEX_STUDIO_SLOTS - {"D3"}))
 JOINT_BOUNDS = (
     (-0.2885, 0.299),
     (-0.1429, 0.2642),

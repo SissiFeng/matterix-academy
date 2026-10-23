@@ -290,6 +290,13 @@ def check_run_snapshot(
         and snapshot.native_state != previous.native_state
     ):
         raise ValueError("The same native observation revision cannot describe different state")
+    if previous.native_state is not None and previous.native_state.studio is not None:
+        old_studio = previous.native_state.studio
+        new_studio = snapshot.native_state.studio
+        if new_studio is None or new_studio.native_action_count != old_studio.native_action_count:
+            raise ValueError("Native Studio workflow identity cannot change within a run")
+        if new_studio.native_action_index < old_studio.native_action_index:
+            raise ValueError("Native Studio action progress cannot move backward within a run")
 
 
 def check_studio_observation(snapshot: RemoteRunSnapshot, plan: Experiment) -> None:

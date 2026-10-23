@@ -36,6 +36,8 @@ def acceptance_pair(scope):
 def studio_artifact_matches(folder, request, snapshot):
     """Compare saved-plan geometry with the versioned native adapter contract."""
     artifact = json.loads((folder / "studio-plan.json").read_text())
+    if not isinstance(artifact, dict):
+        return False
     plan, origins, steps = compile_plan(request.experiment)
     native = snapshot.native_state
     # Normalize tuple coordinates to their persisted JSON representation.

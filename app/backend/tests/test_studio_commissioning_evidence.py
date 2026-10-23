@@ -124,6 +124,19 @@ def test_studio_artifacts_bind_approved_changed_plan_render_reset_and_browser(tm
     assert not evaluate(runtime, browser, tmp_path)["browser_native_path_passed"]
 
 
+@pytest.mark.parametrize("artifact", [None, [], ["unexpected"], "unexpected", 0, 1.5, True])
+def test_non_object_studio_artifact_fails_without_aborting_other_run(tmp_path, artifact):
+    runtime, browser, approval = artifacts(tmp_path)
+    run_id = browser["server_report"]["runs"][0]["run"]["run_id"]
+    (tmp_path / run_id / "studio-plan.json").write_text(json.dumps(artifact))
+
+    result = evaluate(runtime, browser, tmp_path, commissioning_request=approval)
+
+    assert result["browser_native_path_passed"] is False
+    assert result["worker_qualified"] is False
+    assert [run["artifacts_match"] for run in result["runs"]] == [False, True]
+
+
 @pytest.mark.parametrize(
     "case",
     [
