@@ -5,8 +5,9 @@ if [[ "${CI:-}" == "true" && -z "${PACKER_BIN:-}" ]]; then
   echo "CI must install the pinned Packer and set PACKER_BIN for image validation." >&2
   exit 1
 fi
-uv run ruff check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py
-uv run ruff format --check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py
+uv run ruff check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
+uv run ruff format --check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
+uv run python scripts/matterix-sync.py check-policy
 uv run --extra native-worker pytest -q
 npm --prefix app/frontend run build
 npm --prefix app/frontend run format:check

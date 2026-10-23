@@ -2,6 +2,14 @@
 
 A push or merged pull request to `main` starts **Deploy academy to AWS**. Local edits, `git pull`, and feature-branch pushes do not publish the website. Pull requests run **Verify academy**. The release URL remains https://d2m3yolcjdy6d2.cloudfront.net.
 
+The [Matterix main intake](MATTERIX-MAIN-SYNC.md) produces reviewable metadata
+candidates. Merging a candidate report starts this normal application pipeline,
+but does not change approved runtime pins or qualify a worker. Keeping every main
+push eligible prevents a metadata commit from superseding and accidentally
+suppressing a pending application release. Reviewed adapter, recipe, English
+course and runtime-pin changes also use this pipeline, followed by the separately
+controlled GPU image and browser qualification gates.
+
 ## Release sequence
 
 1. A build job without AWS credentials installs locked dependencies, builds the Linux Lambda archive, runs the project verification suite and Chromium journeys, and builds the frontend.
