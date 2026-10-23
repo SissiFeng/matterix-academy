@@ -73,7 +73,9 @@ resource "aws_instance" "host" {
   iam_instance_profile                 = aws_iam_instance_profile.host[0].name
   associate_public_ip_address          = true
   instance_initiated_shutdown_behavior = "stop"
-  user_data_replace_on_change          = false
+  # Cloud-init runs only on first boot. Reject an unreviewed endpoint/unit change
+  # through prevent_destroy instead of silently leaving the old host configuration.
+  user_data_replace_on_change = true
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     unit_b64       = filebase64("${path.module}/../../ops/ec2-gpu/academy-native.service")
     worker_api_url = var.worker_api_url

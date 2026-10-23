@@ -45,7 +45,9 @@ def evaluate(runtime, browser, runs_root):
             snapshot = RemoteRunSnapshot.model_validate(
                 json.loads((folder / "snapshot.json").read_text())
             )
-            check_run_snapshot(snapshot, snapshot.session_id, request)
+            check_run_snapshot(
+                snapshot, UUID(str(manifest["binding"]["native_session_id"])), request
+            )
             cloud = RemoteRunSnapshot.model_validate(run["snapshot"])
             frame = json.loads((folder / "frame-proof.json").read_text())
             released = json.loads((folder / "released.json").read_text())

@@ -24,6 +24,7 @@ FIELDS = {
     "isaaclab_source_commit",
     "driver_version",
     "academy_commit",
+    "sources_manifest_sha256",
     "engine_commit",
     "asset_commit",
     "simulation_only",
@@ -45,8 +46,8 @@ def validate_manifest(manifest):
         raise ValueError("Preparation must remain unqualified and simulation-only")
     if manifest["controls"] != []:
         raise ValueError("Pause, resume and cancel are not qualified by the fixed native adapter")
-    if manifest["ubuntu_version"] not in {"22.04", "24.04"}:
-        raise ValueError("Prepare an Ubuntu 22.04 or 24.04 x86_64 image")
+    if manifest["ubuntu_version"] != "24.04":
+        raise ValueError("Prepare the supported Ubuntu 24.04 x86_64 image")
     for key in (
         "python_version",
         "isaacsim_version",
@@ -71,6 +72,10 @@ def validate_manifest(manifest):
             r"[a-f0-9]{40}", manifest[field]
         ):
             raise ValueError(f"Resolve the exact reviewed {field} before rendering")
+    if not isinstance(manifest["sources_manifest_sha256"], str) or not re.fullmatch(
+        r"[a-f0-9]{64}", manifest["sources_manifest_sha256"]
+    ):
+        raise ValueError("Bind the private source archive manifest before rendering")
     if not isinstance(manifest["worker_id"], str) or not re.fullmatch(
         r"[a-z0-9][a-z0-9-]{0,63}", manifest["worker_id"]
     ):

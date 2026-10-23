@@ -7,6 +7,7 @@ import os
 import signal
 import subprocess
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,11 +74,14 @@ def capacity_preflight(session, env, config):
     }
 
 
-def run_build(command, env, timeout_seconds):
+def run_build(command, env, timeout_seconds, expires=None):
     # Packer receives SIGINT first so it can remove its own temporary AWS resources.
     # This limits the local operation, not AWS billing: reconcile resources after failure.
     if not 60 <= timeout_seconds <= 9000:
         raise ValueError("Build timeout must be 60–9000 seconds (default 7200)")
+    # Preflight retries may consume the margin. Recheck the expiration captured with
+    # this exact frozen token immediately before starting the paid child process.
+    credential_lifetime(expires, env.get("AWS_SESSION_TOKEN"), timeout_seconds)
     process = subprocess.Popen(command, env=env, start_new_session=True)
 
     def interrupt(sig):
@@ -122,8 +126,29 @@ def build_environment(identity, credentials, expected_account, region):
     return env
 
 
-def verified_environment(session, expected_account, region):
-    credentials = session.get_credentials().get_frozen_credentials()
+def credential_lifetime(expires, session_token, timeout_seconds, now=None):
+    if expires is None:
+        if session_token:
+            raise ValueError(
+                "Temporary AWS credentials need a known expiration before a paid build"
+            )
+        return  # Static credentials without a session token do not have an STS expiration.
+    if expires.tzinfo is None:
+        raise ValueError("AWS credential expiration must include its timezone")
+    remaining = (expires - (now or datetime.now(UTC))).total_seconds()
+    if remaining < timeout_seconds + 300 + 60 + 120:
+        raise ValueError(
+            "Refresh AWS credentials: lifetime must cover build timeout, cleanup and clock margin"
+        )
+
+
+def verified_environment(session, expected_account, region, timeout_seconds=7200):
+    provider = session.get_credentials()
+    credentials = (
+        provider.get_frozen_credentials()
+    )  # Refresh first, then inspect this token's expiry.
+    expires = getattr(provider, "_expiry_time", None)
+    credential_lifetime(expires, credentials.token, timeout_seconds)
     identity = session.client(
         "sts",
         region_name=region,
@@ -133,7 +158,7 @@ def verified_environment(session, expected_account, region):
         aws_secret_access_key=credentials.secret_key,
         aws_session_token=credentials.token,
     ).get_caller_identity()
-    return build_environment(identity, credentials, expected_account, region)
+    return build_environment(identity, credentials, expected_account, region), expires
 
 
 def main():
@@ -178,7 +203,9 @@ def main():
     import boto3
 
     session = boto3.Session(region_name=config["region"])
-    env = verified_environment(session, config["expected_account_id"], config["region"])
+    env, expires = verified_environment(
+        session, config["expected_account_id"], config["region"], args.timeout_seconds
+    )
     capacity = capacity_preflight(session, env, config)
     print(
         json.dumps({"capacity_preflight": capacity, "build_timeout_seconds": args.timeout_seconds}),
@@ -189,7 +216,7 @@ def main():
         json.dump(config, file)
         file.flush()
         command = [args.packer, "build", "-var-file=" + file.name, str(ROOT / "ops/ec2-gpu/image")]
-        run_build(command, env, args.timeout_seconds)
+        run_build(command, env, args.timeout_seconds, expires)
 
 
 if __name__ == "__main__":

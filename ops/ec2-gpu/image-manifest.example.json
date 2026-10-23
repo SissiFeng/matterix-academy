@@ -9,6 +9,7 @@
   "isaaclab_source_commit": "ffff603eafc6b74264a5261cc0183d6a65390d78",
   "driver_version": "595.58.03",
   "academy_commit": "",
+  "sources_manifest_sha256": "",
   "engine_commit": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
   "asset_commit": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
   "simulation_only": true,

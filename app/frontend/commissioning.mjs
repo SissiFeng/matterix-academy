@@ -1,6 +1,10 @@
 // Live browser acceptance. Never included in default tests or CI.
 // Invoking with --confirm-live may execute native work and incur KVS/compute charges.
-import { captureRun } from "./commissioning-response.mjs";
+import {
+  captureRun,
+  isFreshRecovery,
+  videoUsesCurrentRelay,
+} from "./commissioning-response.mjs";
 import { chromium, expect } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -50,7 +54,17 @@ let latest;
 let currentRunId;
 let serverReport;
 const reportRead = [];
+let navigation = 0;
+let requestSequence = 0;
+let minimumSequence = 0;
+let recovery;
+let recoveredRun;
+const requestOrigins = new WeakMap();
+page.on("framenavigated", (frame) => {
+  if (frame === page.mainFrame()) navigation++;
+});
 page.on("request", (request) => {
+  requestOrigins.set(request, { navigation, sequence: ++requestSequence });
   if (
     request.method() === "POST" &&
     new URL(request.url()).origin === url.origin &&
@@ -62,8 +76,26 @@ page.on("response", (response) => {
   const responseUrl = new URL(response.url());
   if (responseUrl.origin !== url.origin) return;
   const pathname = responseUrl.pathname;
+  const requestOrigin = requestOrigins.get(response.request());
   if (response.ok()) {
     const pending = response.json().then((value) => {
+      if (
+        !requestOrigin ||
+        requestOrigin.sequence < minimumSequence ||
+        requestOrigin.navigation !== navigation
+      )
+        return;
+      if (
+        recovery &&
+        isFreshRecovery({
+          method: response.request().method(),
+          pathname,
+          value,
+          requestNavigation: requestOrigin.navigation,
+          ...recovery,
+        })
+      )
+        recoveredRun = value;
       const captured = captureRun(
         response.request().method(),
         pathname,
@@ -110,6 +142,9 @@ try {
   for (let index = 0; index < 2; index++) {
     latest = undefined;
     currentRunId = undefined;
+    recovery = undefined;
+    recoveredRun = undefined;
+    minimumSequence = requestSequence + 1;
     const before = posts;
     await page
       .getByRole("button", { name: "Run mixing experiment", exact: true })
@@ -127,27 +162,7 @@ try {
     const frames = await video.evaluate(
       (element) => element.getVideoPlaybackQuality().totalVideoFrames,
     );
-    const relayVerified = await page.evaluate(async () => {
-      for (const peer of window.__commissioningPeers ?? []) {
-        const stats = await peer.getStats();
-        for (const row of stats.values()) {
-          if (
-            row.type !== "candidate-pair" ||
-            row.state !== "succeeded" ||
-            !row.nominated
-          )
-            continue;
-          const local = stats.get(row.localCandidateId);
-          const remote = stats.get(row.remoteCandidateId);
-          if (
-            local?.candidateType === "relay" &&
-            remote?.candidateType === "relay"
-          )
-            return true;
-        }
-      }
-      return false;
-    });
+    const relayVerified = await video.evaluate(videoUsesCurrentRelay);
     if (!relayVerified)
       throw new Error(
         "The actual video connection did not confirm relay-only ICE",
@@ -157,8 +172,17 @@ try {
       const runId = latest?.run_id;
       if (!runId)
         throw new Error("No bound native run was observed before refresh");
+      recovery = {
+        runId,
+        minimumVersion: latest.version,
+        minimumNavigation: navigation + 1,
+      };
+      latest = undefined;
+      recoveredRun = undefined;
       await page.reload();
-      await expect.poll(() => latest?.run_id, { timeout: 30000 }).toBe(runId);
+      await expect
+        .poll(() => recoveredRun?.run_id, { timeout: 30000 })
+        .toBe(runId);
       if (posts !== before + 1) throw new Error("Reload submitted another run");
       refreshVerified = true;
     }

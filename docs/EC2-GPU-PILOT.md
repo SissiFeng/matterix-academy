@@ -105,6 +105,10 @@ operator-selected VPC/subnet. The provider restricts the approved account; the A
 lookup requires an exact ID, approved owner, x86_64 and reviewed manifest hash tag.
 The instance has a single GPU, no Spot market option and no automatic replacement.
 `prevent_destroy` blocks replacement/destruction until a reviewed configuration change.
+Changing the worker API or service user-data requires replacement because cloud-init
+runs on first boot. `prevent_destroy` blocks that replacement until the operator has
+preserved run journals and reviewed the reprovisioning plan; it cannot silently keep
+using the old API endpoint.
 
 Security group ingress is empty: no SSH 22, desktop, raw Isaac 49100/47998 or
 simulator API is opened to learners. Outbound TCP 443 covers HTTPS/WSS/SSM and
@@ -130,8 +134,8 @@ worker may be enabled or credentialed in the image. Cloud-init writes the servic
 and API origin, disables its boot enablement, and starts no runtime.
 
 The reviewed **internal Flex** profile is Python 3.12, Isaac Lab
-3.0.0b2.post1, Isaac Sim 6.0.1.0, torch 2.10.0+cu128 and torchvision
-0.25.0+cu128. The NVIDIA wheel metadata explicitly pins this Sim version.
+3.0.0b2.post1, Isaac Sim 6.0.1.0, torch 2.11.0+cu128 and torchvision
+0.26.0+cu128. The NVIDIA wheel metadata explicitly pins this Sim version.
 Driver 595.58.03 is the version-specific Linux candidate; it remains unmeasured.
 The earlier 2.3/5.1 candidate is superseded for this branch. README badges and
 old Docker defaults are not compatibility evidence. Exact internal source pins,

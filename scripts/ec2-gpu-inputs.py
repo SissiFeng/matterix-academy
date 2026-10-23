@@ -4,9 +4,14 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def reviewed_commit():
+    return subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
 
 
 def sha256(path):
@@ -26,9 +31,12 @@ def validate(root):
     release = json.loads((root / "release.json").read_text())
     if release["academy_commit"] != manifest["academy_commit"]:
         raise ValueError("Release and image Academy commits differ")
+    if release["academy_commit"] != reviewed_commit():
+        raise ValueError("Check out the exact reviewed Academy release before validating inputs")
     expected = {
         "academy.tar.gz": release["archive_sha256"],
         "image-manifest.json": release["manifest_sha256"],
+        "sources.json": manifest["sources_manifest_sha256"],
     }
     sources = json.loads((root / "sources.json").read_text())
     if set(sources) != {"engine", "assets"}:

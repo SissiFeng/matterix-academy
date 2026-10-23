@@ -20,6 +20,7 @@ verify('academy.tar.gz',sys.argv[2]);verify('image-manifest.json',sys.argv[3])
 assert release['archive_sha256']==sys.argv[2] and release['manifest_sha256']==sys.argv[3]
 manifest=json.loads((root/'image-manifest.json').read_text())
 assert manifest['academy_commit']==release['academy_commit']
+verify('sources.json',manifest['sources_manifest_sha256'])
 for name,record in json.loads((root/'sources.json').read_text()).items():
  assert name in ('engine','assets')
  assert record['commit']==manifest['engine_commit' if name=='engine' else 'asset_commit']
@@ -67,6 +68,14 @@ agent_site=$(/opt/academy-agent/.venv/bin/python -c 'import site; print(site.get
 printf '%s\n' /opt/academy-agent/app/backend > "$agent_site/academy.pth"
 /opt/matterix-isaac/bin/python -m pip check
 /opt/academy-agent/.venv/bin/python -m pip check 2>/dev/null || "$uv" pip check --python /opt/academy-agent/.venv/bin/python
+# Retain the pinned publisher wheel so runtime inventory verifies installed payloads,
+# including same-version code drift, rather than trusting package metadata alone.
+install -d -m 755 /etc/academy-native/evidence
+curl --fail --show-error --location --proto '=https' --proto-redir '=https' \
+  --max-time 300 --max-filesize 16777216 \
+  https://pypi.nvidia.com/isaaclab/isaaclab-3.0.0b2.post1-py3-none-any.whl \
+  --output /etc/academy-native/evidence/isaaclab.whl
+chmod 644 /etc/academy-native/evidence/isaaclab.whl
 getent group video >/dev/null || groupadd --system video
 getent group render >/dev/null || groupadd --system render
 useradd --system --home-dir /var/cache/academy-native --shell /usr/sbin/nologin --groups video,render academy-native

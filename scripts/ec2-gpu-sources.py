@@ -71,7 +71,7 @@ def snapshot(source, revision, target):
             '[core]\n\trepositoryformatversion = 0\n\tbare = false\n\tlogallrefupdates = false\n\thooksPath = /dev/null\n[filter "lfs"]\n\tclean = git-lfs clean -- %f\n\tsmudge = git-lfs smudge --skip -- %f\n\tprocess = git-lfs filter-process --skip\n\trequired = true\n'
         )
         shutil.rmtree(checkout / ".git/hooks", ignore_errors=True)
-        for name in ("FETCH_HEAD", "logs"):
+        for name in ("FETCH_HEAD", "logs", "lfs"):
             item = checkout / ".git" / name
             if item.is_dir():
                 shutil.rmtree(item)

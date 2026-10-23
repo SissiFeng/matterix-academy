@@ -1,9 +1,9 @@
 # Academy readiness completion — 2026-10-23
 
-The final local verification passed **514 backend tests and 43 Chromium journeys**,
+The final local verification passed **539 backend tests and 45 Chromium journeys**,
 including a five-learner concurrent SQLite/FastAPI regression and the exact shared
 course, dilution reset/repeat and first-transfer helpers used by the live learner
-harness. Its nine guard tests also passed; failed registration followed by existing
+harness. Its nine guard tests and four native browser-evidence helper tests also passed; failed registration followed by existing
 account login can never establish a successful new registration.
 
 `build-lambda.sh`, `verify.sh`, frontend build/format, both Terraform roots and the
@@ -12,11 +12,19 @@ release manifest now share version 0.2.0, and publishing checks the installed ZI
 version before credentials plus the live version after deployment. CI installation
 has separate bounded OS/browser phases and retained failure logs.
 
-Security and architecture review identified two live-harness errors: stale accessible
-selectors and request-only registration evidence. Both were corrected; the shared
-real-app regression passes. The new GPU-capacity path also received a separate
-launch-blocking review with no remaining finding. These are local/review results,
-not fresh remote CI, image-build or native acceptance evidence.
+Review fixes preserve drafts after unchanged recovery reads, require a fresh post-reload
+GET, and bind relay evidence to the currently attached video track. Native evidence
+must match the manifest's session binding. GPU inputs now bind the private source
+archives; installed Lab bytes are checked against the pinned publisher wheel, and
+Git/LFS source checks work without writing caches in read-only source directories.
+Credential expiry is rechecked immediately before launching the paid build.
+
+Linux CI exposed a missing unpacked-provider checksum, corrected using official signed
+Linux/macOS packages. [CI run 39971827669](https://github.com/SissiFeng/matterix-academy/actions/runs/39971827669)
+passed at `03a8a1b`, including Packer plugin validation and browser journeys. The
+additional review fixes above passed the latest local suite; consult PR #5's latest
+check for their final remote result. These checks do not establish image-build or
+native acceptance evidence.
 
 Operational Terraform applied 13 additions and four alarm updates, then removed
 only the new US$400 budget at the user's request. The final plan has no changes.

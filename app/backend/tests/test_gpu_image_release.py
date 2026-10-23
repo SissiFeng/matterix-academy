@@ -50,6 +50,8 @@ def repository(tmp_path):
 def test_release_is_committed_deterministic_and_hash_bound(tmp_path):
     module = script("ec2-gpu-release")
     root, commit = repository(tmp_path)
+    for name in ("first", "second"):
+        private_inputs(tmp_path / name)
     first = module.package(root, commit, tmp_path / "first")
     second = module.package(root, commit, tmp_path / "second")
     assert first == second
@@ -59,9 +61,16 @@ def test_release_is_committed_deterministic_and_hash_bound(tmp_path):
     assert manifest["academy_commit"] == commit
     assert first["status"] == "source-release-not-gpu-qualified"
     assert gzip.decompress(archive)
+    assert archive[9] == 255  # Platform-independent gzip OS header.
+    assert (
+        manifest["sources_manifest_sha256"]
+        == hashlib.sha256((tmp_path / "first/sources.json").read_bytes()).hexdigest()
+    )
 
 
-@pytest.mark.parametrize("case", ["dirty", "untracked", "abbreviated", "in_checkout"])
+@pytest.mark.parametrize(
+    "case", ["dirty", "untracked", "abbreviated", "older_commit", "in_checkout"]
+)
 def test_release_rejects_unreviewable_inputs(tmp_path, case):
     module = script("ec2-gpu-release")
     root, commit = repository(tmp_path)
@@ -72,16 +81,29 @@ def test_release_rejects_unreviewable_inputs(tmp_path, case):
         (root / "credential").write_text("synthetic private file")
     elif case == "abbreviated":
         commit = commit[:12]
+    elif case == "older_commit":
+        git(root, "commit", "--allow-empty", "-qm", "New reviewed revision")
     else:
         output = root / "output"
     with pytest.raises(ValueError):
         module.package(root, commit, output)
 
 
-def test_source_export_keeps_commit_without_local_credentials_or_untracked_files(tmp_path):
+def test_source_export_keeps_commit_without_local_credentials_or_untracked_files(
+    tmp_path, monkeypatch
+):
     module = script("ec2-gpu-sources")
     root, commit = repository(tmp_path)
     git(root, "config", "credential.helper", "synthetic-local-helper")
+    copy = module.shutil.copy2
+
+    def inject_checkout_credential(source, destination):
+        copy(source, destination)
+        checkout = next(p for p in destination.parents if (p / ".git/config").is_file())
+        with (checkout / ".git/config").open("a") as file:
+            file.write("\n[credential]\n\thelper = checkout-secret-sentinel\n")
+
+    monkeypatch.setattr(module.shutil, "copy2", inject_checkout_credential)
     (root / "private-untracked").write_text("do not export")
     target = tmp_path / "source.tar.gz"
     sha = module.snapshot(root, commit, target)
@@ -90,6 +112,7 @@ def test_source_export_keeps_commit_without_local_credentials_or_untracked_files
         assert not any("private-untracked" in name for name in archive.getnames())
         config = archive.extractfile("./.git/config").read().decode()
         assert "credential" not in config and "remote" not in config
+        assert "checkout-secret-sentinel" not in config
         assert archive.extractfile("./.git/HEAD").read().decode().strip() == commit
 
 
@@ -176,10 +199,23 @@ def test_image_installed_permissions_and_metadata_probe_contract():
     assert '"$worker_metadata_status" == 7' in finalize
 
 
+def private_inputs(root):
+    root.mkdir(parents=True, exist_ok=True)
+    record = {}
+    for name, key in (("engine", "engine_commit"), ("assets", "asset_commit")):
+        payload = b"synthetic archive " + name.encode()
+        (root / f"{name}.tar.gz").write_bytes(payload)
+        record[name] = {"commit": PROFILE[key], "sha256": hashlib.sha256(payload).hexdigest()}
+    (root / "sources.json").write_text(json.dumps(record))
+
+
 def image_inputs(tmp_path, monkeypatch):
     module = script("ec2-gpu-inputs")
     manifest = json.loads((ROOT / "ops/ec2-gpu/image-manifest.example.json").read_text())
     manifest["academy_commit"] = "a" * 40
+    private_inputs(tmp_path)
+    manifest["sources_manifest_sha256"] = module.sha256(tmp_path / "sources.json")
+    monkeypatch.setattr(module, "reviewed_commit", lambda: manifest["academy_commit"])
     (tmp_path / "image-manifest.json").write_text(json.dumps(manifest))
     for name in ("academy", "engine", "assets"):
         (tmp_path / f"{name}.tar.gz").write_bytes(b"synthetic archive " + name.encode())
@@ -189,17 +225,6 @@ def image_inputs(tmp_path, monkeypatch):
         "manifest_sha256": module.sha256(tmp_path / "image-manifest.json"),
     }
     (tmp_path / "release.json").write_text(json.dumps(release))
-    (tmp_path / "sources.json").write_text(
-        json.dumps(
-            {
-                name: {
-                    "commit": manifest[key],
-                    "sha256": module.sha256(tmp_path / f"{name}.tar.gz"),
-                }
-                for name, key in (("engine", "engine_commit"), ("assets", "asset_commit"))
-            }
-        )
-    )
     driver = json.loads((ROOT / "ops/ec2-gpu/image/driver.json").read_text())
     (tmp_path / "driver.json").write_text(json.dumps(driver))
     real_hash = module.sha256
@@ -219,11 +244,23 @@ def test_complete_input_binding_is_only_ready_for_authorized_build(tmp_path, mon
     assert not result["image_built"] and not result["browser_dt_accepted"]
 
 
-@pytest.mark.parametrize("change", ["archive", "manifest", "source", "driver", "release"])
+@pytest.mark.parametrize(
+    "change",
+    ["archive", "manifest", "source", "driver", "release", "source_and_archive", "checkout"],
+)
 def test_image_input_binding_blocks_drift(tmp_path, monkeypatch, change):
     module = image_inputs(tmp_path, monkeypatch)
     if change == "archive":
         (tmp_path / "engine.tar.gz").write_bytes(b"changed archive")
+    elif change == "checkout":
+        monkeypatch.setattr(module, "reviewed_commit", lambda: "b" * 40)
+    elif change == "source_and_archive":
+        archive = tmp_path / "engine.tar.gz"
+        archive.write_bytes(b"different payload claiming the same commit")
+        source = tmp_path / "sources.json"
+        value = json.loads(source.read_text())
+        value["engine"]["sha256"] = module.sha256(archive)
+        source.write_text(json.dumps(value))
     else:
         name = {
             "manifest": "image-manifest.json",
@@ -246,6 +283,7 @@ def test_image_input_binding_blocks_drift(tmp_path, monkeypatch, change):
 
 
 def test_build_identity_uses_exact_frozen_credentials_and_pinned_sts_endpoint(monkeypatch):
+    from datetime import UTC, datetime, timedelta
     from types import SimpleNamespace
 
     module = script("ec2-gpu-build")
@@ -261,10 +299,14 @@ def test_build_identity_uses_exact_frozen_credentials_and_pinned_sts_endpoint(mo
         return SimpleNamespace(get_caller_identity=lambda: {"Account": "123456789012"})
 
     session = SimpleNamespace(
-        get_credentials=lambda: SimpleNamespace(get_frozen_credentials=lambda: frozen),
+        get_credentials=lambda: SimpleNamespace(
+            get_frozen_credentials=lambda: frozen,
+            _expiry_time=datetime.now(UTC) + timedelta(hours=4),
+        ),
         client=client,
     )
-    env = module.verified_environment(session, "123456789012", "ca-central-1")
+    env, expires = module.verified_environment(session, "123456789012", "ca-central-1")
+    assert expires > datetime.now(UTC) + timedelta(hours=3)
     assert calls[0][1]["endpoint_url"] == "https://sts.ca-central-1.amazonaws.com"
     assert calls[0][1]["verify"] is True
     assert calls[0][1]["aws_access_key_id"] == env["AWS_ACCESS_KEY_ID"] == frozen.access_key

@@ -212,3 +212,55 @@ test("mobile and dark theme keep the review usable without horizontal overflow",
   await diagnose(page);
   await repair(page);
 });
+
+for (const delayedRead of [false, true]) {
+  test(`uncommitted save preserves answers and leave warning after ${delayedRead ? "manual" : "immediate"} reconciliation`, async ({
+    page,
+  }) => {
+    await enter(page);
+    await diagnose(page);
+    let posts = 0;
+    await page.route("**/api/workflow-course", async (route) => {
+      if (route.request().method() === "POST") {
+        posts++;
+        return route.abort("failed");
+      }
+      if (delayedRead) return route.abort("failed");
+      return route.continue();
+    });
+    await page.getByLabel("Starting source volume (µL)").fill("125");
+    await page.getByLabel("Mixing approach").selectOption("ideal");
+    await page.getByRole("button", { name: "Save repaired plan" }).click();
+    if (delayedRead) {
+      await expect(page.getByRole("alert")).toContainText(
+        "saved outcome could not be checked",
+      );
+      await page.unroute("**/api/workflow-course");
+      await page.getByRole("button", { name: "Reload saved progress" }).click();
+    }
+    await expect(page.getByRole("alert")).toContainText(
+      "No saved change was found",
+    );
+    await expect(page.getByLabel("Starting source volume (µL)")).toHaveValue(
+      "125",
+    );
+    await expect(page.getByLabel("Mixing approach")).toHaveValue("ideal");
+    let warned = false;
+    page.once("dialog", async (dialog) => {
+      warned = true;
+      await dialog.dismiss();
+    });
+    await page.getByRole("button", { name: "Back to learning lab" }).click();
+    expect(warned).toBe(true);
+    await expect(page).toHaveURL(/#\/workflow-course$/);
+    expect(posts).toBe(1);
+    await page.unroute("**/api/workflow-course");
+    await page.getByRole("button", { name: "Save repaired plan" }).click();
+    await expect(
+      page.getByRole("button", { name: "Run synthetic trial" }),
+    ).toBeEnabled();
+    const saved = await (await page.request.get("/api/workflow-course")).json();
+    expect(saved.plan.source_volume).toBe(125);
+    expect(saved.phase).toBe("practice");
+  });
+}

@@ -22,7 +22,10 @@ def artifacts(tmp_path):
         folder.mkdir()
         command = str(uuid4())
         payloads = {
-            "manifest.json": {"request": request.model_dump(mode="json")},
+            "manifest.json": {
+                "request": request.model_dump(mode="json"),
+                "binding": {"native_session_id": str(native)},
+            },
             "snapshot.json": snapshot,
             "frame-proof.json": {
                 "run_id": run_id,
@@ -95,6 +98,9 @@ def test_matching_synthetic_fixtures_only_produce_consistency_review_not_qualifi
         "no_refresh",
         "replayed",
         "wrong_versions",
+        "wrong_manifest_session",
+        "missing_manifest_binding",
+        "malformed_manifest_session",
         "one_run",
         "duplicate",
     ],
@@ -117,6 +123,20 @@ def test_missing_or_conflicting_browser_native_evidence_fails_closed(tmp_path, c
         browser["submission_posts"] = 3
     elif case == "wrong_versions":
         first["run"]["snapshot"]["engine_version"] = "other"
+        (folder / "snapshot.json").write_text(json.dumps(first["run"]["snapshot"]))
+    elif case in {
+        "wrong_manifest_session",
+        "missing_manifest_binding",
+        "malformed_manifest_session",
+    }:
+        manifest = json.loads((folder / "manifest.json").read_text())
+        if case == "wrong_manifest_session":
+            manifest["binding"]["native_session_id"] = str(uuid4())
+        elif case == "malformed_manifest_session":
+            manifest["binding"]["native_session_id"] = None
+        else:
+            del manifest["binding"]
+        (folder / "manifest.json").write_text(json.dumps(manifest))
     elif case == "one_run":
         browser["server_report"]["runs"].pop()
     else:

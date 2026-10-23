@@ -72,9 +72,11 @@ export default function WorkflowCourse({
   const alive = useRef(false);
   const lock = useRef(false);
   const readGeneration = useRef(0);
+  const unresolvedVersion = useRef<number | null>(null);
 
   const accept = (next: Progress) => {
     if (!alive.current) return;
+    unresolvedVersion.current = null;
     setProgress(next);
     setSelected(next.findings);
     setSource(String(next.plan.source_volume));
@@ -85,13 +87,30 @@ export default function WorkflowCourse({
     setDirty(false);
     setBlocked(false);
   };
+  const reconcile = (next: Progress) => {
+    if (!alive.current) return;
+    const expected = unresolvedVersion.current;
+    if (expected !== null && next.version < expected)
+      throw new Error(
+        "The saved course record is older than the last confirmed version.",
+      );
+    if (expected !== null && next.version === expected) {
+      // No command committed. Keep the draft and its navigation warning intact.
+      unresolvedVersion.current = null;
+      setProgress(next);
+      setBlocked(false);
+      setError(
+        "No saved change was found. Your answers are still here; review them before saving again.",
+      );
+    } else accept(next);
+  };
   const load = async () => {
     const generation = ++readGeneration.current;
     setBusy(true);
     setError("");
     try {
       const next = await api<Progress>("/workflow-course");
-      if (generation === readGeneration.current) accept(next);
+      if (generation === readGeneration.current) reconcile(next);
     } catch (e) {
       if (alive.current && generation === readGeneration.current) {
         setError((e as Error).message);
@@ -133,6 +152,7 @@ export default function WorkflowCourse({
   const send = async (action: string, answers: object = {}) => {
     if (!progress || lock.current || blocked) return;
     lock.current = true;
+    unresolvedVersion.current = progress.version;
     readGeneration.current += 1;
     setBusy(true);
     setError("");
@@ -149,7 +169,7 @@ export default function WorkflowCourse({
         `${(e as Error).message} Your saved course record is being checked; the action will not be replayed.`,
       );
       try {
-        accept(await api<Progress>("/workflow-course"));
+        reconcile(await api<Progress>("/workflow-course"));
       } catch {
         if (alive.current) {
           setBlocked(true);

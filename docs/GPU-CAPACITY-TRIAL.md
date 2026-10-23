@@ -38,9 +38,10 @@ to 30 minutes plus a 30-second termination grace. Finalization retains:
   RAM, so this host check allows 31 GiB visible after EC2 verifies 32 GiB physical.
 - `probe-time.txt`, `gpu-memory.csv`, `probe-kernel.log` and measurement timestamps.
 
-These files live in `/etc/academy-native/evidence/`. Compact capacity and scene
-reports also print to Packer's local log before failed-build cleanup can remove
-the host. A killed/timed-out process, missing measurements, unreadable kernel log,
+These files live in `/etc/academy-native/evidence/`. The compact capacity report
+prints to Packer's local log before a failed capacity gate removes the host.
+The scene report prints only after the capacity gate passes; it may be absent for
+a failed or interrupted probe. A killed/timed-out process, missing measurements, unreadable kernel log,
 or any observed kernel OOM fails finalization. Do not publish an image after such
 a failure. Do not add swap or lower source/version/render/reset gates to obtain a
 pass. Keep raw timing/GPU logs from a successful image for review.

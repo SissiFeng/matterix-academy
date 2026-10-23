@@ -16,6 +16,11 @@ def fixture_runtime():
         "physx": True,
         "launcher_arguments": True,
         "pip_check": True,
+        "isaaclab_artifact": {
+            "verified": True,
+            "wheel_sha256": inventory.PROFILE["isaaclab_wheel_sha256"],
+            "files_checked": 1,
+        },
         "packages": {
             name: inventory.PROFILE[key]
             for name, key in (
@@ -64,7 +69,7 @@ def test_complete_profile_is_only_ready_to_commission_not_native_acceptance(monk
     assert result["native_verified"] is False
 
 
-@pytest.mark.parametrize("change", ["python", "lab", "physx", "os", "launcher", "pip"])
+@pytest.mark.parametrize("change", ["python", "lab", "physx", "os", "launcher", "pip", "artifact"])
 def test_wrong_generation_or_failed_environment_checks_block_commissioning(
     monkeypatch, tmp_path, change
 ):
@@ -79,6 +84,8 @@ def test_wrong_generation_or_failed_environment_checks_block_commissioning(
         runtime["os"] = "Darwin"
     elif change == "launcher":
         runtime["launcher_arguments"] = False
+    elif change == "artifact":
+        runtime["isaaclab_artifact"]["verified"] = False
     else:
         runtime["pip_check"] = False
     assert not collect(monkeypatch, tmp_path, runtime)["ready_for_commissioning"]

@@ -1,6 +1,8 @@
 # Internal Flex GPU commissioning
 
-Status: tooling prepared; no EC2, AMI, KVS channel or paid resource was created.
+Status: tooling prepared; native browser acceptance has not run. See [STATUS.md](STATUS.md)
+for the latest image, deployment and resource evidence. Real-account acceptance is
+deferred by the user as of 2026-10-23.
 The acceptance target is the existing Onboarding browser → Simulation lab → Four-source
 mixing → native Isaac video → five completed steps → verified reset/release, twice.
 Synthetic tests do not satisfy this target.
@@ -42,14 +44,17 @@ Record installed package freeze, image ID and artifact hashes on the authorized 
 After a separately authorized host/image deployment, run as the worker service user:
 
 ```sh
-uv run python -m academy.runtime_inventory \
+/opt/academy-agent/.venv/bin/python -m academy.runtime_inventory \
   --engine-root /srv/matterix --assets-root /srv/matterix-assets \
   --isaac-python /opt/matterix-isaac/bin/python \
   --output /var/lib/academy-native/evidence/runtime.json
 ```
 
-Exit 2 blocks commissioning. This checks exact clean source pins, asset payloads,
-Python/packages, PhysX module, launcher flags, dependency consistency and GPU/driver.
+Exit 2 blocks commissioning. This checks exact source bytes against Git objects and
+LFS payload hashes without writing source caches, Python/packages, PhysX module,
+launcher flags, dependency consistency and GPU/driver. The prepared image retains
+`/etc/academy-native/evidence/isaaclab.whl`: its pinned publisher hash and installed
+payload bytes must match before importing Lab. Missing provenance blocks acceptance.
 Also verify writable state/cache, IMDS denial, SSM, free disk and the worker contract.
 No inventory result qualifies a worker.
 

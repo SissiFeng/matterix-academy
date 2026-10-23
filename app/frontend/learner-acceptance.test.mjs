@@ -19,6 +19,18 @@ test("live acceptance rejects local, credential-bearing and callback URLs", () =
   assert.equal(acceptanceOrigin("https://example.com"), "https://example.com");
   for (const url of [
     "http://127.0.0.1:5174",
+    "https://127.0.0.1",
+    "https://127.2.3.4",
+    "https://2130706433",
+    "https://0x7f000001",
+    "https://localhost",
+    "https://localhost.",
+    "https://academy.localhost",
+    "https://academy.local",
+    "https://[::1]",
+    "https://[::ffff:127.0.0.1]",
+    "https://0.0.0.0",
+    "https://10.0.0.1",
     "https://secret@example.com",
     "https://example.com/auth/callback?code=secret",
     "https://example.com/#/workflow-course",

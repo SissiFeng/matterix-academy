@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { isIP } from "node:net";
 import { chmod, lstat, mkdir } from "node:fs/promises";
 
 export function acceptanceOrigin(value) {
   const url = new URL(value);
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+  const address = hostname.replace(/^\[|\]$/g, "");
+  const local =
+    !hostname.includes(".") ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    isIP(address) !== 0;
   if (
+    local ||
     url.protocol !== "https:" ||
     url.username ||
     url.password ||
@@ -12,7 +21,9 @@ export function acceptanceOrigin(value) {
     url.hash ||
     url.pathname !== "/"
   )
-    throw new Error("Use only the deployed HTTPS Academy origin.");
+    throw new Error(
+      "Use only the deployed HTTPS Academy DNS origin, without local hosts or IP literals.",
+    );
   return url.origin;
 }
 

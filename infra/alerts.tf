@@ -167,4 +167,4 @@ resource "aws_cloudwatch_metric_alarm" "database_throttles" {
 }
 
 output "alarm_topic_arn" { value = try(aws_sns_topic.alerts[0].arn, null) }
-output "monthly_budget_scope" { value = var.monthly_budget_usd > 0 ? var.budget_scope : null }
+output "monthly_budget_scope" { value = length(aws_budgets_budget.monthly) > 0 ? var.budget_scope : null }

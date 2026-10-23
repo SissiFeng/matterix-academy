@@ -26,6 +26,7 @@ costs = load_script("ec2-gpu-costs")
 def pinned_fixture():
     manifest = json.loads((ROOT / "ops/ec2-gpu/image-manifest.example.json").read_text())
     manifest["academy_commit"] = "a" * 40
+    manifest["sources_manifest_sha256"] = "b" * 64
     manifest["driver_version"] = prepare.PROFILE["driver_version"]
     return manifest
 
@@ -58,6 +59,8 @@ def test_renderer_matches_existing_native_runner_contract_without_importing_isaa
         {"isaacsim_version": "5.0.0"},
         {"python_version": "3.11"},
         {"ubuntu_version": "20.04"},
+        {"ubuntu_version": "22.04"},
+        {"sources_manifest_sha256": ""},
         {"command": "arbitrary execution"},
     ],
 )

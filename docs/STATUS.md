@@ -11,7 +11,7 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 | Teaching-model lessons (first transfer, dilution sandbox) | Verified locally | Synthetic by design; never labeled as Isaac or physical |
 | Discovery studio, workflow marketplace, connector explorer | Verified locally | Content and interaction only |
 | Workcell onboarding (Overview → Onboard → Twin → Sim → Real → Runs) | Implemented | Physical readiness always shown as unverified; no device connection |
-| Workflow judgment course | Verified locally | English synthetic-only review, repair, trial, scripted reconciliation and conclusion; see [course contract](WORKFLOW-JUDGMENT-COURSE.md). 514 backend tests and 43 browser journeys passed; see [validation](VALIDATION.md) |
+| Workflow judgment course | Verified locally | English synthetic-only review, repair, trial, scripted reconciliation and conclusion; see [course contract](WORKFLOW-JUDGMENT-COURSE.md). 539 backend tests and 45 browser journeys passed; see [validation](VALIDATION.md) |
 | Page-level code splitting | Implemented | Main bundle ~344 kB (was ~521 kB) |
 
 ## AWS (account 247893369214, ca-central-1)
@@ -42,4 +42,4 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 
 - The enrolled machine credential for `borealis-flex-mixing` sits in ignored `build/native-installer/`. Move it to the host's credential store after install, or revoke and re-enroll if the install route changes.
 - `Claude outputs/dashboard-nav.patch` is an unapplied navigation-animation patch from an earlier session; apply or discard deliberately.
-- Workcell onboarding and this round of fixes are tracked in [PR #4](https://github.com/SissiFeng/matterix-academy/pull/4); publication is verified separately by the deployment workflow and the live version manifest.
+- Earlier workcell onboarding shipped in [PR #4](https://github.com/SissiFeng/matterix-academy/pull/4). The course, image preparation and current readiness fixes are tracked in [PR #5](https://github.com/SissiFeng/matterix-academy/pull/5); publication is verified separately by the deployment workflow and the live version manifest.

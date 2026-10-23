@@ -14,6 +14,7 @@ from .models import StrictModel
 from .native_files import read_json, write_json
 from .recipes import MixingPlan
 from .remote_run import RemoteRunSnapshot, check_run_snapshot
+from .runtime_inventory import source_tree_clean
 from .worker import GatewayRunner
 
 
@@ -45,13 +46,7 @@ class NativeConfig(StrictModel):
             ("assets_root", self.asset_version),
         ):
             root = getattr(self, name)
-            head = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=root, text=True
-            ).strip()
-            clean = (
-                subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], cwd=root).returncode == 0
-            )
-            if head != revision or not clean:
+            if not source_tree_clean(root, revision):
                 raise GatewayUnavailable(
                     "Prepared native checkout differs from its pinned qualification"
                 )

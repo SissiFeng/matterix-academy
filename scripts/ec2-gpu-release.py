@@ -41,9 +41,21 @@ def package(root, revision, output):
         raise ValueError("Commit and verify Academy before packaging a release")
     if git(root, "rev-parse", f"{revision}^{{commit}}").decode().strip() != revision:
         raise ValueError("Academy revision is not a commit")
+    if git(root, "rev-parse", "HEAD").decode().strip() != revision:
+        raise ValueError("Check out the exact reviewed Academy revision before packaging")
     output = external_output(root, output)
+    sources_bytes = (output / "sources.json").read_bytes()
+    sources = json.loads(sources_bytes)
+    if set(sources) != {"engine", "assets"}:
+        raise ValueError("Export exactly the two reviewed private sources before packaging")
     raw = git(root, "archive", "--format=tar", revision)
-    archive = gzip.compress(raw, mtime=0)
+    # GzipFile fixes the OS header byte across Python 3.12/3.14; gzip.compress does not.
+    compressed = io.BytesIO()
+    with gzip.GzipFile(
+        filename="", fileobj=compressed, mode="wb", compresslevel=9, mtime=0
+    ) as zipped:
+        zipped.write(raw)
+    archive = compressed.getvalue()
     with tarfile.open(fileobj=io.BytesIO(raw)) as files:
         manifest = json.load(files.extractfile("ops/ec2-gpu/image-manifest.example.json"))
         hashes = {
@@ -56,6 +68,13 @@ def package(root, revision, output):
             )
         }
     manifest["academy_commit"] = revision
+    for name, key in (("engine", "engine_commit"), ("assets", "asset_commit")):
+        if sources[name]["commit"] != manifest[key]:
+            raise ValueError("Private source commit differs from the reviewed image profile")
+        with (output / f"{name}.tar.gz").open("rb") as file:
+            if hashlib.file_digest(file, "sha256").hexdigest() != sources[name]["sha256"]:
+                raise ValueError("Private source archive differs from its export manifest")
+    manifest["sources_manifest_sha256"] = digest(sources_bytes)
     manifest_bytes = (json.dumps(manifest, indent=2) + "\n").encode()
     release = {
         "schema_version": 1,

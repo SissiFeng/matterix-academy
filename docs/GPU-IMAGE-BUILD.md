@@ -1,9 +1,11 @@
 # Internal Flex image and Academy source release
 
-The source release is Academy **0.2.0**. Its immutable commit, archive and dependency
-hashes are recorded in `ops/ec2-gpu/academy-release.json` and in the protected local
-release directory. This is a local source release, not a deployed application or
-qualified GPU image. No AWS account is selected by the preparation commands.
+The source release is Academy **0.2.0**. `ops/ec2-gpu/academy-release.json` records
+the initial immutable source release. For a reviewed update, export the exact tested
+commit to a new protected directory and retain its generated `release.json` with
+the reviewed build configuration. Do not overwrite an earlier release's inputs.
+Source packaging alone does not deploy the application or qualify a GPU image.
+No AWS account is selected by the preparation commands.
 
 ## Resolved runtime
 
@@ -50,21 +52,24 @@ submodule content; the engine's historical data submodule is deliberately replac
 by the separately pinned internal asset checkout via `MATTERIX_ASSETS_DATA_DIR`.
 
 ```sh
-uv run python scripts/ec2-gpu-release.py \
-  --revision FULL_COMMIT_FROM_ACADEMY_RELEASE_JSON --output-dir /protected/academy-image-input
 uv run python scripts/ec2-gpu-sources.py \
   --engine-root /path/to/Matterix-Internal-flex-pr \
   --assets-root /path/to/Matterix-assets-flex-pr \
   --output-dir /protected/academy-image-input
+uv run python scripts/ec2-gpu-release.py \
+  --revision REVIEWED_COMMITTED_FULL_SHA --output-dir /protected/academy-image-input
 uv run python scripts/ec2-gpu-driver.py --download \
   --output-dir /protected/academy-image-input
 ```
 
-Academy must be clean and committed. The code release archive is deterministic and
+Academy must be clean with the reviewed commit checked out at HEAD. The code release archive is deterministic and
 secret-free. The internal repositories remain independent at reviewed commits
 `18a96b78ee989fbf4e480e9db6a588c148c6adbe` and
 `c57f12a04079a5f99405e1fcb818a3b7ccc52e5b`. Engine/assets archives are private.
 Packer uploads only the eight named build inputs, never the whole protected folder.
+Export sources first: the reviewed image manifest binds `sources.json` and therefore
+both private archive hashes. Replacing an archive and its adjacent record together
+must fail the manifest binding. Regenerate the reviewed release if the inputs change.
 Before any build, check all payloads and source/release/driver bindings offline:
 
 ```sh
@@ -91,8 +96,9 @@ acceptance. It does not use or install any worker token.
 Copy `build.pkrvars.json.example` to the protected directory. Fill the authorized
 account, exact base AMI, existing VPC/subnet, operator IPv4 `/32`, and input directory.
 Use `archive_sha256` and `manifest_sha256` from `release.json`. Set both confirmation
-flags true only once separately authorized. Then run the build against the release
-checkout referenced by `academy-release.json`:
+flags true only once separately authorized. For the current 8-vCPU Canadian trial,
+also set `"build_instance_type": "g6.2xlarge"`; see [capacity trial](GPU-CAPACITY-TRIAL.md).
+Run the build against the same reviewed commit packaged in the protected `release.json`:
 
 ```sh
 uv run python scripts/ec2-gpu-build.py check --config /protected/approved-build.pkrvars.json
@@ -100,11 +106,16 @@ uv run python scripts/ec2-gpu-build.py build --config /protected/approved-build.
   --confirm-paid-build --accept-nvidia-eula
 ```
 
-The `build` command invokes Packer to create a g6.4xlarge and 300 GiB encrypted gp3 disk, then retains an
-AMI/snapshot. This is a paid operation; it was **not run** during development.
+The `build` command invokes Packer to create the explicitly selected single GPU instance
+and 300 GiB encrypted gp3 disk, then retains an AMI/snapshot. The default g6.4xlarge
+requires 16 vCPU; the current trial explicitly selects g6.2xlarge (8 vCPU).
+This is a paid operation; source preparation does not run it.
 The build wrapper checks the exact frozen credentials against the official regional
 STS endpoint, rejects the wrong account, and passes only those verified credentials
 to Packer. Always use this wrapper for builds; do not invoke `packer build` directly.
+Temporary credentials must have a known expiry covering the build timeout, six
+minutes of cleanup and two minutes of clock margin. The same frozen token is checked
+again immediately before launch so slow capacity checks cannot consume that window.
 The builder restricts temporary SSH to the operator's
 single address, installs the pinned driver/runtime, reboots and performs final probes.
 Root SSH provisioners are build-only. Learners use the existing browser API and

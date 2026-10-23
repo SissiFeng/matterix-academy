@@ -9,7 +9,7 @@ jq
 libasound2t64
 libegl1
 libgl1
-libglib2.0-0
+libglib2.0-0t64
 libgomp1
 libnss3
 libvulkan1
