@@ -1,0 +1,815 @@
+.stories {
+  --story-accent: #b65c3a;
+  --story-accent-soft: #f2e5d4;
+  width: 100%;
+  color: var(--ink);
+}
+
+.stories button,
+.stories input {
+  font: inherit;
+}
+
+.stories button {
+  cursor: pointer;
+}
+
+.stories button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.stories button:focus-visible,
+.stories input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 30px;
+}
+
+.eyebrow {
+  margin: 0 0 13px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.header h1,
+.header h2 {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(2.25rem, 4.7vw, 4.2rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+}
+
+.header h1 span,
+.header h2 span {
+  color: var(--brand-text);
+}
+
+.introduction {
+  max-width: 290px;
+  margin: 0 0 5px;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.instrumentChoices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.instrumentChoice {
+  display: flex;
+  position: relative;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 17px 6px 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.instrumentChoice:hover {
+  border-color: var(--line-emph);
+}
+
+.instrumentChoice.selectedInstrument {
+  border-color: var(--brand-text);
+  background: var(--surface-1);
+  box-shadow: inset 0 -2px 0 var(--brand-text);
+}
+
+.miniInstrument {
+  width: 124px;
+  flex: 0 0 124px;
+}
+
+.instrumentName {
+  display: block;
+  margin-bottom: 5px;
+  font-family: "Manrope", sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.instrumentDescription {
+  display: block;
+  max-width: 230px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.choiceIndicator {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.selectedInstrument .choiceIndicator {
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand-text);
+}
+
+.storyStage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(250px, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0 0 15px 15px;
+  background: var(--surface-1);
+}
+
+.visual {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 18px 14px 16px;
+  background: var(--surface-2);
+}
+
+.visualTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.teachingBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.teachingBadge > span {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brand-text);
+}
+
+.illustration {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--ink-2);
+  overflow: visible;
+}
+
+.annotation {
+  fill: var(--ink-2);
+  font-family: "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.machineAnnotation {
+  fill: #3e5d4b;
+  font-family: "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.figureLabel {
+  fill: var(--muted);
+  font-family: "DM Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.visualLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.visualLegend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.visualLegend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.tipColor {
+  background: #72995c;
+}
+
+.stockColor {
+  background: #ce7151;
+}
+
+.sampleColor {
+  background: #a288b2;
+}
+
+.storyText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 26px 29px;
+  border-left: 1px solid var(--line);
+}
+
+.chapterCount {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-bottom: 28px;
+  font-family: "Manrope", sans-serif;
+}
+
+.chapterCount span:first-child {
+  color: var(--brand-text);
+  font-size: 37px;
+  font-weight: 500;
+  letter-spacing: -0.07em;
+}
+
+.chapterCount span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chapterLabel {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.caption h3 {
+  margin: 0 0 16px;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
+  font-weight: 600;
+  line-height: 1.23;
+  letter-spacing: -0.045em;
+}
+
+.caption > p:last-child {
+  min-height: 6.4em;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.captionDetail {
+  margin: 20px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.deckGuide {
+  margin: 16px 0 0;
+  color: var(--brand-text);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.playback {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 14px 19px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 15px 15px 0 0;
+  background: var(--surface-1);
+}
+
+.playButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 154px;
+  min-height: 39px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.playButton:hover:not(:disabled),
+.primaryButton:hover:not(:disabled) {
+  background: var(--brand-strong);
+}
+
+.replayButton {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.replayButton:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.timeline {
+  display: flex;
+  flex: 1;
+  min-width: 30px;
+}
+
+.timeline input {
+  width: 100%;
+  min-width: 0;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--brand-text);
+  cursor: pointer;
+}
+
+.timestamp {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chapters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 16px 4px;
+}
+
+.chapters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.chapters button > span {
+  color: var(--faint);
+  font-size: 8px;
+}
+
+.chapters button.currentChapter {
+  border-color: var(--brand-text);
+  color: var(--brand-text);
+  font-weight: 700;
+}
+
+.chapters button.currentChapter > span {
+  color: var(--brand-text);
+}
+
+.motionNote {
+  margin: 10px 0 0;
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+.workflowInvitation {
+  margin-top: 26px;
+  padding-top: 29px;
+  border-top: 1px solid var(--line);
+}
+
+.workflowHeading h3 {
+  margin: 0 0 20px;
+  font-family: "Manrope", sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.workflowChoices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.workflowChoices > button {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: start;
+  padding: 15px 19px 18px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-2);
+  text-align: left;
+}
+
+.workflowChoices > button:hover {
+  border-color: var(--line-emph);
+}
+
+.workflowChoices > button.selectedWorkflow {
+  border-color: var(--story-accent);
+  background: var(--story-accent-soft);
+}
+
+.workflowChoices button > span {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: "Manrope", sans-serif;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.workflowChoices small {
+  color: var(--muted);
+  font-family: "DM Sans", sans-serif;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.workflowChoices p {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.workflowMark {
+  width: 150px;
+  max-width: 100%;
+  height: 53px;
+  margin: 0 0 10px;
+  color: var(--brand-text);
+}
+
+.designActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-top: 21px;
+}
+
+.designActions > p {
+  max-width: 270px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.designActions > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 44px;
+  padding: 12px 19px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.blankButton {
+  min-height: 44px;
+  padding: 9px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 11px !important;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.boundary {
+  margin: 26px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.compact .header h1,
+.compact .header h2 {
+  font-size: clamp(2rem, 3.3vw, 3.2rem);
+}
+
+.compact .miniInstrument {
+  width: 100px;
+  flex-basis: 100px;
+}
+
+:global([data-theme="dark"]) .stories {
+  --story-accent: #dc9872;
+  --story-accent-soft: #372a20;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .stories {
+    --story-accent: #dc9872;
+    --story-accent-soft: #372a20;
+  }
+}
+
+@media (max-width: 950px) {
+  .storyStage {
+    grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr);
+  }
+
+  .storyText {
+    padding: 23px;
+  }
+
+  .chapterCount {
+    margin-bottom: 18px;
+  }
+
+  .visualTopline > span:last-child {
+    display: none;
+  }
+
+  .miniInstrument {
+    width: 100px;
+    flex-basis: 100px;
+  }
+
+  .instrumentDescription {
+    font-size: 10px;
+  }
+
+  .designActions {
+    align-items: flex-start;
+  }
+
+  .designActions > div {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 3px 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+
+  .introduction {
+    max-width: 430px;
+    font-size: 13px;
+  }
+
+  .instrumentChoices {
+    gap: 8px;
+  }
+
+  .instrumentChoice {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 4px 12px 14px;
+  }
+
+  .miniInstrument,
+  .compact .miniInstrument {
+    align-self: center;
+    width: 135px;
+    max-width: 100%;
+    flex-basis: auto;
+  }
+
+  .instrumentName {
+    font-size: 14px;
+  }
+
+  .instrumentDescription {
+    max-width: 200px;
+    font-size: 10px;
+  }
+
+  .choiceIndicator {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 23px;
+    height: 23px;
+  }
+
+  .storyStage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .visual {
+    padding: 16px 6px;
+  }
+
+  .visualTopline {
+    padding: 0 13px;
+  }
+
+  .visualTopline > span:last-child {
+    display: inline;
+  }
+
+  .storyText {
+    display: grid;
+    grid-template-columns: 35px 1fr;
+    gap: 0 15px;
+    padding: 22px;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .chapterCount {
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+  }
+
+  .chapterCount span:first-child {
+    font-size: 29px;
+  }
+
+  .chapterCount span:last-child {
+    font-size: 10px;
+  }
+
+  .caption h3 {
+    margin-bottom: 11px;
+    font-size: 23px;
+  }
+
+  .caption > p:last-child {
+    min-height: 0;
+    font-size: 12px;
+  }
+
+  .captionDetail,
+  .deckGuide {
+    grid-column: 2;
+  }
+
+  .captionDetail {
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+
+  .playback {
+    gap: 9px;
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+
+  .playButton {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .playButton span {
+    display: none;
+  }
+
+  .replayButton {
+    min-width: 29px;
+  }
+
+  .timestamp {
+    font-size: 9px;
+  }
+
+  .chapters {
+    gap: 5px 14px;
+    padding: 12px 0;
+  }
+
+  .chapters button {
+    font-size: 9px;
+  }
+
+  .workflowInvitation {
+    margin-top: 18px;
+    padding-top: 24px;
+  }
+
+  .workflowChoices {
+    gap: 7px;
+  }
+
+  .workflowChoices > button {
+    padding: 9px 9px 12px;
+  }
+
+  .workflowChoices button > span {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .workflowChoices p {
+    font-size: 9px;
+  }
+
+  .workflowMark {
+    height: auto;
+    margin-bottom: 8px;
+  }
+
+  .designActions {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .designActions > p {
+    max-width: 100%;
+  }
+
+  .designActions > div {
+    justify-content: flex-start;
+  }
+
+  .boundary {
+    margin-top: 21px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stories *,
+  .stories *::before,
+  .stories *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

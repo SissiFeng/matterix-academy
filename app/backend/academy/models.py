@@ -1,8 +1,9 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 SLOTS = {f"{row}{col}" for row in "ABCD" for col in range(1, 4)}
+OT2_SLOTS = {str(slot) for slot in range(1, 13)}
 DEFAULT_LAYOUT = {"stock": "D1", "plate": "D2", "tips": "B1", "waste": "D3"}
 WELLS = {"stock", "A1", "A2", "A3"}
 
@@ -33,23 +34,47 @@ def default_actions() -> list[Action]:
 
 class Experiment(StrictModel):
     title: str = Field(default="My serial dilution", min_length=1, max_length=80)
-    course_id: Literal["flex-foundations", "flex-first-transfer"] = "flex-foundations"
+    course_id: Literal["flex-foundations", "flex-first-transfer", "workflow-sandbox"] = (
+        "flex-foundations"
+    )
+    instrument: Literal["flex", "ot2"] = "flex"
     transfer_volume: float = Field(default=100, ge=1, le=300)
     layout: dict[str, str] = Field(default_factory=lambda: dict(DEFAULT_LAYOUT))
     source_volume: float = Field(default=1000, ge=0, le=1500)
     diluent_volume: float = Field(default=100, ge=0, le=1500)
-    actions: list[Action] = Field(default_factory=default_actions, min_length=1, max_length=64)
+    actions: list[Action] = Field(default_factory=default_actions, max_length=64)
+
+    @model_serializer(mode="wrap")
+    def keep_fixed_flex_wire_format(self, handler):
+        definition = handler(self)
+        # Existing courses have always implied Flex. Preserve their native hashes and
+        # gateway schema while making the new instrument choice explicit in studio plans.
+        if self.course_id != "workflow-sandbox":
+            definition.pop("instrument", None)
+        return definition
 
     @model_validator(mode="after")
     def layout_is_valid(self):
+        if self.course_id != "workflow-sandbox":
+            if self.instrument != "flex":
+                raise ValueError("This lesson uses the Opentrons Flex")
+            if not self.actions:
+                raise ValueError("This lesson needs at least one workflow step")
         if set(self.layout) != set(DEFAULT_LAYOUT):
-            raise ValueError("Use the stock vial, destination plate, tip rack and waste chute")
-        if not set(self.layout.values()) <= SLOTS:
-            raise ValueError("Labware must occupy a Flex deck slot A1–D3")
+            raise ValueError("Use the stock vial, destination plate, tip rack and waste")
+        slots = SLOTS if self.instrument == "flex" else OT2_SLOTS
+        if not set(self.layout.values()) <= slots:
+            raise ValueError(
+                "Labware must occupy a Flex deck slot A1–D3"
+                if self.instrument == "flex"
+                else "Use OT-2 deck positions 1–11 and fixed trash position 12"
+            )
         if len(set(self.layout.values())) != len(self.layout):
             raise ValueError("Two pieces of labware cannot occupy the same slot")
-        if self.layout["waste"] != "D3":
+        if self.instrument == "flex" and self.layout["waste"] != "D3":
             raise ValueError("The Flex waste chute is fixed at D3. It is not a movable trash bin.")
+        if self.instrument == "ot2" and self.layout["waste"] != "12":
+            raise ValueError("The OT-2 fixed trash occupies position 12")
         if self.course_id == "flex-first-transfer":
             expected = [
                 ("pickup", "stock"),
@@ -115,6 +140,20 @@ class Profile(StrictModel):
 
 
 COURSES = [
+    {
+        "id": "workflow-sandbox",
+        "number": "04",
+        "title": "Workflow Studio",
+        "subtitle": "Build your own liquid-handling workflow for the Flex or OT-2.",
+        "duration": "Explore at your own pace",
+        "level": "Create and experiment",
+        "objectives": [
+            "Arrange an instrument-specific teaching deck",
+            "Compose steps and explore liquid amounts",
+            "Explain observations and revise your design",
+        ],
+        "model_note": "Synthetic teaching model: one 300 µL pipette, four liquid locations, ideal mixing and fresh-tip rules. No hardware, Isaac/GPU or chemical validation.",
+    },
     {
         "id": "workflow-readiness",
         "number": "03",

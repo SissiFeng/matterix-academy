@@ -25,6 +25,8 @@ import {
   type WorkspaceView,
 } from "./workcellTypes";
 import s from "./Workcell.module.css";
+import InstrumentStories from "./InstrumentStories";
+import type { Instrument, Starter } from "./studioContent";
 
 type Props = {
   view: WorkspaceView;
@@ -33,6 +35,8 @@ type Props = {
   onOpen: (session: Session) => void;
   onFirstLesson: () => void;
   onCreate: () => void;
+  onDesign: (instrument: Instrument, starter: Starter) => void;
+  creationBusy: boolean;
   onSessionsLoaded: (sessions: Session[]) => void;
   onSessionSaved: (session: Session) => void;
   registerLeaveGuard: (guard: (() => boolean) | null) => void;
@@ -181,6 +185,8 @@ export default function Workcell({
   onOpen,
   onFirstLesson,
   onCreate,
+  onDesign,
+  creationBusy,
   onSessionsLoaded,
   onSessionSaved,
   registerLeaveGuard,
@@ -434,7 +440,7 @@ export default function Workcell({
           </h1>
           <p>
             {view === "overview"
-              ? "Onboard a device. Build its teaching twin. Find the evidence still needed for the real lab."
+              ? "Meet the instruments, borrow a workflow, then make it your own."
               : view === "onboard"
                 ? "Five steps from a device record to an honest validation checklist."
                 : view === "twin"
@@ -472,48 +478,58 @@ export default function Workcell({
         <>
           {view === "overview" ? (
             <>
-              <section className={s.hero}>
-                <div>
-                  <span className={s.kicker}>CURRENT OPERATING STATE</span>
-                  <h2>
-                    Practice is available.
-                    <br />
-                    <em>Physical execution is not connected.</em>
-                  </h2>
-                  <p>
-                    Build your workcell here, then use its missing evidence as a
-                    guide to qualification.
-                  </p>
-                  <button
-                    className={s.primary}
-                    onClick={() => onNavigate("onboard")}
-                  >
-                    Onboard a device <ArrowRight size={16} />
-                  </button>
-                </div>
-                <div className={s.lifecycle}>
-                  {[
-                    "01 / ONBOARD",
-                    "02 / TWIN",
-                    "03 / VALIDATE",
-                    "04 / RUN & LEARN",
-                  ].map((label, i) => (
+              <InstrumentStories
+                onDesign={onDesign}
+                busy={creationBusy}
+                compact
+              />
+              <details className={s.setupDetails}>
+                <summary>Workcell setup and connection status</summary>
+                <section className={s.hero}>
+                  <div>
+                    <span className={s.kicker}>CURRENT OPERATING STATE</span>
+                    <h2>
+                      Practice is available.
+                      <br />
+                      <em>Physical execution is not connected.</em>
+                    </h2>
+                    <p>
+                      Build your workcell here, then use its missing evidence as
+                      a guide to qualification.
+                    </p>
                     <button
-                      key={label}
-                      onClick={() =>
-                        onNavigate(["onboard", "twin", "readiness", "runs"][i])
-                      }
+                      className={s.primary}
+                      onClick={() => onNavigate("onboard")}
                     >
-                      <span>{label}</span>
-                      {i === 2 ? (
-                        <CircleAlert size={20} />
-                      ) : (
-                        <ArrowRight size={20} />
-                      )}
+                      Onboard a device <ArrowRight size={16} />
                     </button>
-                  ))}
-                </div>
-              </section>
+                  </div>
+                  <div className={s.lifecycle}>
+                    {[
+                      "01 / ONBOARD",
+                      "02 / TWIN",
+                      "03 / VALIDATE",
+                      "04 / RUN & LEARN",
+                    ].map((label, i) => (
+                      <button
+                        key={label}
+                        onClick={() =>
+                          onNavigate(
+                            ["onboard", "twin", "readiness", "runs"][i],
+                          )
+                        }
+                      >
+                        <span>{label}</span>
+                        {i === 2 ? (
+                          <CircleAlert size={20} />
+                        ) : (
+                          <ArrowRight size={20} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </details>
               <div className={s.metrics}>
                 <div>
                   <span>Registered devices</span>
@@ -533,7 +549,8 @@ export default function Workcell({
                       sessions.filter(
                         (item) =>
                           item.status === "completed" &&
-                          item.assessment?.passed,
+                          item.assessment?.passed &&
+                          item.assessment.scope !== "model-checks",
                       ).length
                     }{" "}
                     with a saved passing goal
@@ -767,9 +784,15 @@ export default function Workcell({
                             {attempt.status} · {attempt.steps} steps
                           </span>
                           <span>
-                            {attempt.assessment?.passed
-                              ? "Teaching goal passed"
-                              : "Goal not reached"}
+                            {run.experiment.course_id === "workflow-sandbox"
+                              ? !attempt.assessment
+                                ? "Sequence incomplete"
+                                : attempt.assessment.passed
+                                  ? "Model checks passed"
+                                  : "Review model checks"
+                              : attempt.assessment?.passed
+                                ? "Teaching goal passed"
+                                : "Goal not reached"}
                           </span>
                         </div>
                       ))}

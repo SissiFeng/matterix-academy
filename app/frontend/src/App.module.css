@@ -201,6 +201,51 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 48px;
+}
+.welcomeAccess p {
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 62ch;
+}
+.welcomeAccess {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: 48px;
+  padding: 48px 0;
+  margin-top: 36px;
+  border-top: var(--hairline) solid var(--line);
+  align-items: center;
+}
+.welcomeAccess h2 {
+  font-size: clamp(24px, 2.6vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  margin: 16px 0;
+}
+.welcomeAccess .starterNotice {
+  color: var(--ink-brand);
+  font-weight: 600;
+  border-left: 3px solid var(--brand);
+  padding-left: 14px;
+}
+.instrumentPage {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 38px 4.3% 60px;
+}
+@media (max-width: 700px) {
+  .welcome > header {
+    margin-bottom: 32px;
+  }
+  .welcomeAccess {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+  .instrumentPage {
+    padding: 24px 16px 40px;
+  }
 }
 .welcomeGrid {
   display: grid;

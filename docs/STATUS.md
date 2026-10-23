@@ -12,7 +12,8 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 | Discovery studio, workflow marketplace, connector explorer | Verified locally | Content and interaction only |
 | Workcell onboarding (Overview → Onboard → Twin → Sim → Real → Runs) | Implemented | Physical readiness always shown as unverified; no device connection |
 | Workflow judgment course | Verified locally | English synthetic-only review, repair, trial, scripted reconciliation and conclusion; see [course contract](WORKFLOW-JUDGMENT-COURSE.md). 539 backend tests and 45 browser journeys passed; see [validation](VALIDATION.md) |
-| Page-level code splitting | Implemented | Main bundle ~344 kB (was ~521 kB) |
+| Flex and OT-2 introductions + visual Workflow Studio | Verified locally | Public chaptered animations, editable blocks and instrument-specific decks; free designs use model checks without a prescribed lesson target. See [studio contract](INSTRUMENT-STUDIO.md) |
+| Page-level code splitting | Implemented | Main bundle ~374 kB including public instrument illustrations; studio remains lazy loaded |
 
 ## AWS (account 247893369214, ca-central-1)
 
