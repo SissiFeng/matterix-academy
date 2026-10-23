@@ -15,6 +15,18 @@ test("public instrument stories play, pause, seek and switch without creating le
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   const stories = page.getByTestId("instrument-stories");
+  await expect(
+    stories.getByRole("group", { name: "Choose an instrument", exact: true }),
+  ).toBeVisible();
+  await expect(
+    stories.getByRole("group", { name: "Introduction chapters", exact: true }),
+  ).toBeVisible();
+  await expect(
+    stories.getByRole("group", {
+      name: "Choose a starting workflow",
+      exact: true,
+    }),
+  ).toBeVisible();
   const progress = stories.getByRole("slider", {
     name: "Introduction progress",
   });

@@ -126,7 +126,11 @@ export default function InstrumentStories({
         </p>
       </header>
 
-      <div className={s.instrumentChoices} aria-label="Choose an instrument">
+      <div
+        className={s.instrumentChoices}
+        role="group"
+        aria-label="Choose an instrument"
+      >
         {(["flex", "ot2"] as const).map((choice) => (
           <button
             key={choice}
@@ -224,7 +228,11 @@ export default function InstrumentStories({
             time={time}
             workflow={workflow}
           />
-          <div className={s.visualLegend} aria-label="Illustration legend">
+          <div
+            className={s.visualLegend}
+            role="group"
+            aria-label="Illustration legend"
+          >
             <span>
               <i className={s.tipColor} /> Disposable tips
             </span>
@@ -258,7 +266,11 @@ export default function InstrumentStories({
           chapters below.
         </p>
       )}
-      <div className={s.chapters} aria-label="Introduction chapters">
+      <div
+        className={s.chapters}
+        role="group"
+        aria-label="Introduction chapters"
+      >
         {storyChapters.map((entry, index) => (
           <button
             key={entry.label}
@@ -280,6 +292,7 @@ export default function InstrumentStories({
         </div>
         <div
           className={s.workflowChoices}
+          role="group"
           aria-label="Choose a starting workflow"
         >
           {(Object.keys(storyWorkflows) as StoryWorkflow[]).map(

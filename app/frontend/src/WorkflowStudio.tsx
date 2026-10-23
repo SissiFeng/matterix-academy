@@ -305,10 +305,7 @@ export default function WorkflowStudio({
     });
   };
   const loadStarter = () => {
-    if (
-      draft.actions.length &&
-      !window.confirm("Replace this draft with the selected starter?")
-    )
+    if (!window.confirm("Replace this draft with the selected starter?"))
       return;
     setDraft(makeStudioExperiment(instrument, starter));
   };
@@ -359,7 +356,7 @@ export default function WorkflowStudio({
           </button>
         </div>
       </header>
-      <div className={s.mobileJumps} aria-label="Studio sections">
+      <div className={s.mobileJumps} role="group" aria-label="Studio sections">
         <button
           className={s.secondary}
           onClick={() => {
@@ -444,7 +441,11 @@ export default function WorkflowStudio({
             Add a block, then change its volume or destination. Use the arrows
             to change the order.
           </p>
-          <div className={s.palette} aria-label="Add a workflow block">
+          <div
+            className={s.palette}
+            role="group"
+            aria-label="Add a workflow block"
+          >
             {(Object.keys(ACTION_LABELS) as Action["kind"][]).map((kind) => (
               <button
                 className={s[kind]}

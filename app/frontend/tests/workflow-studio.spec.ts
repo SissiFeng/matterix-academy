@@ -203,6 +203,17 @@ test("a blank OT-2 draft saves without steps and grows into a student-designed w
   await save(page);
   await page.reload();
   await expect(page.getByLabel("Workflow name")).toHaveValue("My blank canvas");
+  // A saved empty draft still has a learner's name and may have a custom deck.
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("button", { name: "Load starter", exact: true }).click();
+  await expect(page.getByLabel("Workflow name")).toHaveValue("My blank canvas");
+  // Protect unsaved edits too, even before the first block is added.
+  await page.getByLabel("Workflow name").fill("My still-empty design");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("button", { name: "Load starter", exact: true }).click();
+  await expect(page.getByLabel("Workflow name")).toHaveValue(
+    "My still-empty design",
+  );
   await expect(
     page.getByRole("heading", { name: "Your idea starts here." }),
   ).toBeVisible();
