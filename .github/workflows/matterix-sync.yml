@@ -1,0 +1,162 @@
+name: Review Matterix main updates
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [matterix-main-updated]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: matterix-main-intake
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    if: github.repository == 'SissiFeng/matterix-academy'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Require the trusted Academy main branch
+        env:
+          ACADEMY_REF: ${{ github.ref }}
+        run: |
+          if [[ "$ACADEMY_REF" != refs/heads/main ]]; then
+            echo '::error::Run this workflow from Academy main only.'
+            exit 1
+          fi
+      - name: Check out trusted Academy code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          lfs: false
+          submodules: false
+      - name: Validate intake policy
+        run: python3 scripts/matterix-sync.py check-policy
+      - name: Check operator configuration
+        id: configuration
+        env:
+          SYNC_ENABLED: ${{ vars.MATTERIX_SYNC_ENABLED }}
+          READ_APP_ID: ${{ vars.MATTERIX_READ_APP_ID }}
+          READ_APP_PRIVATE_KEY: ${{ secrets.MATTERIX_READ_APP_PRIVATE_KEY }}
+          WRITE_APP_ID: ${{ vars.ACADEMY_SYNC_APP_ID }}
+          WRITE_APP_PRIVATE_KEY: ${{ secrets.ACADEMY_SYNC_APP_PRIVATE_KEY }}
+        run: |
+          mkdir -p build/matterix-sync
+          if [[ "$SYNC_ENABLED" != true || -z "$READ_APP_ID" || -z "$READ_APP_PRIVATE_KEY" || -z "$WRITE_APP_ID" || -z "$WRITE_APP_PRIVATE_KEY" ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = {"status": "setup-required", "upstream_checked": False,
+                    "published": False, "activation_allowed": False}
+          Path("build/matterix-sync/status.json").write_text(json.dumps(result, indent=2) + "\n")
+          text = "## Matterix sync: setup required\n\nNo upstream access or synchronization occurred. Configure the separate Matterix read App and Academy write App, then explicitly enable MATTERIX_SYNC_ENABLED. See docs/MATTERIX-MAIN-SYNC.md. No AWS or GPU operation was requested.\n"
+          Path("build/matterix-sync/report.md").write_text(text)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+              output.write(text)
+          PY
+            if [[ "$SYNC_ENABLED" == true ]]; then
+              echo '::error::Matterix sync is enabled but its separate read/write GitHub App configuration is incomplete.'
+              exit 1
+            fi
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create read-only token for the two internal repositories
+        if: steps.configuration.outputs.ready == 'true'
+        id: upstream-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510
+        with:
+          app-id: ${{ vars.MATTERIX_READ_APP_ID }}
+          private-key: ${{ secrets.MATTERIX_READ_APP_PRIVATE_KEY }}
+          owner: ac-rad
+          repositories: Matterix-Internal,Matterix_assets_internal
+          permission-contents: read
+      - name: Fetch independent main and approved snapshots without a checkout
+        if: steps.configuration.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+          GIT_LFS_SKIP_SMUDGE: '1'
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          set -euo pipefail
+          umask 077
+          askpass="$RUNNER_TEMP/academy-sync-askpass.sh"
+          trap 'rm -f "$askpass"' EXIT
+          cat > "$askpass" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' x-access-token ;;
+            *Password*) printf '%s\n' "$GH_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          SH
+          chmod 700 "$askpass"
+          export GIT_ASKPASS="$askpass"
+          engine_pin=$(PYTHONPATH=app/backend python3 -c 'from academy.runtime_inventory import PROFILE; print(PROFILE["engine_commit"])')
+          assets_pin=$(PYTHONPATH=app/backend python3 -c 'from academy.runtime_inventory import PROFILE; print(PROFILE["asset_commit"])')
+          [[ "$engine_pin" =~ ^[0-9a-f]{40}$ && "$assets_pin" =~ ^[0-9a-f]{40}$ ]]
+          git init "$RUNNER_TEMP/matterix-engine"
+          git -C "$RUNNER_TEMP/matterix-engine" remote add origin https://github.com/ac-rad/Matterix-Internal.git
+          git -C "$RUNNER_TEMP/matterix-engine" -c credential.helper= -c core.hooksPath=/dev/null fetch \
+            --depth=1 --no-tags --no-recurse-submodules origin \
+            '+refs/heads/main:refs/remotes/origin/main' "$engine_pin"
+          git init "$RUNNER_TEMP/matterix-assets"
+          git -C "$RUNNER_TEMP/matterix-assets" remote add origin https://github.com/ac-rad/Matterix_assets_internal.git
+          git -C "$RUNNER_TEMP/matterix-assets" -c credential.helper= -c core.hooksPath=/dev/null fetch \
+            --depth=1 --no-tags --no-recurse-submodules origin \
+            '+refs/heads/main:refs/remotes/origin/main' "$assets_pin"
+      - name: Analyze candidate metadata and English feature coverage
+        if: steps.configuration.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          python3 scripts/matterix-sync.py scan \
+            --engine-root "$RUNNER_TEMP/matterix-engine" \
+            --assets-root "$RUNNER_TEMP/matterix-assets" \
+            --expected-engine-commit "$(git -C "$RUNNER_TEMP/matterix-engine" rev-parse refs/remotes/origin/main)" \
+            --expected-assets-commit "$(git -C "$RUNNER_TEMP/matterix-assets" rev-parse refs/remotes/origin/main)" \
+            --output-dir build/matterix-sync
+          python3 scripts/matterix-sync.py check --candidate build/matterix-sync/candidate.json --report build/matterix-sync/report.md
+          cat build/matterix-sync/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Create Academy-only publication token
+        if: steps.configuration.outputs.ready == 'true'
+        id: academy-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510
+        with:
+          app-id: ${{ vars.ACADEMY_SYNC_APP_ID }}
+          private-key: ${{ secrets.ACADEMY_SYNC_APP_PRIVATE_KEY }}
+          owner: SissiFeng
+          repositories: matterix-academy
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Publish or reconcile the immutable draft candidate
+        if: steps.configuration.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ steps.academy-token.outputs.token }}
+          ACADEMY_MAIN: ${{ github.sha }}
+        run: |
+          python3 scripts/publish-matterix-candidate.py \
+            --candidate build/matterix-sync/candidate.json \
+            --report build/matterix-sync/report.md \
+            --expected-main "$ACADEMY_MAIN" > build/matterix-sync/publication.json
+          cat build/matterix-sync/publication.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Record failed intake honestly
+        if: failure()
+        run: |
+          mkdir -p build/matterix-sync
+          if [[ ! -f build/matterix-sync/status.json ]]; then
+            printf '%s\n' '{"status":"intake-failed","upstream_checked":null,"published":null,"activation_allowed":false,"reconciliation_required":true}' > build/matterix-sync/status.json
+          fi
+          printf '\n## Matterix intake failed\nNo successful synchronization or deployment is claimed. Inspect the failed step and reconcile any candidate branch/PR before retrying.\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve the metadata report even when no update is needed
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: matterix-main-candidate-${{ github.run_id }}
+          path: build/matterix-sync
+          if-no-files-found: error
+          retention-days: 14

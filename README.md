@@ -34,6 +34,13 @@ and a hash-locked GPU image recipe. See [image build and release inputs](docs/GP
 and [browser commissioning](docs/COMMISSIONING.md). This does not enable the live
 GPU service or label teaching results as native evidence.
 
+[Matterix main synchronization](docs/MATTERIX-MAIN-SYNC.md) detects changes in the
+independent internal engine and assets repositories and prepares an unqualified
+candidate report and draft PR. New features require an adapter, versioned recipe,
+English learning content and qualification before they become runnable. The
+scheduled intake requires a dedicated GitHub App; it never starts paid GPU builds
+or changes a running worker.
+
 ## What is included
 
 - Three-step account introduction followed by a five-stage, checkpoint-based novice lesson, equipment glossary, preparation checklist, predictions, step explanations and reflection.
