@@ -1,10 +1,37 @@
 # Ubuntu integration contract — proposed v1
 
-This is a **new gateway contract**, not a claim that these endpoints exist in the current Matterix repository. The typed client in `gateway.py` implements capability qualification, allocation, snapshot, command, reconciliation, reset and release requests. The outbound worker uses its mutation methods behind durable Academy dispatch records. These methods are verified with synthetic HTTP fixtures; native server acceptance remains pending. The student platform deliberately reports Matterix unavailable until an Ubuntu implementation is connected and qualified.
+This is a **new HTTPS gateway contract**, not a claim that these endpoints exist in the current Matterix repository. The typed client in `gateway.py` implements capability qualification, allocation, snapshot, command, reconciliation, reset and release requests. The outbound worker uses its mutation methods behind durable Academy dispatch records. These methods are verified with synthetic HTTP fixtures; native server acceptance remains pending. The implemented local native adapter described below is a separate integration route. General student access remains unavailable until its scene is qualified and enabled.
 
 The gateway runs next to Matterix on a managed Ubuntu GPU host. The operator supplies its HTTPS base URL and service credential through protected worker configuration and systemd credentials. A student cannot supply gateway URLs, executable code, shell commands, asset paths or credentials. Streaming and service access need authenticated, expiring session grants; students receive no Linux accounts.
 
-The required student execution flow is specified in [SYNCHRONIZED-RUNS.md](SYNCHRONIZED-RUNS.md): submitting the saved workflow to Matterix and reflecting that same run's confirmed progress and native observations. `remote_run.py` and the client now support the proposed whole-workflow request/snapshot contract. The Ubuntu server implementation and media binding remain pending. Durable Academy orchestration and student remote routes are implemented but disabled by default; see [WORKER-CONTROL.md](WORKER-CONTROL.md) for qualification, run controls and reset-verification extensions. The existing teaching runner is separate.
+The required student execution flow is specified in [SYNCHRONIZED-RUNS.md](SYNCHRONIZED-RUNS.md): submitting the saved workflow to Matterix and reflecting that same run's confirmed progress and native observations. `remote_run.py` and the client support the proposed whole-workflow request/snapshot contract. Durable Academy orchestration and student remote routes are implemented but disabled by default; see [WORKER-CONTROL.md](WORKER-CONTROL.md) for qualification, run controls and reset-verification extensions. The existing teaching runner is separate.
+
+## Implemented local native adapter
+
+The outbound worker can use `native_runner.py` and its supervised local process
+instead of an inbound HTTPS gateway. This path implements fixed `flex-mixing` and
+saved-plan `workflow-studio-flex`. Studio validates the complete immutable plan
+against supported geometry, amounts, actions and pinned assets before allocation;
+the runtime imports the independent internal Matterix and assets repositories.
+It does not substitute the mixing recipe for a learner design. OT-2 is unavailable
+in the approved Flex image; its reviewed asset profile and adapter remain pending.
+
+Studio reports exact labware slots, native action progress, observed tip/pipette
+state and finite container/waste accounting driven by native pipette storage.
+These are **native-semantic** observations, not fluid, chemistry or hardware
+validation. The API checks each confirmed plan prefix and the final exact end
+state. An unknown dispatch is recovered by its original identity without replay.
+Reset must restore objects, liquids, tips and controllers, and release must prove
+the runtime processes stopped before another attempt can start.
+
+KVS media grants and frame delivery bind to the same session/run/hash. General
+learner access requires scene-specific native workflow and media evidence, worker
+qualification and the global execution gate. A bounded commissioning grant may
+authorize exactly two ordered plans for one subject and worker while that gate
+stays off; it does not qualify the worker or enable general access.
+See [Studio native acceptance](STUDIO-NATIVE-ACCEPTANCE.md). Real GPU/browser
+acceptance remains pending. The isolated image probe checks native execution,
+nonblack frames and reset; it cannot establish Cognito or WebRTC browser acceptance.
 
 ## Qualification endpoint implemented by the client
 
@@ -39,7 +66,7 @@ The client rejects redirects, unknown contract versions, non-Matterix evidence, 
 
 A command timeout produces `unknown`, followed by operation-status reconciliation. It must never produce an automatic duplicate transfer. Do not forward credentials to browser-controlled destinations or another gateway on redirect. Issue media grants independently of the service credential; do not embed a raw unauthenticated Isaac editor.
 
-The allocation request uses `{allocation_id, scene_id: "flex-first-transfer-v1"}`. Scene IDs are an operator-controlled catalog, never asset paths supplied by students. Snapshot responses require `id`, positive `revision`, `status`, `engine: "matterix"`, `simulation_only: true`, nonempty `engine_version`/`asset_version`, and timezone-aware `lease_expires_at`/`observed_at`. The current snapshot model covers session metadata; native liquid/object observations and media grants require a separately agreed extension before live learner operation.
+The HTTPS allocation request uses `{allocation_id, scene_id: "flex-first-transfer-v1"}`. Scene IDs are an operator-controlled catalog, never asset paths supplied by students. Session snapshot responses require `id`, positive `revision`, `status`, `engine: "matterix"`, `simulation_only: true`, nonempty `engine_version`/`asset_version`, and timezone-aware `lease_expires_at`/`observed_at`. Whole-workflow snapshots separately carry typed native observations in `RemoteRunSnapshot`; an HTTPS server must implement and qualify that contract rather than infer execution from session metadata. The local adapter's supported scene catalog does not expand this HTTPS client's allocation catalog.
 
 Every operation response includes the original `command_id`, an `operation_id`, and a status from `accepted/running/completed/failed/unknown`. Reset and release requests also carry unique caller-generated `command_id` and `expected_revision`. The gateway must durably register IDs before execution, associate them with the session and exact payload, and retain lookup records after release. A repeated ID must not execute twice; the same ID with a different payload is rejected. A lookup returning no record does not by itself prove the command never ran. Unknown outcomes remain blocked for reconciliation or operator recovery, with no automatic replay.
 
@@ -58,4 +85,10 @@ For a whole workflow, the gateway must durably bind `run_id` to the owning sessi
 7. Streaming access is session-scoped and expiring; neither OS nor general script-editor access is exposed.
 8. No hardware connector or physical device command path is reachable.
 
-The Academy API can remain on AWS while the GPU host is on-premises. The HTTPS command path and WebRTC media path are separate network concerns; CloudFront/API Gateway do not proxy arbitrary WebRTC UDP traffic. The outbound worker reaches AWS through HTTPS; Lambda does not dial the Ubuntu gateway. Configure a separately secured media gateway and test the actual installed Isaac version before enabling video.
+For Studio, retain the exact two approved designs, source/image fingerprint,
+run-bound native plans and observations, real renderer/browser frame evidence,
+refresh recovery and both reset/release receipts described in
+[STUDIO-NATIVE-ACCEPTANCE.md](STUDIO-NATIVE-ACCEPTANCE.md). Evidence evaluation and
+local probe success do not themselves qualify a worker.
+
+The Academy API can remain on AWS while the GPU host is on-premises. The HTTPS command path and WebRTC media path are separate network concerns; CloudFront/API Gateway do not proxy arbitrary WebRTC UDP traffic. The outbound worker reaches AWS through HTTPS; Lambda does not dial the Ubuntu gateway. Qualify the authenticated KVS media path against the actual installed Isaac renderer and learner browser before enabling general native access.

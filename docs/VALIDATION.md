@@ -1,3 +1,43 @@
+# Saved Workflow Studio to native Matterix — 2026-10-23
+
+Local validation passed **884 backend tests and all 61 Chromium journeys**.
+Lambda packaging, `verify.sh`, production frontend build and formatting, both
+Terraform roots, disabled zero-resource pilot plan, and Packer 1.16.1 formatting,
+syntax and offline Amazon plugin schema checks passed. The verification script
+also passes 18 Node guard/receipt tests, including five new Studio harness tests.
+
+The new path binds the complete saved plan and version to native Flex scene
+geometry, actions, observations and video. Browser fixtures cover unavailable
+hosts, exact-plan submission, refresh recovery, unresolved submission locks,
+verified cleanup before a second run, and stale preflight rejection. These are
+synthetic fixtures, not a real GPU/browser run. Representative desktop and phone
+views were visually inspected.
+
+Independent architecture review found and corrected a partial-progress mismatch:
+confirmed steps must now agree with the native liquid/tip state, with only the next
+action allowed to be partially observed. The image probe also requires validated
+persisted completion, bound renderer frames and reset checks. Independent security
+review found no concrete new authority bypass. Static compatibility checks against
+the exact pinned internal engine Git objects and SHA256-verified Flex LFS assets
+found no definite API incompatibility; this does not establish Isaac execution.
+
+External review corrections also restrict qualification and commissioning to the
+implemented Flex profile, share its excluded A3 slot with preflight, preserve
+monotonic native action identity/progress, reject damaged Studio evidence without
+crashing, and retain failed probe diagnostics. Browser regressions confirm network
+alerts clear after recovery and accepted runs stay locked during failed session
+reads without being described as unsubmitted. The complete suite above was rerun
+after these corrections.
+
+The image build now includes a local saved-workflow execution/render/reset probe.
+The separate opt-in [live Studio acceptance harness](STUDIO-NATIVE-ACCEPTANCE.md)
+requires two approved, distinct saved designs and manual Cognito login. Native GPU
+operation, real relay video, real-account browser acceptance and OT-2 qualification
+remain unverified. General native execution remains disabled. Publication and any
+paid image-build outcome must be verified separately from these local checks.
+
+---
+
 # Instrument introductions and Workflow Studio — 2026-10-23
 
 Local validation passed **730 backend tests and 55 Chromium journeys**. After the

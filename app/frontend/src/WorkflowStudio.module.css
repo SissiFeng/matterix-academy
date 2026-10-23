@@ -1167,3 +1167,15 @@
     animation: none !important;
   }
 }
+.nativeNotice {
+  padding: 13px 16px;
+  border-left: 3px solid var(--line-emph);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.nativeControls {
+  scroll-margin-top: 112px;
+}

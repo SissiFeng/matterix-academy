@@ -26,9 +26,14 @@ probe_status=0
 LC_ALL=C /usr/bin/time -v -o "$evidence/probe-time.txt" \
   timeout --signal=TERM --kill-after=30s 1800s \
   runuser -u academy-native -- env HOME=/var/cache/academy-native OMNI_KIT_ACCEPT_EULA=YES \
-  PYTHONPATH="$root/app/backend" /opt/matterix-isaac/bin/python -m academy.native_image_probe \
-  --confirm-native-probe --config /etc/academy-native/native-config.json \
-  --output /var/lib/academy-native/scene-render.json || probe_status=$?
+  PYTHONPATH="$root/app/backend" /bin/bash -c '
+    /opt/matterix-isaac/bin/python -m academy.native_image_probe \
+      --confirm-native-probe --config /etc/academy-native/native-config.json \
+      --output /var/lib/academy-native/scene-render.json &&
+    /opt/matterix-isaac/bin/python -m academy.native_studio_isaac \
+      --probe --config /etc/academy-native/native-config.json \
+      --output /var/lib/academy-native/studio-probe.json
+  ' || probe_status=$?
 gpu_sampler_complete=0
 if kill -0 "$gpu_sampler" 2>/dev/null; then gpu_sampler_complete=1; fi
 printf '%s\n' "$gpu_sampler_complete" > "$evidence/gpu-sampler-complete.txt"
@@ -41,6 +46,17 @@ journalctl -k --since "@$probe_started" --no-pager -o cat \
   > "$evidence/probe-kernel.log" || journal_status=$?
 printf '%s\n' "$journal_status" > "$evidence/kernel-read-status.txt"
 probe_elapsed=$(( $(date +%s) - probe_started ))
+# Preserve available native diagnostics even when the capacity gate rejects the build.
+if [[ -f /var/lib/academy-native/scene-render.json ]]; then
+  install -m 644 /var/lib/academy-native/scene-render.json "$evidence/scene-render.json"
+  printf 'ACADEMY_SCENE_RENDER_JSON='
+  cat "$evidence/scene-render.json"
+fi
+if [[ -f /var/lib/academy-native/studio-probe.json ]]; then
+  install -m 644 /var/lib/academy-native/studio-probe.json "$evidence/studio-probe.json"
+  printf 'ACADEMY_STUDIO_PROBE_JSON='
+  cat "$evidence/studio-probe.json"
+fi
 # Emit a compact copy before any failure; Packer's local log survives instance cleanup.
 "$root/.venv/bin/python" - "$evidence" "$probe_status" "$probe_elapsed" <<'PY'
 import json,sys
@@ -50,9 +66,7 @@ report=capacity_report(Path(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3]))
 print('ACADEMY_CAPACITY_JSON='+json.dumps(report,sort_keys=True),flush=True)
 raise SystemExit(0 if report['capacity_probe_passed'] else 1)
 PY
-install -m 644 /var/lib/academy-native/scene-render.json /etc/academy-native/evidence/scene-render.json
-printf 'ACADEMY_SCENE_RENDER_JSON='
-cat /etc/academy-native/evidence/scene-render.json
+[[ -s "$evidence/scene-render.json" && -s "$evidence/studio-probe.json" ]]
 
 "$root/.venv/bin/python" - <<'PY'
 from academy.native_runner import NativeConfig
@@ -85,4 +99,4 @@ chmod -R go-w /opt/academy-agent /opt/matterix-isaac /srv/matterix /srv/matterix
 rm -f /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys
 cloud-init clean --logs
 sync
-printf '%s\n' 'Image fingerprint passed. No native workflow ran and worker remains unqualified.'
+printf '%s\n' 'Image and local Studio probe passed. Browser acceptance remains pending; worker remains unqualified.'

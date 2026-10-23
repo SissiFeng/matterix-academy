@@ -15,11 +15,12 @@ from uuid import UUID
 from fastapi import HTTPException
 from pydantic import Field, model_validator
 
-from .commissioning import active_grant, reserve
+from .commissioning import active_grant, permits_plan, reserve
 from .learning import readiness
 from .models import StrictModel
 from .native_plan import FIRST_TRANSFER, TransferCapability, intent_for, preflight
-from .recipes import MIXING, MixingPlan, parse_plan
+from .native_studio import STUDIO, StudioCapability, StudioIssue, studio_preflight, studio_scene
+from .recipes import MIXING, parse_plan
 from .remote_run import RemoteRunRequest, RemoteRunSnapshot, check_run_snapshot, workflow_digest
 from .store import Conflict, Write
 
@@ -97,6 +98,26 @@ def transfer_issues(worker, plan) -> list | None:
     return preflight(intent_for(plan), TransferCapability.model_validate(declared))
 
 
+def studio_issues(worker, plan, declared=None):
+    declared = declared or (worker.get("capabilities") or {}).get(studio_scene(plan))
+    if not declared:
+        return None
+    try:
+        capability = StudioCapability.model_validate(declared)
+    except ValueError:
+        return None
+    issues = studio_preflight(plan, capability)
+    if not capability.viewport:
+        issues.append(StudioIssue(code="viewport", message="This scene has no qualified live view"))
+    if set(capability.observed) != {"liquid_volume", "tip_state"}:
+        issues.append(
+            StudioIssue(
+                code="observations", message="Native liquid and tip reporting is not qualified"
+            )
+        )
+    return issues
+
+
 def worker_credential(store, authorization: str, now=None):
     """Bind a high-entropy token to its registered machine, without logging it."""
     if not authorization.startswith("Bearer "):
@@ -132,6 +153,11 @@ class RunService:
             return self.commissioning(worker=worker, run=run) is not None
         return self.enabled and worker.get("qualified", False)
 
+    def studio_run_issues(self, worker, run):
+        grant = self.commissioning(worker=worker, run=run) if run.get("commissioning_id") else None
+        declared = ((grant or {}).get("request", {}).get("studio") or {}).get("capability")
+        return studio_issues(worker, parse_plan(run["plan"]), declared)
+
     def availability(self, owner):
         grant = self.commissioning(owner)
         return {
@@ -166,6 +192,8 @@ class RunService:
                 "reason",
             )
         } | {
+            "scene": run.get("scene", run["plan"]["course_id"]),
+            "instrument": run["plan"].get("instrument", "flex"),
             "evidence": "native" if snapshot else "pending",
             "commissioning": bool(run.get("commissioning_id")),
             "completed_steps": sum(s["status"] == "completed" for s in snapshot["steps"])
@@ -211,9 +239,14 @@ class RunService:
         if session["version"] != data.expected_version or session["status"] == "running":
             raise Conflict
         plan = parse_plan(session["experiment"])
-        if grant and plan != MixingPlan():
-            raise HTTPException(422, "Commissioning permits only the fixed seed-42 mixing scene")
-        if plan.course_id not in {"flex-first-transfer", MIXING}:
+        if grant and not permits_plan(grant, plan, next_only=True):
+            raise HTTPException(
+                422,
+                "Commissioning permits only the fixed seed-42 mixing scene"
+                if not grant["request"].get("studio")
+                else "Commissioning permits only the next exact approved Studio plan",
+            )
+        if plan.course_id not in {"flex-first-transfer", MIXING, STUDIO}:
             raise HTTPException(422, "Only the qualified first-transfer scene is supported")
         if plan.course_id == "flex-first-transfer" and not readiness(session)["ready"]:
             raise HTTPException(
@@ -221,6 +254,10 @@ class RunService:
             )
         if plan.course_id == FIRST_TRANSFER:
             self.check_supported(plan)
+        if plan.course_id == STUDIO:
+            report = self.studio_preflight(owner, session_id)
+            if not report["ready"]:
+                raise HTTPException(422, {"message": report["message"], "issues": report["issues"]})
         pointer = self.store.get(owner, f"remote#{session_id}")
         if pointer and not pointer["released"]:
             raise HTTPException(
@@ -235,6 +272,7 @@ class RunService:
             "submitted_version": data.expected_version,
             "plan": plan.model_dump(mode="json"),
             "plan_hash": workflow_digest(plan),
+            "scene": studio_scene(plan) if plan.course_id == STUDIO else plan.course_id,
             "status": "queued",
             "created_at": now,
             "updated_at": now,
@@ -250,7 +288,7 @@ class RunService:
             "released": False,
         }
         try:
-            commission_write = [reserve(grant, run_id)] if grant else []
+            commission_write = [reserve(grant, run_id, plan)] if grant else []
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
         self.store.transact(
@@ -268,6 +306,97 @@ class RunService:
             ]
         )
         return self.public(run)
+
+    def studio_preflight(self, owner, session_id):
+        session = self.store.get(owner, f"session#{session_id}")
+        if not session:
+            raise HTTPException(404, "Experiment not found")
+        plan = parse_plan(session["experiment"])
+        if plan.course_id != STUDIO:
+            raise HTTPException(422, "Native Studio preflight requires a Workflow Studio design")
+        scene = studio_scene(plan)
+        issues = []
+        grant = self.commissioning(owner)
+        scope = (grant or {}).get("request", {}).get("studio")
+        enabled = self.enabled or bool(scope)
+        if grant and not scope:
+            issues.append(
+                StudioIssue(
+                    code="commissioning_plan",
+                    message="This acceptance window permits only its fixed mixing recipe",
+                )
+            )
+        if not enabled:
+            issues.append(
+                StudioIssue(
+                    code="deployment",
+                    message="Matterix execution awaits native qualification in this deployment",
+                )
+            )
+        if session["status"] == "running":
+            issues.append(
+                StudioIssue(
+                    code="teaching_active",
+                    message="Pause the teaching simulation before starting Matterix",
+                )
+            )
+        pointer = self.store.get(owner, f"remote#{session_id}")
+        if pointer and not pointer["released"]:
+            issues.append(
+                StudioIssue(
+                    code="active_run",
+                    message="The previous native run still requires verified cleanup",
+                )
+            )
+        candidates = [
+            worker
+            for worker in self.store.partition(WORKERS)
+            if worker.get("qualified")
+            and not worker.get("revoked", True)
+            and worker.get("credential_expires", 0) > self.clock()
+            and scene in worker.get("scenes", [])
+            and worker.get("state") in {"ready", "busy"}
+        ]
+        closest = None
+        for worker in candidates:
+            found = studio_issues(worker, plan)
+            if found is not None and (closest is None or len(found) < len(closest)):
+                closest = found
+        if scope:
+            if not permits_plan(grant, plan, next_only=True):
+                issues.append(
+                    StudioIssue(
+                        code="commissioning_plan",
+                        message="Only the next exact operator-approved Studio design can run in this acceptance window",
+                    )
+                )
+            else:
+                found = studio_issues({}, plan, scope["capability"])
+                if found is not None and (closest is None or len(found) < len(closest)):
+                    closest = found
+        if closest is None:
+            issues.append(
+                StudioIssue(
+                    code="host",
+                    message=f"No qualified {plan.instrument.upper() if plan.instrument == 'ot2' else 'Flex'} host declares support for this Studio scene",
+                )
+            )
+        else:
+            issues.extend(closest)
+        return {
+            "session_id": str(session_id),
+            "session_version": session["version"],
+            "plan_hash": workflow_digest(plan),
+            "instrument": plan.instrument,
+            "scene": scene,
+            "enabled": enabled,
+            "commissioning": bool(scope),
+            "ready": not issues,
+            "issues": [issue.model_dump() for issue in issues],
+            "message": "This saved design is ready for native simulation"
+            if not issues
+            else "Resolve the listed requirements before starting Matterix",
+        }
 
     def check_supported(self, plan):
         """Reject a learner plan no qualified scene can run exactly as saved."""
@@ -323,9 +452,11 @@ class RunService:
             run = self.raw(candidate["run_id"])
             if run["status"] != "queued" or not self.execution_allowed(worker, run):
                 continue
-            if not run.get("commissioning_id") and run["plan"]["course_id"] not in worker.get(
-                "scenes", []
-            ):
+            if not run.get("commissioning_id") and run.get(
+                "scene", run["plan"]["course_id"]
+            ) not in worker.get("scenes", []):
+                continue
+            if run["plan"]["course_id"] == STUDIO and self.studio_run_issues(worker, run) != []:
                 continue
             if run["plan"]["course_id"] == FIRST_TRANSFER and (
                 transfer_issues(worker, parse_plan(run["plan"])) != []

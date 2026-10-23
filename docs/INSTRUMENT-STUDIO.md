@@ -46,8 +46,8 @@ Free designs have no prescribed concentration target. Completion checks account
 for every action, total volume/tracer including waste, container bounds, and an
 empty pipette with its tip discarded. Passing these checks does not award a fixed
 lesson goal or establish experimental success. The animations are authored SVG
-illustrations; they are not camera footage or Isaac output. This feature cannot
-submit sandbox plans to the native worker or operate a robot.
+illustrations; they are not camera footage or Isaac output. Native simulation is a
+separate, explicit action described below. Neither path operates a physical robot.
 
 Instrument references: [Flex introduction](https://docs.opentrons.com/flex/introduction/),
 [OT-2 robot description](https://docs.opentrons.com/ot-2/system-description/robot/),
@@ -62,19 +62,57 @@ editor reloads the authoritative saved version with a visible conflict message.
 Existing Flex course payloads omit the new instrument field, preserving native
 adapter schema and recipe hashes. Sandbox assessment carries `scope: model-checks`.
 
-No Matterix binaries, new runtime dependencies, GPU resources, identity settings
-or native qualification gates are changed. Publishing follows the existing
-application-only main deployment workflow.
+Matterix and its assets remain independent pinned repositories; their runtime and
+binaries are not copied into Academy. Publishing the application does not install
+or qualify the GPU adapter, create GPU resources, or enable native learner access.
+
+## Saved workflow in Matterix
+
+The native Studio control checks the saved session version, complete plan hash,
+instrument and worker capability before submission. The native Flex adapter maps
+that exact layout, action order, volumes and initial amounts into Isaac. It rejects
+unsupported designs explicitly; it never substitutes the fixed mixing recipe or a
+teaching run. An unsaved edit must be saved and checked again.
+
+The implemented `workflow-studio-flex` scene supports movable labware in A1, A2,
+B1–B3, C1–C3, D1 and D2, with fixed waste D3. A3 is excluded because the pinned CAD
+contains rear trash geometry there. The scene supports stock and plate wells A1–A3,
+1–300 µL liquid actions, 300 µL pipette capacity, 1500 µL containers and at most
+64 actions and 64 fresh tips. It uses the native right pipette with approved
+1000 µL tip geometry. These are simulation mappings, not hardware calibration.
+The approved image lacks an OT-2 asset profile; OT-2 native execution stays
+unavailable until its adapter, assets and qualification are complete.
+
+Native observations report measured simulator tip/storage state and finite
+container accounting driven by that storage. The UI labels this **native-semantic**
+evidence; it does not establish fluid, chemical or physical transfer accuracy.
+Native execution can correctly finish with a held tip or residual liquid when the
+saved design requests that end state; this does not satisfy the separate teaching
+model's empty-pipette and discard checks.
+
+General learner access requires scene-specific qualification and the native gate.
+Before qualification, an operator can authorize exactly two ordered saved plans
+for one subject and worker through bounded commissioning while the global gate
+stays off. The stream and progress must bind to the same run. Refresh recovers that
+run; an unknown submission outcome never triggers an automatic resubmission.
+Editing and another attempt remain locked until native cleanup is verified.
+See [Studio native acceptance](STUDIO-NATIVE-ACCEPTANCE.md) for the 100 µL → 50 µL,
+moved-slot, real-video, refresh and reset procedure. That GPU/browser acceptance
+remains pending; the local image probe alone cannot enable this path.
 
 ## Acceptance
 
 Run `bash scripts/build-lambda.sh`, `bash scripts/verify.sh` and
 `npm --prefix app/frontend run test:e2e`. The backend studio tests cover both
 storage implementations, invalid layouts, ownership, expected versions, reset,
-conservation, faults, legacy hashes and native submission rejection. Browser
+conservation, faults, legacy hashes and native capability/qualification rejection.
+Native contract tests cover exact-plan submission, confirmed native progress,
+bounded commissioning, uncertain-submit recovery and reset receipts. Browser
 journeys cover public playback and reduced motion; selection through local
 onboarding; both instruments; block editing; blank designs; save/refresh;
 step/pause/reset/second run; faults; stale edits; and mobile light/dark layouts.
+Native browser tests use explicit fixtures for preflight, recovery and media state;
+these fixtures do not demonstrate rendered Isaac video.
 
 Browser automation uses explicit loopback guest access. It does not replace the
 real-account Cognito acceptance deferred by the user, or GPU/hardware acceptance.

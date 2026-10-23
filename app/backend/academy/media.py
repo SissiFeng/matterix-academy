@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from .models import StrictModel
+from .native_studio import STUDIO
 from .runs import TERMINAL, RunService, revised
 from .store import Conflict, Write
 
@@ -126,7 +127,10 @@ class MediaService:
         ):
             raise HTTPException(409, "This run has no active viewport")
         self.runs.owned(run["worker_id"], run["run_id"], run["claim_token"])
-        if run["plan"]["course_id"] != "flex-mixing":
+        studio = (
+            run["plan"]["course_id"] == STUDIO and self.runs.studio_run_issues(worker, run) == []
+        )
+        if run["plan"]["course_id"] != "flex-mixing" and not studio:
             raise HTTPException(409, "This scene has no qualified viewport")
 
     def publisher(self, worker_id, run_id, claim_token):

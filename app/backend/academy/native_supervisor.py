@@ -11,10 +11,26 @@ from pathlib import Path
 from .native_files import alive_lease, read_json, write_json
 
 
+def runtime_module(request):
+    """Select from a fixed module catalog; learner data never supplies code paths."""
+    from .remote_run import RemoteRunRequest
+
+    plan = RemoteRunRequest.model_validate(request).experiment
+    if plan.course_id == "flex-mixing":
+        return "native_isaac"
+    if plan.course_id == "workflow-sandbox":
+        from .native_studio_runtime import compile_plan
+
+        compile_plan(plan)
+        return "native_studio_isaac"
+    raise ValueError("This installed native process has no adapter for the saved course")
+
+
 def supervise(folder):
     manifest = read_json(folder / "manifest.json")
     cfg = manifest["config"]
     binding = manifest["binding"]
+    native_module = runtime_module(manifest["request"])
     children = []
     logs = []
     frame_path = Path(cfg["frame_root"]) / (binding["native_session_id"] + ".rgb")
@@ -43,7 +59,7 @@ def supervise(folder):
             MATTERIX_ASSETS_DATA_DIR=cfg["assets_data_dir"],
             DISPLAY=cfg["display"],
         )
-        for name, python in (("native_media", sys.executable), ("native_isaac", cfg["python"])):
+        for name, python in (("native_media", sys.executable), (native_module, cfg["python"])):
             log = open(folder / (name + ".log"), "ab", buffering=0)
             logs.append(log)
             children.append(

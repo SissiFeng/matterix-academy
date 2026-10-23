@@ -15,7 +15,12 @@ type Grant = {
   ice_servers: RTCIceServer[];
 };
 
-export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
+export type ViewportRun = Pick<
+  SimulationRun,
+  "run_id" | "session_id" | "plan_hash" | "status"
+>;
+
+export default function IsaacViewport({ run }: { run: ViewportRun | null }) {
   const video = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState("Waiting for a run");
   const [connected, setConnected] = useState(false);

@@ -273,7 +273,7 @@ def test_designs_are_isolated_between_learners(client, app, instrument):
 
 
 @pytest.mark.parametrize("instrument", ["flex", "ot2"])
-def test_sandbox_is_rejected_by_native_allowlist_even_when_remote_is_enabled(
+def test_sandbox_is_rejected_without_qualified_studio_host_even_when_remote_is_enabled(
     client, app, instrument
 ):
     app.state.runs.enabled = True
@@ -288,7 +288,7 @@ def test_sandbox_is_rejected_by_native_allowlist_even_when_remote_is_enabled(
         },
     )
     assert response.status_code == 422
-    assert "qualified first-transfer" in response.json()["detail"]
+    assert response.json()["detail"]["issues"][0]["code"] == "host"
     assert app.state.store.get(RUNS, run_id) is None
     assert app.state.store.get(QUEUE, run_id) is None
     assert client.get(f"/api/sessions/{session['id']}/remote-run").json() is None

@@ -10,6 +10,7 @@ import {
   Droplets,
   FlaskConical,
   Layers3,
+  Monitor,
   Pause,
   Pipette,
   Play,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
 import type { Action, Experiment, Session } from "./types";
+import NativeStudioRun, { hasPendingNativeSubmission } from "./NativeStudioRun";
 import {
   ACTION_HINTS,
   ACTION_LABELS,
@@ -76,16 +78,25 @@ export default function WorkflowStudio({
   );
   const [busy, setBusy] = useState(false);
   const [auto, setAuto] = useState(false);
+  const [nativeLocked, setNativeLocked] = useState(
+    () => !!session.remote_active_run || hasPendingNativeSubmission(session.id),
+  );
   const [selectedAsset, setSelectedAsset] = useState("tips");
   const [starter, setStarter] = useState<Starter>("transfer");
   const mounted = useRef(true);
   const runControls = useRef<HTMLElement>(null);
+  const nativeControls = useRef<HTMLDivElement>(null);
   const blocks = useRef<HTMLElement>(null);
   const pending = useRef(false);
   const current = useRef(session);
   current.current = session;
   const instrument = draft.instrument ?? "flex";
-  const editable = session.status === "draft" && !busy;
+  const nativeReserved = nativeLocked || !!session.remote_active_run;
+  const editable = session.status === "draft" && !busy && !nativeReserved;
+  const nativeLockChanged = useCallback((locked: boolean) => {
+    setNativeLocked(locked);
+    if (locked) setAuto(false);
+  }, []);
   const dirty = JSON.stringify(draft) !== JSON.stringify(session.experiment);
   const empty = draft.actions.length === 0;
   const fault = session.events.find((event) => event.level === "error");
@@ -191,7 +202,7 @@ export default function WorkflowStudio({
   const perform = async (
     command: "save" | "start" | "pause" | "resume" | "reset" | "step",
   ) => {
-    if (pending.current) return;
+    if (pending.current || nativeReserved) return;
     pending.current = true;
     const id = current.current.id;
     setBusy(true);
@@ -236,7 +247,7 @@ export default function WorkflowStudio({
     }
   };
   useEffect(() => {
-    if (!auto || busy || session.status !== "running") return;
+    if (!auto || busy || nativeReserved || session.status !== "running") return;
     const timer = window.setTimeout(async () => {
       if (pending.current) return;
       pending.current = true;
@@ -261,6 +272,7 @@ export default function WorkflowStudio({
   }, [
     auto,
     busy,
+    nativeReserved,
     session.id,
     session.version,
     session.status,
@@ -354,8 +366,24 @@ export default function WorkflowStudio({
           >
             <Save size={16} /> Save workflow
           </button>
+          <button
+            className={s.secondary}
+            onClick={() => {
+              nativeControls.current?.scrollIntoView({ block: "start" });
+              nativeControls.current?.focus({ preventScroll: true });
+            }}
+          >
+            <Monitor size={16} /> Native Matterix
+          </button>
         </div>
       </header>
+      {nativeReserved && (
+        <p className={s.nativeNotice} role="status">
+          Native Matterix execution reserves this workflow. Editing and teaching
+          controls unlock after its submission is reconciled and native reset is
+          verified.
+        </p>
+      )}
       <div className={s.mobileJumps} role="group" aria-label="Studio sections">
         <button
           className={s.secondary}
@@ -650,7 +678,7 @@ export default function WorkflowStudio({
             {session.status === "running" && auto ? (
               <button
                 className={s.primary}
-                disabled={busy}
+                disabled={busy || nativeReserved}
                 onClick={() => perform("pause")}
               >
                 <Pause size={18} /> Pause simulation
@@ -658,7 +686,7 @@ export default function WorkflowStudio({
             ) : session.status === "running" ? (
               <button
                 className={s.primary}
-                disabled={busy}
+                disabled={busy || nativeReserved}
                 onClick={() => setAuto(true)}
               >
                 <Play size={18} /> Continue simulation
@@ -666,7 +694,7 @@ export default function WorkflowStudio({
             ) : session.status === "draft" || session.status === "paused" ? (
               <button
                 className={s.primary}
-                disabled={busy || empty}
+                disabled={busy || nativeReserved || empty}
                 onClick={() =>
                   perform(session.status === "draft" ? "start" : "resume")
                 }
@@ -679,7 +707,7 @@ export default function WorkflowStudio({
             ) : (
               <button
                 className={s.primary}
-                disabled={busy}
+                disabled={busy || nativeReserved}
                 onClick={() => perform("reset")}
               >
                 <RotateCcw size={18} /> Reset & edit
@@ -690,6 +718,7 @@ export default function WorkflowStudio({
                 className={s.textButton}
                 disabled={
                   busy ||
+                  nativeReserved ||
                   auto ||
                   empty ||
                   !["draft", "paused", "running"].includes(session.status)
@@ -700,7 +729,7 @@ export default function WorkflowStudio({
               </button>
               <button
                 className={s.textButton}
-                disabled={busy || session.status === "draft"}
+                disabled={busy || nativeReserved || session.status === "draft"}
                 onClick={() => perform("reset")}
               >
                 <RotateCcw size={14} /> Reset run
@@ -977,9 +1006,25 @@ export default function WorkflowStudio({
       <p className={s.boundary}>
         A simplified 300 µL pipette, ideal mixing and fresh-tip rules on both
         instrument layouts. Deck placement is schematic. Results are synthetic;
-        this studio does not run a robot, validate a protocol or simulate
-        collision physics.
+        the teaching model does not validate a protocol or simulate collision
+        physics. Native execution, when a qualified worker supports your saved
+        design, is a separate operation below.
       </p>
+      <div
+        ref={nativeControls}
+        className={s.nativeControls}
+        tabIndex={-1}
+        aria-label="Native simulation controls"
+      >
+        <NativeStudioRun
+          key={session.id}
+          session={session}
+          dirty={dirty}
+          teachingBusy={busy || auto}
+          onChange={accept}
+          onLockChange={nativeLockChanged}
+        />
+      </div>
     </div>
   );
 }

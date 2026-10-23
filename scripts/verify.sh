@@ -13,6 +13,8 @@ npm --prefix app/frontend run build
 npm --prefix app/frontend run format:check
 node --check app/frontend/commissioning.mjs
 node --test app/frontend/commissioning-response.test.mjs
+node --check app/frontend/studio-commissioning.mjs
+node --test app/frontend/studio-commissioning.test.mjs
 node --check app/frontend/learner-acceptance.mjs
 node --check app/frontend/learner-acceptance-journeys.mjs
 node --test app/frontend/learner-acceptance.test.mjs
