@@ -349,6 +349,7 @@ def main():
             ],
             check=True,
             timeout=60,
+            stdout=sys.stderr,
         )
         files = {CANDIDATE_PATH: read_file(args.candidate), REPORT_PATH: read_file(args.report)}
         result = publish(GitHub(), json.loads(files[CANDIDATE_PATH]), files, args.expected_main)

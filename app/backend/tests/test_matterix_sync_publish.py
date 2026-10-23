@@ -413,3 +413,59 @@ def test_actual_workflow_configuration_requires_both_separate_apps(tmp_path, mis
         assert status["upstream_checked"] is False
         assert status["published"] is False
         assert status["activation_allowed"] is False
+
+
+@pytest.mark.parametrize("validation_exit", [0, 3])
+def test_cli_keeps_validation_diagnostics_out_of_publication_json(
+    tmp_path, monkeypatch, capfd, validation_exit
+):
+    module = publisher()
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    (scripts / "matterix-sync.py").write_text(
+        f"print('Candidate integrity fixture validation')\nraise SystemExit({validation_exit})\n"
+    )
+    candidate = tmp_path / "candidate.json"
+    candidate.write_text('{"fixture": true}\n')
+    report = tmp_path / "report.md"
+    report.write_text("Synthetic fixture report\n")
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        module.sys,
+        "argv",
+        [
+            "publisher",
+            "--candidate",
+            str(candidate),
+            "--report",
+            str(report),
+            "--expected-main",
+            MAIN,
+        ],
+    )
+    github = object()
+    monkeypatch.setattr(module, "GitHub", lambda: github)
+    published = []
+
+    def publish(client, data, files, expected):
+        assert client is github
+        assert data == {"fixture": True}
+        assert files[module.REPORT_PATH] == report.read_bytes()
+        assert expected == MAIN
+        published.append(True)
+        return {"status": "synthetic-publication-fixture", "activation_allowed": False}
+
+    monkeypatch.setattr(module, "publish", publish)
+    assert module.main() == (0 if validation_exit == 0 else 1)
+    output = capfd.readouterr()
+    assert "Candidate integrity fixture validation" in output.err
+    if validation_exit == 0:
+        assert json.loads(output.out) == {
+            "status": "synthetic-publication-fixture",
+            "activation_allowed": False,
+        }
+        assert published == [True]
+    else:
+        assert output.out == ""
+        assert "Candidate publication failed" in output.err
+        assert published == []
