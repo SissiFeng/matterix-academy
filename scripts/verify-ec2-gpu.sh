@@ -3,7 +3,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 work=$(mktemp -d /tmp/academy-ec2-verify.XXXXXX)
-trap 'rm -rf "$work"' EXIT
+cleanup() {
+  local status=$?
+  if [ "$status" -ne 0 ]; then
+    # Preserve useful diagnostics in CI even though the isolated work directory is removed.
+    for log in "$work/init.log" "$work/plan.log"; do
+      if [ -f "$log" ]; then cat "$log" >&2; fi
+    done
+  fi
+  rm -rf "$work"
+  exit "$status"
+}
+trap cleanup EXIT
 # Validate a fresh copy: never read an operator's local Terraform state.
 mkdir -p "$work/infra/ec2-gpu" "$work/ops/ec2-gpu"
 cp infra/ec2-gpu/*.tf infra/ec2-gpu/*.tftpl infra/ec2-gpu/.terraform.lock.hcl "$work/infra/ec2-gpu/"
@@ -17,6 +28,9 @@ export AWS_CONFIG_FILE=/dev/null
 export AWS_SHARED_CREDENTIALS_FILE=/dev/null
 export TF_DATA_DIR="$work/providers"
 terraform -chdir="$module" fmt -check
+# Both linux_amd64 and darwin_arm64 h1 hashes must be committed before readonly init.
+# Archive zh hashes alone cannot validate an unpacked provider on another platform.
+# Refresh each root with: terraform providers lock -platform=linux_amd64 -platform=darwin_arm64
 terraform -chdir="$module" init -backend=false -input=false -lockfile=readonly > "$work/init.log"
 terraform -chdir="$module" validate
 terraform -chdir="$module" plan -input=false -refresh=false -lock=false \

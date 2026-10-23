@@ -67,6 +67,21 @@ def test_live_api_and_frontend_must_report_the_same_release(release, api_version
                 release.verify_live_release(http, "https://example.cloudfront.net", manifest)
 
 
+def test_live_frontend_manifest_must_match_the_tested_release_even_with_current_api(release):
+    manifest = release.verify()
+
+    def respond(request):
+        if request.url.path == "/api/health":
+            return httpx.Response(200, json={"status": "ok", "version": __version__})
+        if request.url.path == "/version.json":
+            return httpx.Response(200, json={**manifest, "commit": "b" * 40})
+        return httpx.Response(401 if request.url.path == "/api/me" else 200)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        with pytest.raises(RuntimeError, match="Live release manifest"):
+            release.verify_live_release(http, "https://example.cloudfront.net", manifest)
+
+
 @pytest.mark.parametrize("change", ["lambda", "frontend", "missing", "extra", "commit"])
 def test_release_rejects_changed_files_and_revision(release, monkeypatch, change):
     if change == "lambda":

@@ -25,10 +25,17 @@ jobs:
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: '1.5.7'
+      - uses: hashicorp/setup-packer@1aa358be5cf73883762b302a3a03abd66e75b232
+        with:
+          version: '1.16.1'
+      - name: Install the pinned Amazon plugin for offline image validation
+        run: packer init ops/ec2-gpu/image
       - run: uv sync --frozen
       - run: npm --prefix app/frontend ci --include=optional
       - run: bash scripts/build-lambda.sh
       - run: bash scripts/verify.sh
+        env:
+          PACKER_BIN: packer
       - name: Install Chromium for browser journeys
         run: bash scripts/install-browser-ci.sh
       - run: npm run test:e2e
