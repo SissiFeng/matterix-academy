@@ -2,17 +2,20 @@
 """Publish exactly the tested release artifact. Infrastructure stays in Terraform."""
 
 import argparse
+import ast
 import base64
 import hashlib
 import json
 import mimetypes
 import os
 import re
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 import boto3
 import httpx
+from academy._version import __version__
 
 MANIFEST = Path("build/release.json")
 LAMBDA = Path("build/lambda.zip")
@@ -30,8 +33,30 @@ def revision():
     return value
 
 
+def verify_package_version():
+    """Read the Lambda's durable version without importing its Linux dependencies."""
+    try:
+        with zipfile.ZipFile(LAMBDA) as archive:
+            module = ast.parse(archive.read("academy/_version.py"))
+        versions = [
+            ast.literal_eval(node.value)
+            for node in module.body
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "__version__"
+                for target in node.targets
+            )
+        ]
+    except (KeyError, ValueError, SyntaxError, zipfile.BadZipFile) as exc:
+        raise ValueError("Lambda package has no valid application version") from exc
+    if versions != [__version__]:
+        raise ValueError("Lambda package version differs from the release source")
+
+
 def manifest():
+    verify_package_version()
     release = {
+        "version": __version__,
         "commit": revision(),
         "run_id": os.environ.get("GITHUB_RUN_ID", "local"),
         "built_at": datetime.now(UTC).isoformat(),
@@ -50,8 +75,11 @@ def manifest():
 
 def verify():
     release = json.loads(MANIFEST.read_text())
+    if release.get("version") != __version__:
+        raise ValueError("Release version does not match the packaged application")
     if release["commit"] != revision() or release["lambda_sha256"] != digest(LAMBDA):
         raise ValueError("Commit or Lambda artifact does not match the tested release")
+    verify_package_version()
     actual = {str(path.relative_to(WEB)) for path in WEB.rglob("*") if path.is_file()}
     if set(release["files"]) != actual or "index.html" not in actual:
         raise ValueError("Frontend files differ from the tested manifest")
@@ -75,6 +103,20 @@ def expected_native_gate() -> str:
     if value not in {"true", "false"}:
         raise ValueError("NATIVE_EXECUTION_EXPECTED must be 'true' or 'false'")
     return value
+
+
+def verify_live_release(http, app_url, release):
+    http.get(app_url + "/").raise_for_status()
+    response = http.get(app_url + "/api/health")
+    response.raise_for_status()
+    if response.json() != {"status": "ok", "version": release["version"]}:
+        raise RuntimeError("Live API version does not match this build")
+    response = http.get(app_url + "/version.json")
+    response.raise_for_status()
+    if response.json() != release:
+        raise RuntimeError("Live release manifest does not match this build")
+    if http.get(app_url + "/api/me").status_code != 401:
+        raise RuntimeError("Unauthenticated learner request was not rejected")
 
 
 def publish():
@@ -157,14 +199,7 @@ def publish():
         WaiterConfig={"Delay": 5, "MaxAttempts": 90},
     )
     with httpx.Client(timeout=30) as http:
-        for path in ("/", "/api/health"):
-            http.get(app_url + path).raise_for_status()
-        response = http.get(app_url + "/version.json")
-        response.raise_for_status()
-        if response.json() != release:
-            raise RuntimeError("Live release manifest does not match this build")
-        if http.get(app_url + "/api/me").status_code != 401:
-            raise RuntimeError("Unauthenticated learner request was not rejected")
+        verify_live_release(http, app_url, release)
     result = (
         f"Published {release['commit']} to {app_url}; four Lambda hashes and live version verified."
     )

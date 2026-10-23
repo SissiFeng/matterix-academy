@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "format": "prettier --write src tests *.ts *.json index.html",
     "format:check": "prettier --check src tests *.mjs *.ts *.json index.html",
-    "commissioning:live": "node commissioning.mjs"
+    "commissioning:live": "node commissioning.mjs",
+    "acceptance:learners": "node learner-acceptance.mjs",
+    "test:acceptance": "node --test learner-acceptance.test.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.0",

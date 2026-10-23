@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -31,20 +31,14 @@ jobs:
       - run: bash scripts/build-lambda.sh
       - run: bash scripts/verify.sh
       - name: Install Chromium for browser journeys
-        working-directory: app/frontend
-        # apt mirrors occasionally stall; bound each attempt instead of hanging the job.
-        run: |
-          for attempt in 1 2 3; do
-            timeout 300 npx playwright install --with-deps chromium && exit 0
-            echo "Playwright install attempt $attempt failed; retrying"
-            sleep 15
-          done
-          exit 1
+        run: bash scripts/install-browser-ci.sh
       - run: npm run test:e2e
         working-directory: app/frontend
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: failure()
         with:
           name: browser-test-results
-          path: app/frontend/test-results
+          path: |
+            app/frontend/test-results
+            build/browser-install-logs
           retention-days: 7

@@ -27,6 +27,14 @@ variable "region" {
   type    = string
   default = "ca-central-1"
 }
+variable "build_instance_type" {
+  type    = string
+  default = "g6.4xlarge"
+  validation {
+    condition     = contains(["g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"], var.build_instance_type)
+    error_message = "Use an evaluated full L4/L40S single-GPU candidate. g6.2xlarge is a measured capacity trial."
+  }
+}
 variable "expected_account_id" {
   type = string
   validation {
@@ -71,7 +79,7 @@ variable "manifest_sha256" {
 source "amazon-ebs" "internal_flex" {
   region                                = var.region
   source_ami                            = var.source_ami
-  instance_type                         = "g6.4xlarge"
+  instance_type                         = var.build_instance_type
   subnet_id                             = var.subnet_id
   vpc_id                                = var.vpc_id
   associate_public_ip_address           = true
@@ -93,13 +101,28 @@ source "amazon-ebs" "internal_flex" {
     encrypted             = true
   }
   tags = {
+    Application           = "matterix-academy"
+    Environment           = "dev"
+    ManagedBy             = "packer"
     AcademyManifestSHA256 = var.manifest_sha256
     AcademyReleaseSHA256  = var.release_sha256
     AcademyQualification  = "prepared-not-qualified"
     Purpose               = "internal-flex-browser-dt"
     AcademyBuildAccount   = var.expected_account_id
+    AcademyBuildInstance  = var.build_instance_type
   }
-  run_tags = { Purpose = "academy-image-build" }
+  run_tags = {
+    Application = "matterix-academy"
+    Environment = "dev"
+    ManagedBy   = "packer"
+    Purpose     = "academy-image-build"
+  }
+  run_volume_tags = {
+    Application = "matterix-academy"
+    Environment = "dev"
+    ManagedBy   = "packer"
+    Purpose     = "academy-image-build"
+  }
 }
 build {
   sources = ["source.amazon-ebs.internal_flex"]

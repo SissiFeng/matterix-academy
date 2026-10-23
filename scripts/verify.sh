@@ -8,6 +8,9 @@ npm --prefix app/frontend run build
 npm --prefix app/frontend run format:check
 node --check app/frontend/commissioning.mjs
 node --test app/frontend/commissioning-response.test.mjs
+node --check app/frontend/learner-acceptance.mjs
+node --check app/frontend/learner-acceptance-journeys.mjs
+node --test app/frontend/learner-acceptance.test.mjs
 terraform -chdir=infra fmt -check
 terraform -chdir=infra init -backend=false -input=false >/dev/null
 terraform -chdir=infra validate

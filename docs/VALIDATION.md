@@ -1,3 +1,36 @@
+# Academy readiness completion — 2026-10-23
+
+The final local verification passed **514 backend tests and 43 Chromium journeys**,
+including a five-learner concurrent SQLite/FastAPI regression and the exact shared
+course, dilution reset/repeat and first-transfer helpers used by the live learner
+harness. Its nine guard tests also passed; failed registration followed by existing
+account login can never establish a successful new registration.
+
+`build-lambda.sh`, `verify.sh`, frontend build/format, both Terraform roots and the
+actual offline Amazon Packer plugin schema passed. The packaged health/OpenAPI and
+release manifest now share version 0.2.0, and publishing checks the installed ZIP
+version before credentials plus the live version after deployment. CI installation
+has separate bounded OS/browser phases and retained failure logs.
+
+Security and architecture review identified two live-harness errors: stale accessible
+selectors and request-only registration evidence. Both were corrected; the shared
+real-app regression passes. The new GPU-capacity path also received a separate
+launch-blocking review with no remaining finding. These are local/review results,
+not fresh remote CI, image-build or native acceptance evidence.
+
+Operational Terraform applied 13 additions and four alarm updates, then removed
+only the new US$400 budget at the user's request. The final plan has no changes.
+All 13 operational alarms have a confirmed SNS target; controlled ALARM and OK
+messages were observed in the operator mailbox. The organization budget was
+preserved. [Sanitized operational evidence](evidence/operations/2026-10-23.json).
+
+Applied G/VT quota is now 8 vCPU; g6.2xlarge preflight passes the 32-GiB/full-L4
+minimum. Actual image startup/render capacity remains unmeasured until the bounded
+build in [GPU-CAPACITY-TRIAL.md](GPU-CAPACITY-TRIAL.md). Real registration, sign-in,
+two-user cloud isolation, authenticated load and browser/native DT acceptance are
+**deferred by the user**. Their harness is ready in [LEARNER-ACCEPTANCE.md](LEARNER-ACCEPTANCE.md),
+but no local result promotes those live acceptance gates.
+
 # Academy 0.2.0 and GPU image preparation — 2026-10-19
 
 The complete Isaac dependency resolution exposed a conflict missed by top-level

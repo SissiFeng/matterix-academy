@@ -1,6 +1,6 @@
 # Status
 
-Single source for current project status. Updated 2026-10-20. Dated evidence lives in [VALIDATION.md](VALIDATION.md) and [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md); this page only summarizes it. When this page and an older document disagree, this page wins and the older document should be corrected.
+Single source for current project status. Updated 2026-10-23. Dated evidence lives in [VALIDATION.md](VALIDATION.md) and [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md); this page only summarizes it. When this page and an older document disagree, this page wins and the older document should be corrected.
 
 Legend: **Verified** = observed in a real environment. **Implemented** = code and automated tests exist; no real-environment evidence. **Blocked** = waiting on something outside this repository.
 
@@ -11,7 +11,7 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 | Teaching-model lessons (first transfer, dilution sandbox) | Verified locally | Synthetic by design; never labeled as Isaac or physical |
 | Discovery studio, workflow marketplace, connector explorer | Verified locally | Content and interaction only |
 | Workcell onboarding (Overview → Onboard → Twin → Sim → Real → Runs) | Implemented | Physical readiness always shown as unverified; no device connection |
-| Workflow judgment course | Verified locally | English synthetic-only review, repair, trial, scripted reconciliation and conclusion; see [course contract](WORKFLOW-JUDGMENT-COURSE.md). 417 backend tests and 41 browser journeys passed; see [validation](VALIDATION.md) |
+| Workflow judgment course | Verified locally | English synthetic-only review, repair, trial, scripted reconciliation and conclusion; see [course contract](WORKFLOW-JUDGMENT-COURSE.md). 514 backend tests and 43 browser journeys passed; see [validation](VALIDATION.md) |
 | Page-level code splitting | Implemented | Main bundle ~344 kB (was ~521 kB) |
 
 ## AWS (account 247893369214, ca-central-1)
@@ -19,19 +19,19 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 | Area | State | Notes |
 |---|---|---|
 | CloudFront, S3, API Gateway, Lambda, DynamoDB, Cognito | Verified | 54 resources applied; post-apply plan clean |
-| utoronto.ca self-registration | Verified (infrastructure) | A real learner sign-in and two-account isolation test are still owed |
+| utoronto.ca self-registration | Verified (infrastructure) | Real signup, mailbox confirmation, sign-in and two-account isolation are deferred by the user (2026-10-23); runnable harness: [learner acceptance](LEARNER-ACCEPTANCE.md) |
 | Machine API, worker authorizer, lease reaper | Verified with synthetic workers | Smoke test: 21 assertions |
-| Automatic release on `main` | Implemented, flaky | One run stalled installing Playwright system packages; workflows now bound and retry that step |
-| Academy 0.2.0 / internal Flex GPU acceptance | AWS application deployed; GPU blocked | Four Lambda hashes and 35 web files verified at source `674c1e2`; global gate stays false. AWS GPU quota is 0 vCPU; 16-vCPU request is CASE_OPENED, case 179250244900163. No AMI/EC2 or native acceptance yet. See [live record](DEPLOYMENT-2026-10-20.md) |
+| Automatic release on `main` | Verified for the prior main release; current update under validation | Latest existing CI/deploy runs succeeded. Install phases now have separate time bounds and logs; release checks bind runtime version and archive checksums |
+| Academy 0.2.0 / internal Flex GPU acceptance | AWS application deployed; GPU blocked | Four Lambda hashes and 35 web files verified at source `674c1e2`; global gate stays false. Applied AWS GPU quota is now 8 vCPU; the 16-vCPU request remains CASE_OPENED. A guarded g6.2xlarge capacity trial is prepared; see [capacity trial](GPU-CAPACITY-TRIAL.md). Native browser acceptance is deferred with real account acceptance. See [live record](DEPLOYMENT-2026-10-20.md) |
 | Native gate in release | Implemented | `release.py` requires the Lambda gate to equal `NATIVE_EXECUTION_EXPECTED` (default `false`) |
-| Alarm notifications and budget | Implemented, off | Set `alarm_email` / `monthly_budget_usd`, review and apply the plan. The budget filter requires the `Application` cost-allocation tag to be activated |
-| Lambda concurrency | Risk | Account quota is 10 and shared with other workloads. Request an increase before a cohort |
+| Alarm notifications and budget | Notifications verified; Academy budget disabled | 13 operational alarms target a confirmed SNS subscription. Controlled ALARM and OK emails arrived. The requested US$400 account budget was removed at the user's request; the existing organization budget was preserved |
+| Lambda concurrency | Capacity acceptance pending | Applied quota remains 10 with learner limit 5 requests/s. Increase request 209df9a3cc9940ba8adbe5f47e9ee2e4Y7CXjacq is CASE_OPENED; do not claim cohort capacity before approval and authenticated load acceptance |
 
 ## Native simulation (Matterix / Isaac on Ubuntu)
 
 | Area | State | Notes |
 |---|---|---|
-| Single EC2 Ubuntu GPU pilot | Prepared, not deployed | Separate default-disabled Terraform root, captured public prices, pinned image contract and acceptance matrix; no account selected or resources created. See [pilot plan](EC2-GPU-PILOT.md) |
+| Single EC2 Ubuntu GPU pilot | Authorized capacity trial | Existing SDL0-DEV1 development account; sequential build and acceptance, at most one GPU. Installed image/render capacity and real browser workflow remain separate gates. See [capacity trial](GPU-CAPACITY-TRIAL.md) |
 | Pinned `mix_four_vials` adapter, journal, supervisor | Implemented | Fixed recipe; only the seed is learner-selectable |
 | Learner first-transfer → native intent + scene preflight | Implemented | `native_plan.py`. Submission and claim reject plans a qualified scene cannot run exactly as saved. No native executor for this scene exists yet |
 | KVS WebRTC media (MASTER/VIEWER grants, relay-only ICE) | Partly verified | KVS signaling and TURN credentials verified with a temporary channel; no real Isaac frames |

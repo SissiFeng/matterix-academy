@@ -88,7 +88,7 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 ## Operations and rollback
 
 - DynamoDB stores profiles and experiments durably. A Lambda restart does not lose teaching state. Monitor Lambda errors/throttles, API Gateway errors, DynamoDB throttling and budget alarms before inviting a cohort.
-- The error alarm exists without an SNS destination. Attach an operator-owned notification channel and set an account budget before production use.
+- AC dev operational error/throttle alarms now use a confirmed SNS email destination. Controlled alarm and recovery emails were observed on 2026-10-23. The user canceled the additional US$400 account budget; keep Academy budget creation disabled and preserve the organization's existing budget. Application-scoped budgets require verified payer-side activation of the cost allocation tag.
 - Session data is keyed by Cognito subject; never reuse a user identity for multiple students. The first release has no teacher administration UI or cross-user data access.
 - Source maps and tokens are not published in diagnostics. Browser tokens are short-lived and stored in session storage; users sign in again after expiration.
 - Retain a known-good application commit. For application rollback, rebuild that reviewed commit and publish its Lambda artifact and `index.html`; hashed assets from previous deployments are retained. Infrastructure changes require a separate reviewed Terraform plan.

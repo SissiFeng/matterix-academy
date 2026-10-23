@@ -1,3 +1,7 @@
+# Current execution note — 2026-10-23
+
+The user authorized necessary paid commissioning resources. Applied Canadian GPU quota is now 8 vCPU; [the bounded g6.2xlarge capacity trial](GPU-CAPACITY-TRIAL.md) supersedes the earlier preference to measure a 64-GiB host first. Real account/browser acceptance is deferred at the user's request. No additional Academy account budget should be created.
+
 # Single EC2 GPU pilot: browser → fixed Isaac scene
 
 Prepared 2026-10-19. **No EC2, AMI build host, volume, signaling channel, account

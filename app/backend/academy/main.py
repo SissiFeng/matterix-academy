@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from ._version import __version__
 from .auth import identify, local_signer
 from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
@@ -26,7 +27,7 @@ def create_app(settings: Settings | None = None, store=None):
     settings = settings or Settings.from_env()
     app = FastAPI(
         title="Lab Onboarding",
-        version="0.1.0",
+        version=__version__,
         docs_url="/api/docs" if settings.runtime == "local" else None,
         redoc_url=None,
         openapi_url="/api/openapi.json" if settings.runtime == "local" else None,
@@ -77,7 +78,7 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": "0.1.0"}
+        return {"status": "ok", "version": __version__}
 
     @app.post("/api/runs/{run_id}/viewer")
     def viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):

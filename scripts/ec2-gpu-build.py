@@ -4,11 +4,106 @@ import argparse
 import importlib.util
 import json
 import os
+import signal
 import subprocess
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+BUILD_TYPES = {"g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"}
+
+
+def validate_instance(instance):
+    gpus = instance.get("GpuInfo", {}).get("Gpus", [])
+    if not (
+        instance.get("InstanceType") in BUILD_TYPES
+        and instance.get("VCpuInfo", {}).get("DefaultVCpus", 0) >= 8
+        and instance.get("MemoryInfo", {}).get("SizeInMiB", 0) >= 32768
+        and "x86_64" in instance.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
+        and len(gpus) == 1
+        and gpus[0].get("Count") == 1
+        and gpus[0].get("Name") in {"L4", "L40S"}
+        and gpus[0].get("MemoryInfo", {}).get("SizeInMiB", 0) >= 22000
+    ):
+        raise ValueError(
+            "Build requires at least 8 vCPU, 32 GiB and one full L4/L40S with 22000 MiB"
+        )
+
+
+def capacity_preflight(session, env, config):
+    """Read the selected account using the same frozen identity as the paid child."""
+    region = config["region"]
+    instance_type = config.get("build_instance_type", "g6.4xlarge")
+    if instance_type not in BUILD_TYPES:
+        raise ValueError("Unsupported GPU build instance type")
+    credentials = {
+        "region_name": region,
+        "verify": True,
+        "aws_access_key_id": env["AWS_ACCESS_KEY_ID"],
+        "aws_secret_access_key": env["AWS_SECRET_ACCESS_KEY"],
+        "aws_session_token": env["AWS_SESSION_TOKEN"],
+    }
+    ec2 = session.client("ec2", endpoint_url=f"https://ec2.{region}.amazonaws.com", **credentials)
+    instance = ec2.describe_instance_types(InstanceTypes=[instance_type])["InstanceTypes"][0]
+    validate_instance(instance)
+    if instance["InstanceType"] != instance_type:
+        raise ValueError("EC2 capacity response differs from the selected instance type")
+    quotas = session.client(
+        "service-quotas",
+        endpoint_url=f"https://servicequotas.{region}.amazonaws.com",
+        **credentials,
+    )
+    quota = quotas.get_service_quota(ServiceCode="ec2", QuotaCode="L-DB2E81BA")["Quota"]["Value"]
+    if quota < instance["VCpuInfo"]["DefaultVCpus"]:
+        raise ValueError("Applied G/VT On-Demand quota is insufficient for the selected build")
+    pages = ec2.get_paginator("describe_instances").paginate(
+        Filters=[
+            {"Name": "instance-type", "Values": ["g*", "vt*"]},
+            {"Name": "instance-state-name", "Values": ["pending", "running", "stopping"]},
+        ]
+    )
+    if any(reservation["Instances"] for page in pages for reservation in page["Reservations"]):
+        raise ValueError("An active G/VT instance exists; keep GPU build and acceptance sequential")
+    return {
+        "instance_type": instance_type,
+        "applied_g_vcpu_quota": quota,
+        "vcpus": instance["VCpuInfo"]["DefaultVCpus"],
+        "physical_memory_mib": instance["MemoryInfo"]["SizeInMiB"],
+        "gpu": instance["GpuInfo"]["Gpus"][0],
+    }
+
+
+def run_build(command, env, timeout_seconds):
+    # Packer receives SIGINT first so it can remove its own temporary AWS resources.
+    # This limits the local operation, not AWS billing: reconcile resources after failure.
+    if not 60 <= timeout_seconds <= 9000:
+        raise ValueError("Build timeout must be 60–9000 seconds (default 7200)")
+    process = subprocess.Popen(command, env=env, start_new_session=True)
+
+    def interrupt(sig):
+        try:
+            os.killpg(process.pid, sig)
+        except ProcessLookupError:
+            pass  # Packer can finish between wait's timeout and cleanup signalling.
+
+    try:
+        returncode = process.wait(timeout=timeout_seconds)
+    except (subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
+        interrupt(signal.SIGINT)
+        try:
+            process.wait(timeout=300)
+        except subprocess.TimeoutExpired:
+            interrupt(signal.SIGTERM)
+            try:
+                process.wait(timeout=60)
+            except subprocess.TimeoutExpired:
+                interrupt(signal.SIGKILL)
+                process.wait()
+        raise RuntimeError(
+            "Build interrupted; inspect the log and reconcile temporary AWS resources"
+        ) from exc
+    if returncode:
+        raise subprocess.CalledProcessError(returncode, command)
 
 
 def build_environment(identity, credentials, expected_account, region):
@@ -50,8 +145,15 @@ def main():
     parser.add_argument("--packer", default="packer")
     parser.add_argument("--confirm-paid-build", action="store_true")
     parser.add_argument("--accept-nvidia-eula", action="store_true")
+    parser.add_argument("--timeout-seconds", type=int, default=7200)
     args = parser.parse_args()
     config = json.loads(args.config.read_text())
+    # Bind even the default into -var-file so PKR_VAR_* cannot change the checked type.
+    config.setdefault("build_instance_type", "g6.4xlarge")
+    if config["build_instance_type"] not in BUILD_TYPES:
+        parser.error("Unsupported GPU build instance type")
+    if not 60 <= args.timeout_seconds <= 9000:
+        parser.error("Build timeout must be 60–9000 seconds")
     spec = importlib.util.spec_from_file_location(
         "image_inputs", ROOT / "scripts/ec2-gpu-inputs.py"
     )
@@ -77,12 +179,17 @@ def main():
 
     session = boto3.Session(region_name=config["region"])
     env = verified_environment(session, config["expected_account_id"], config["region"])
+    capacity = capacity_preflight(session, env, config)
+    print(
+        json.dumps({"capacity_preflight": capacity, "build_timeout_seconds": args.timeout_seconds}),
+        flush=True,
+    )
     # The temporary variables contain no credentials. Credentials stay in the child environment.
     with tempfile.NamedTemporaryFile(mode="w", suffix=".pkrvars.json") as file:
         json.dump(config, file)
         file.flush()
         command = [args.packer, "build", "-var-file=" + file.name, str(ROOT / "ops/ec2-gpu/image")]
-        subprocess.run(command, env=env, check=True)
+        run_build(command, env, args.timeout_seconds)
 
 
 if __name__ == "__main__":
