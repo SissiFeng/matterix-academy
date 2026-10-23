@@ -125,15 +125,14 @@ test("a lost twin receipt is reconciled without creating a second session", asyn
   await identify(page);
   await describe(page);
   let sent = 0;
-  await page.route(
-    "**/api/devices/*/twin",
-    async (route) => {
-      sent += 1;
-      await route.fetch();
-      await route.abort("failed");
-    },
-    { times: 1 },
-  );
+  // Keep interception active while the browser immediately reads the saved receipt.
+  // Count every submission so an unexpected replay cannot pass unnoticed.
+  await page.route("**/api/devices/*/twin", async (route) => {
+    sent += 1;
+    const committed = await route.fetch();
+    expect(committed.ok()).toBe(true);
+    await route.abort("failed");
+  });
   await page
     .getByRole("button", { name: "Create teaching twin", exact: true })
     .click();
