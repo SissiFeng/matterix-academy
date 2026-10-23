@@ -32,7 +32,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import { api, ApiError, configureAuth, json, signIn, signOut } from "./api";
-import type { Config, Course, Profile, Session } from "./types";
+import type { Config, Course, Experiment, Profile, Session } from "./types";
 import s from "./App.module.css";
 import { useDialog } from "./useDialog";
 import { firstTransfer } from "./learningContent";
@@ -42,11 +42,17 @@ import {
   workspaceViews,
   type WorkspaceView,
 } from "./workcellTypes";
-import { Deck } from "./deck";
 import { FirstLessonCard } from "./FirstLessonCard";
 import { DiscoveryInvitation } from "./DiscoveryInvitation";
 import ThemeToggle from "./ThemeToggle";
+import InstrumentStories from "./InstrumentStories";
+import {
+  makeStudioExperiment,
+  type Instrument,
+  type Starter,
+} from "./studioContent";
 
+const WorkflowStudio = lazy(() => import("./WorkflowStudio"));
 const SimulationLab = lazy(() => import("./SimulationLab"));
 const WorkflowCourse = lazy(() => import("./WorkflowCourse"));
 const LearningLab = lazy(() => import("./LearningLab"));
@@ -76,39 +82,105 @@ function Brand({ small = false }: { small?: boolean }) {
   );
 }
 
+type StudioIntent = { instrument: Instrument; starter: Starter };
+const STUDIO_INTENT_KEY = "academy-studio-intent-v1";
+function readStudioIntent(): StudioIntent | null {
+  try {
+    const value = JSON.parse(
+      sessionStorage.getItem(STUDIO_INTENT_KEY) ?? "null",
+    );
+    if (
+      value &&
+      ["flex", "ot2"].includes(value.instrument) &&
+      ["transfer", "distribute", "dilution", "blank"].includes(value.starter)
+    )
+      return value;
+  } catch {
+    /* Storage may be unavailable; the public introductions still work. */
+  }
+  return null;
+}
+function rememberStudioIntent(value: StudioIntent | null) {
+  try {
+    if (value) sessionStorage.setItem(STUDIO_INTENT_KEY, JSON.stringify(value));
+    else sessionStorage.removeItem(STUDIO_INTENT_KEY);
+  } catch {
+    /* In-memory choice remains available when storage is disabled. */
+  }
+}
+
 function Welcome({
   config,
   onEnter,
+  onDesign,
+  pending,
   busy,
 }: {
   config: Config;
   onEnter: (name: string) => void;
+  onDesign: (instrument: Instrument, starter: Starter) => void;
+  pending: StudioIntent | null;
   busy: boolean;
 }) {
   const [name, setName] = useState("");
+  const entry = useRef<HTMLElement>(null);
   return (
     <main className={s.welcome}>
       <header>
         <Brand />
-        <span className={s.headerNote}>
-          <ShieldCheck size={15} /> A safe space to learn
-        </span>
+        <button
+          className={s.textButton}
+          onClick={() => {
+            entry.current?.scrollIntoView({
+              block: "center",
+              behavior: "auto",
+            });
+            entry.current
+              ?.querySelector<HTMLInputElement | HTMLButtonElement>(
+                "input, button",
+              )
+              ?.focus({ preventScroll: true });
+          }}
+        >
+          Sign in <ArrowRight size={16} />
+        </button>
       </header>
-      <div className={s.welcomeGrid}>
-        <section className={s.welcomeCopy}>
-          <div className={s.eyebrow}>THE LAB IS YOURS.</div>
-          <h1>
-            Good experiments
-            <br />
-            start with
-            <br />
-            <em>a little curiosity.</em>
-          </h1>
+      <InstrumentStories
+        headingLevel={1}
+        onDesign={(instrument, starter) => {
+          onDesign(instrument, starter);
+          entry.current?.scrollIntoView({ block: "center", behavior: "auto" });
+          entry.current
+            ?.querySelector<HTMLInputElement | HTMLButtonElement>(
+              "input, button",
+            )
+            ?.focus({ preventScroll: true });
+        }}
+        busy={busy}
+      />
+      <section
+        className={s.welcomeAccess}
+        ref={entry}
+        aria-label="Save your own workflow"
+      >
+        <div>
+          <span className={s.eyebrow}>FROM WATCHING TO MAKING</span>
+          <h2>Your next experiment starts with an idea.</h2>
           <p>
-            Build a workflow. Make a mistake. Try again.
-            <br />
-            Build skills for simulation and supervised lab practice.
+            Choose a starter or an empty canvas. Arrange your bench, combine
+            steps and watch the teaching model respond.
           </p>
+          {pending && (
+            <p className={s.starterNotice} role="status">
+              Your {pending.instrument === "ot2" ? "OT-2" : "Flex"}{" "}
+              {pending.starter === "blank"
+                ? "blank workflow"
+                : `${pending.starter} starter`}{" "}
+              is selected. Sign in to make it yours.
+            </p>
+          )}
+        </div>
+        <div className={s.welcomeCopy}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -150,39 +222,13 @@ function Welcome({
                   ? `New learners can sign up with ${config.self_signup_email_domains.map((domain) => `@${domain}`).join(" or ")}. Verify your email to start learning.`
                   : "Use your training account to save your progress."}
           </span>
-        </section>
-        <section className={s.welcomeVisual}>
-          <div className={s.visualHeading}>
-            <span>YOUR FIRST EXPERIMENT</span>
-            <span>01 / FLEX FOUNDATIONS</span>
-          </div>
-          <Deck
-            layout={{ stock: "D1", plate: "C2", tips: "B1", waste: "D3" }}
-            locked
-            large
-          />
-          <div className={s.visualFooter}>
-            <span>
-              <FlaskConical size={19} /> A little less, each time.
-            </span>
-            <span>
-              Serial dilution <ArrowRight size={16} />
-            </span>
-          </div>
-          <div className={s.floatingNote}>
-            <span className={s.noteDot} />
-            <div>
-              Room to get it wrong.
-              <small>Reset your experiment, not your confidence.</small>
-            </div>
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
       <footer className={s.welcomeFooter}>
-        <span>LEARN BY DOING.</span>
-        <span>01 Arrange your bench</span>
-        <span>02 Build your method</span>
-        <span>03 Learn from the result</span>
+        <span>TEACHING MODEL · SYNTHETIC</span>
+        <span>Watch a workflow</span>
+        <span>Change something</span>
+        <span>Try it again</span>
       </footer>
     </main>
   );
@@ -353,7 +399,9 @@ function Dashboard({
   onNavigate: (view: string) => void;
   view: string;
 }) {
-  const completed = sessions.filter((run) => run.assessment?.passed).length;
+  const completed = sessions.filter(
+    (run) => run.assessment?.passed && run.assessment.scope !== "model-checks",
+  ).length;
   return (
     <div className={s.dashboard}>
       <div className={s.pageHeading}>
@@ -491,7 +539,9 @@ function Dashboard({
                 {run.status === "faulted"
                   ? "Needs a rethink"
                   : run.assessment?.passed
-                    ? "Goal reached"
+                    ? run.assessment.scope === "model-checks"
+                      ? "Model checks passed"
+                      : "Goal reached"
                     : run.status}
               </span>
               <ArrowRight size={18} />
@@ -522,6 +572,10 @@ export default function App() {
   const [view, setView] = useState("overview");
   const [workspaceRouteRevision, setWorkspaceRouteRevision] = useState(0);
   const [discoverySeed, setDiscoverySeed] = useState<Workflow | undefined>();
+  const [pendingStudio, setPendingStudio] = useState<StudioIntent | null>(
+    readStudioIntent,
+  );
+  const intentStarted = useRef(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -537,7 +591,7 @@ export default function App() {
   useEffect(() => {
     const routeChanged = (event: HashChangeEvent) => {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|workflow-course)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|workflow-course|instruments)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -567,7 +621,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -643,7 +697,7 @@ export default function App() {
     if (target === "discovery") setDiscoverySeed(undefined);
     window.scrollTo(0, 0);
   };
-  const create = async (first = false) => {
+  const create = async (first = false, experiment?: Experiment) => {
     if (leaveGuard.current && !leaveGuard.current()) return;
     const originEpoch = navigationEpoch.current;
     const originIdentity = identityEpoch.current;
@@ -651,7 +705,7 @@ export default function App() {
     try {
       const run = await api<Session>(
         "/sessions",
-        json(first ? firstTransfer() : {}),
+        json(experiment ?? (first ? firstTransfer() : {})),
       );
       if (originIdentity !== identityEpoch.current) return;
       setSessions((list) => [
@@ -666,6 +720,34 @@ export default function App() {
       setBusy(false);
     }
   };
+  const createStudio = (instrument: Instrument, starter: Starter) => {
+    if (busy) return;
+    if (!profile) {
+      const intent = { instrument, starter };
+      intentStarted.current = false;
+      setPendingStudio(intent);
+      rememberStudioIntent(intent);
+      return;
+    }
+    void create(false, makeStudioExperiment(instrument, starter));
+  };
+  useEffect(() => {
+    if (
+      !profile?.onboarded ||
+      !pendingStudio ||
+      loading ||
+      intentStarted.current
+    )
+      return;
+    // Consume once, before the request: refresh must not replay an uncertain creation.
+    intentStarted.current = true;
+    rememberStudioIntent(null);
+    setPendingStudio(null);
+    void create(
+      false,
+      makeStudioExperiment(pendingStudio.instrument, pendingStudio.starter),
+    );
+  }, [profile?.onboarded, pendingStudio, loading]);
   const enter = async (name: string) => {
     identityEpoch.current += 1;
     setBusy(true);
@@ -709,7 +791,13 @@ export default function App() {
           </button>
         </div>
       ) : !profile ? (
-        <Welcome config={config} onEnter={enter} busy={busy} />
+        <Welcome
+          config={config}
+          onEnter={enter}
+          onDesign={createStudio}
+          pending={pendingStudio}
+          busy={busy}
+        />
       ) : !profile.onboarded ? (
         <Onboarding
           profile={profile}
@@ -750,6 +838,18 @@ export default function App() {
             </nav>
             <div className={s.sidebarLabel}>LEARN & EXPLORE</div>
             <nav aria-label="Learning navigation">
+              <button
+                className={
+                  view === "instruments" ||
+                  session?.experiment.course_id === "workflow-sandbox"
+                    ? s.activeNav
+                    : ""
+                }
+                aria-current={view === "instruments" ? "page" : undefined}
+                onClick={() => nav("instruments")}
+              >
+                <Pipette size={18} /> Meet the instruments
+              </button>
               <button
                 className={view === "sim" ? s.activeNav : ""}
                 onClick={() => nav("sim")}
@@ -827,6 +927,9 @@ export default function App() {
                       setSession(null);
                       setSessions([]);
                       setView("overview");
+                      setPendingStudio(null);
+                      rememberStudioIntent(null);
+                      intentStarted.current = false;
                       window.history.replaceState({}, "", "/");
                     } catch (e) {
                       setError((e as Error).message);
@@ -844,19 +947,23 @@ export default function App() {
                 <LayoutGrid size={15} /> Lab Onboarding{" "}
                 <ChevronRight size={13} />{" "}
                 {workspaceLabels[view] ??
-                  (view === "lab"
-                    ? "Flex foundations"
-                    : view === "history"
-                      ? "My experiments"
-                      : view === "discovery"
-                        ? "Discovery studio"
-                        : view === "marketplace"
-                          ? "Workflow marketplace"
-                          : view === "connector"
-                            ? "Connector explorer"
-                            : view === "sim"
-                              ? "Simulation lab"
-                              : "Learning lab")}
+                  (view === "instruments"
+                    ? "Meet the instruments"
+                    : view === "lab"
+                      ? session?.experiment.course_id === "workflow-sandbox"
+                        ? "Workflow studio"
+                        : "Flex foundations"
+                      : view === "history"
+                        ? "My experiments"
+                        : view === "discovery"
+                          ? "Discovery studio"
+                          : view === "marketplace"
+                            ? "Workflow marketplace"
+                            : view === "connector"
+                              ? "Connector explorer"
+                              : view === "sim"
+                                ? "Simulation lab"
+                                : "Learning lab")}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -877,6 +984,8 @@ export default function App() {
                   key={`${view}:${workspaceRouteRevision}`}
                   view={view as WorkspaceView}
                   name={profile.name}
+                  onDesign={createStudio}
+                  creationBusy={busy}
                   onNavigate={nav}
                   onOpen={open}
                   onSessionsLoaded={setSessions}
@@ -895,6 +1004,10 @@ export default function App() {
                   }}
                   registerLeaveGuard={registerLeaveGuard}
                 />
+              ) : view === "instruments" ? (
+                <div className={s.instrumentPage}>
+                  <InstrumentStories onDesign={createStudio} busy={busy} />
+                </div>
               ) : view === "sim" ? (
                 <SimulationLab />
               ) : view === "marketplace" ? (
@@ -937,6 +1050,16 @@ export default function App() {
                   session={session}
                   onChange={updateSession}
                   onBack={() => nav("learn")}
+                  onError={showError}
+                  registerLeaveGuard={registerLeaveGuard}
+                />
+              ) : view === "lab" &&
+                session?.experiment.course_id === "workflow-sandbox" ? (
+                <WorkflowStudio
+                  key={session.id}
+                  session={session}
+                  onChange={updateSession}
+                  onBack={() => nav("instruments")}
                   onError={showError}
                   registerLeaveGuard={registerLeaveGuard}
                 />

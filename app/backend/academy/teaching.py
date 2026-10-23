@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from datetime import UTC, datetime
+from math import isclose, isfinite
 from uuid import uuid4
 
 from .models import Experiment, LearningProgress
@@ -50,13 +51,71 @@ def new_session(experiment: Experiment) -> dict:
     }
 
 
-def assessment(state: dict, experiment: dict) -> dict:
-    targets = {"A1": 50, "A2": 25, "A3": 12.5}
+def model_checks(state: dict, experiment: dict, completed_steps: int) -> list[dict]:
+    """Check bookkeeping without assigning a scientific goal to a learner's design."""
+    initial = initial_state(experiment)
+
+    def total(snapshot, field):
+        return (
+            sum(well[field] for well in snapshot["wells"].values())
+            + snapshot["pipette"][field]
+            + snapshot[f"waste_{field}"]
+        )
+
+    containers = [
+        *((well, 1500) for well in state["wells"].values()),
+        (state["pipette"], 300),
+        ({"volume": state["waste_volume"], "solute": state["waste_solute"]}, None),
+    ]
+    return [
+        {
+            "label": "Every workflow step completed in the teaching model",
+            "passed": completed_steps == len(experiment["actions"]) and completed_steps > 0,
+        },
+        *[
+            {
+                "label": f"Total {label} is conserved, including the pipette and waste",
+                "passed": isclose(
+                    total(state, field), total(initial, field), rel_tol=1e-9, abs_tol=1e-6
+                ),
+            }
+            for field, label in [("volume", "liquid volume"), ("solute", "stock tracer")]
+        ],
+        {
+            "label": "Liquid amounts stay finite, nonnegative and within teaching capacities",
+            "passed": all(
+                isfinite(container["volume"])
+                and isfinite(container["solute"])
+                and container["volume"] >= -1e-8
+                and container["solute"] >= -1e-8
+                and (capacity is None or container["volume"] <= capacity + 1e-8)
+                for container, capacity in containers
+            ),
+        },
+        {
+            "label": "The pipette finishes empty with its tip discarded",
+            "passed": not state["pipette"]["tip"]
+            and abs(state["pipette"]["volume"]) < 1e-8
+            and abs(state["pipette"]["solute"]) < 1e-8,
+        },
+    ]
+
+
+def assessment(state: dict, experiment: dict, completed_steps: int) -> dict:
     measured = {
         name: round(well["solute"] / well["volume"], 4) if well["volume"] else 0
         for name, well in state["wells"].items()
         if name != "stock"
     }
+    if experiment["course_id"] == "workflow-sandbox":
+        checks = model_checks(state, experiment, completed_steps)
+        return {
+            "scope": "model-checks",
+            "passed": all(check["passed"] for check in checks),
+            "checks": checks,
+            "concentrations": measured,
+        }
+    targets = {"A1": 50, "A2": 25, "A3": 12.5}
     checks = [
         {
             "label": f"{name} reaches {target}% stock concentration",
@@ -204,13 +263,15 @@ def execute_step(session: dict) -> dict:
         )
         if result["cursor"] == len(result["experiment"]["actions"]):
             result["status"] = "completed"
-            result["assessment"] = assessment(state, result["experiment"])
+            result["assessment"] = assessment(state, result["experiment"], result["cursor"])
     return result
 
 
 def control(session: dict, command: str) -> dict:
     result = deepcopy(session)
     status = result["status"]
+    if command in {"start", "resume"} and not result["experiment"]["actions"]:
+        raise InvalidTransition("Add a step before running your workflow")
     if command == "start" and status == "draft":
         result["status"] = "running"
     elif command == "pause" and status == "running":

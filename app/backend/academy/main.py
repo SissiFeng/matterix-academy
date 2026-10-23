@@ -362,6 +362,8 @@ def create_app(settings: Settings | None = None, store=None):
             raise InvalidTransition("Reset the experiment before editing it")
         if data.experiment.course_id != session["experiment"]["course_id"]:
             raise InvalidTransition("Create a new experiment to change courses")
+        if data.experiment.instrument != session["experiment"].get("instrument", "flex"):
+            raise InvalidTransition("Create a new experiment to change instruments")
         session["experiment"] = data.experiment.model_dump()
         session["state"] = initial_state(session["experiment"])
         if data.experiment.course_id == "flex-first-transfer":
@@ -400,9 +402,12 @@ def create_app(settings: Settings | None = None, store=None):
             try:
                 Experiment.model_validate(session["experiment"])
             except ValueError as exc:
-                raise InvalidTransition(
-                    "Review the deck: the Flex waste chute must be fixed at D3, then save the experiment"
-                ) from exc
+                message = (
+                    "Review the deck: the OT-2 fixed trash must be at position 12, then save the experiment"
+                    if session["experiment"].get("instrument", "flex") == "ot2"
+                    else "Review the deck: the Flex waste chute must be fixed at D3, then save the experiment"
+                )
+                raise InvalidTransition(message) from exc
             if (
                 session["experiment"]["course_id"] == "flex-first-transfer"
                 and not readiness(session)["ready"]

@@ -1,3 +1,34 @@
+# Instrument introductions and Workflow Studio — 2026-10-23
+
+Local validation passed **730 backend tests and 55 Chromium journeys**. After the
+final shared-layout and mobile-navigation refinements, all **10 affected browser
+journeys** were rerun and passed. Lambda packaging, repository verification,
+frontend production build, formatting, both Terraform roots and offline Packer
+validation passed. No paid resource creation or cloud configuration change ran.
+
+The new journeys exercise public playback without learner mutations, pause/seek/
+instrument switching, reduced motion, a starter surviving refresh and onboarding
+without duplicate creation, Flex and OT-2 editing, blank designs, saved refresh,
+paused recovery, reset and a second run, fault correction, stale edits, keyboard
+navigation, and phone light/dark layouts. Reset sandbox attempts without an
+assessment are labeled as incomplete sequences rather than missed lesson goals.
+
+The public and signed-in pages were inspected in a real local browser at desktop
+and 390px phone sizes. Representative Flex dilution and OT-2 distribution frames,
+the studio, completed observations, and dark theme were visually checked. The
+36-second timeline reaches its end and can replay; hidden pages pause it.
+Architecture review corrections unified the starter/illustration deck layout and
+aligned dilution tip changes. A separate security review found no concrete new
+vulnerability.
+
+These checks establish English synthetic teaching behavior and local browser
+integration. They do not establish real Cognito account acceptance, native
+Isaac/GPU operation, physical instrument operation or experimental validity.
+Application publication is verified separately by the main deployment workflow
+and its commit-bound release manifest. See [studio contract](INSTRUMENT-STUDIO.md).
+
+---
+
 # Academy readiness completion — 2026-10-23
 
 The final local verification passed **539 backend tests and 45 Chromium journeys**,

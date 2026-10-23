@@ -87,6 +87,17 @@
   align-items: center;
   gap: 10px;
 }
+.setupDetails {
+  margin-top: 24px;
+  border-top: var(--hairline) solid var(--line);
+}
+.setupDetails > summary {
+  padding: 18px 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
 .hero {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
