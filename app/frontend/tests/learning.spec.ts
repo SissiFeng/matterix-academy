@@ -244,16 +244,16 @@ test("a lost step response reloads its saved result without replaying it", async
   await prepare(page);
   await predict(page, 100);
   let sent = 0;
-  await page.route(
-    "**/api/sessions/*/advance",
-    async (route) => {
-      sent += 1;
-      // The server commits the step, but the browser loses its response.
-      await route.fetch();
-      await route.abort("failed");
-    },
-    { times: 1 },
-  );
+  // Retain interception while the immediate recovery GET begins. Only the first
+  // response is lost; the next user-requested step still reaches the real server.
+  await page.route("**/api/sessions/*/advance", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    sent += 1;
+    if (sent !== 1) return route.continue();
+    const committed = await route.fetch();
+    expect(committed.ok()).toBe(true);
+    await route.abort("failed");
+  });
   await page
     .getByRole("button", { name: "Run next step", exact: true })
     .click();
@@ -267,6 +267,7 @@ test("a lost step response reloads its saved result without replaying it", async
   await expect(
     page.getByRole("heading", { name: "Dispense 100 µL", exact: true }),
   ).toBeVisible();
+  expect(sent).toBe(2);
 });
 
 test("equipment selection waits for the orientation save receipt", async ({

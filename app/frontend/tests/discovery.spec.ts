@@ -173,22 +173,21 @@ test("same-design conflicts keep both authors changes and a lost save response d
     .getByRole("button", { name: "Discovery studio", exact: true })
     .click();
   await fillBrief(page);
-  // A response can be lost after the server has committed the notebook.
-  await page.route(
-    "**/api/discovery",
-    async (route) => {
-      if (route.request().method() === "PUT") {
-        await route.fetch();
-        await route.abort("failed");
-      } else await route.continue();
-    },
-    { times: 1 },
-  );
+  // Lose one committed response without tearing down interception during recovery.
+  let saves = 0;
+  await page.route("**/api/discovery", async (route) => {
+    if (route.request().method() !== "PUT") return route.continue();
+    saves += 1;
+    if (saves !== 1) return route.continue();
+    const committed = await route.fetch();
+    expect(committed.ok()).toBe(true);
+    await route.abort("failed");
+  });
   await page.getByRole("button", { name: "Save design brief" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Your draft is still here.",
   );
-  await page.unroute("**/api/discovery");
+  expect(saves).toBe(1);
   await page.getByRole("button", { name: "Reload saved designs" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await page.getByRole("button", { name: "Save design brief" }).click();
@@ -197,6 +196,7 @@ test("same-design conflicts keep both authors changes and a lost save response d
       "Design saved to your notebook. It is not an executable protocol.",
     ),
   ).toBeVisible();
+  expect(saves).toBe(2);
   let notebook = await (await page.request.get("/api/discovery")).json();
   expect(notebook.briefs).toHaveLength(1);
   const id = notebook.briefs[0].id;
