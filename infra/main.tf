@@ -137,7 +137,13 @@ resource "aws_iam_role_policy" "api" {
 }
 resource "aws_lambda_function" "api" {
   # Terraform bootstraps code; the tested GitHub release owns later code updates.
-  lifecycle { ignore_changes = [filename, source_code_hash] }
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
+    precondition {
+      condition     = !var.connector_real_execution_enabled || var.connector_companion_enabled
+      error_message = "Physical execution requires the dedicated companion API."
+    }
+  }
   function_name                  = local.name
   role                           = aws_iam_role.api.arn
   runtime                        = "python3.12"
@@ -158,6 +164,8 @@ resource "aws_lambda_function" "api" {
       ACADEMY_COGNITO_DOMAIN            = "https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com"
       ACADEMY_APP_URL                   = "https://${aws_cloudfront_distribution.web.domain_name}"
       ACADEMY_REMOTE_ENABLED            = tostring(var.remote_execution_enabled)
+      ACADEMY_CONNECTOR_REAL_ENABLED    = tostring(var.connector_real_execution_enabled)
+      ACADEMY_CONNECTOR_BUCKET          = var.connector_artifact_bucket
       ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
       ACADEMY_MEDIA_PREFIX              = local.media_prefix
 

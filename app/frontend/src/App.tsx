@@ -57,6 +57,7 @@ const SimulationLab = lazy(() => import("./SimulationLab"));
 const WorkflowCourse = lazy(() => import("./WorkflowCourse"));
 const LearningLab = lazy(() => import("./LearningLab"));
 const ConnectorExplorer = lazy(() => import("./ConnectorExplorer"));
+const ConnectorSetup = lazy(() => import("./ConnectorSetup"));
 const Workcell = lazy(() => import("./Workcell"));
 const DilutionWorkspace = lazy(() => import("./DilutionWorkspace"));
 const WorkflowMarketplace = lazy(() =>
@@ -569,6 +570,7 @@ export default function App() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null);
+  const [connectorSessionId, setConnectorSessionId] = useState<string>();
   const [view, setView] = useState("overview");
   const [workspaceRouteRevision, setWorkspaceRouteRevision] = useState(0);
   const [discoverySeed, setDiscoverySeed] = useState<Workflow | undefined>();
@@ -591,7 +593,7 @@ export default function App() {
   useEffect(() => {
     const routeChanged = (event: HashChangeEvent) => {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|workflow-course|instruments)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -621,7 +623,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -680,6 +682,7 @@ export default function App() {
     // Preserve the selected subpage/run when reselecting its sidebar section.
     if (
       (target === "connector" ||
+        target === "connect" ||
         target === "sim" ||
         workspaceViews.includes(target as WorkspaceView)) &&
       view === target
@@ -946,24 +949,26 @@ export default function App() {
               <span>
                 <LayoutGrid size={15} /> Lab Onboarding{" "}
                 <ChevronRight size={13} />{" "}
-                {workspaceLabels[view] ??
-                  (view === "instruments"
-                    ? "Meet the instruments"
-                    : view === "lab"
-                      ? session?.experiment.course_id === "workflow-sandbox"
-                        ? "Workflow studio"
-                        : "Flex foundations"
-                      : view === "history"
-                        ? "My experiments"
-                        : view === "discovery"
-                          ? "Discovery studio"
-                          : view === "marketplace"
-                            ? "Workflow marketplace"
-                            : view === "connector"
-                              ? "Connector explorer"
-                              : view === "sim"
-                                ? "Simulation lab"
-                                : "Learning lab")}
+                {view === "connect"
+                  ? "Connect an instrument"
+                  : (workspaceLabels[view] ??
+                    (view === "instruments"
+                      ? "Meet the instruments"
+                      : view === "lab"
+                        ? session?.experiment.course_id === "workflow-sandbox"
+                          ? "Workflow studio"
+                          : "Flex foundations"
+                        : view === "history"
+                          ? "My experiments"
+                          : view === "discovery"
+                            ? "Discovery studio"
+                            : view === "marketplace"
+                              ? "Workflow marketplace"
+                              : view === "connector"
+                                ? "Connector explorer"
+                                : view === "sim"
+                                  ? "Simulation lab"
+                                  : "Learning lab"))}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -1043,6 +1048,13 @@ export default function App() {
                 />
               ) : view === "connector" ? (
                 <ConnectorExplorer />
+              ) : view === "connect" ? (
+                <ConnectorSetup
+                  key={workspaceRouteRevision}
+                  initialSessionId={connectorSessionId}
+                  onOpen={open}
+                  onBack={() => nav("readiness")}
+                />
               ) : view === "lab" &&
                 session?.experiment.course_id === "flex-first-transfer" ? (
                 <LearningLab
@@ -1061,6 +1073,10 @@ export default function App() {
                   onChange={updateSession}
                   onBack={() => nav("instruments")}
                   onError={showError}
+                  onConnect={() => {
+                    setConnectorSessionId(session.id);
+                    nav("connect");
+                  }}
                   registerLeaveGuard={registerLeaveGuard}
                 />
               ) : view === "lab" && session ? (
@@ -1099,11 +1115,13 @@ export default function App() {
               <span>LAB ONBOARDING</span>
               <span>Explore freely. Learn deliberately.</span>
               <span>
-                {workspaceViews.includes(view as WorkspaceView)
-                  ? "Physical readiness · unverified"
-                  : view === "sim"
-                    ? "Isaac / Matterix · v0.1"
-                    : "Teaching model · v0.1"}
+                {view === "connect"
+                  ? "Physical execution · qualification required"
+                  : workspaceViews.includes(view as WorkspaceView)
+                    ? "Physical readiness · unverified"
+                    : view === "sim"
+                      ? "Isaac / Matterix · v0.1"
+                      : "Teaching model · v0.1"}
               </span>
             </footer>
           </main>

@@ -20,6 +20,7 @@ import {
   SkipForward,
   Trash2,
   TriangleAlert,
+  Unplug,
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
 import type { Action, Experiment, Session } from "./types";
@@ -65,12 +66,14 @@ export default function WorkflowStudio({
   onChange,
   onBack,
   onError,
+  onConnect,
   registerLeaveGuard,
 }: {
   session: Session;
   onChange: (session: Session) => void;
   onBack: () => void;
   onError: (message: string) => void;
+  onConnect: () => void;
   registerLeaveGuard: (guard: (() => boolean) | null) => void;
 }) {
   const [draft, setDraft] = useState<Experiment>(() =>
@@ -374,6 +377,13 @@ export default function WorkflowStudio({
             }}
           >
             <Monitor size={16} /> Native Matterix
+          </button>
+          <button
+            className={s.secondary}
+            disabled={busy || dirty}
+            onClick={onConnect}
+          >
+            <Unplug size={16} /> Connect an instrument
           </button>
         </div>
       </header>

@@ -459,6 +459,19 @@ export default function Workcell({
           <RefreshCw size={17} />
         </button>
       </header>
+      {view === "readiness" && (
+        <div className={s.actions}>
+          <button className={s.primary} onClick={() => onNavigate("connect")}>
+            <Unplug size={16} /> Connect an instrument
+          </button>
+          <button
+            className={s.textButton}
+            onClick={() => onNavigate("connector")}
+          >
+            Explore how connectors work <ArrowRight size={15} />
+          </button>
+        </div>
+      )}
       {error && (
         <div className={s.alert} role="alert">
           {error}

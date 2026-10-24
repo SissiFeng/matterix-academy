@@ -16,6 +16,14 @@ The workcell tools remain available under **Overview → Onboard → Twin → Si
 
 Requirements: Node.js 22.12+, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
+The local Sim → Real workspace also includes **Connect an instrument**: register
+a Mac, pair a local companion, inspect the connected robot and review a saved
+workflow against native DT evidence. See [connector setup](docs/connectors/SETUP.md)
+for the candidate Mac bundle, private S3 publication, operator qualification and
+recovery. This feature has not been deployed or accepted on physical hardware;
+the shipped catalog has no approved robot releases and physical execution stays
+disabled by default.
+
 ```sh
 bash scripts/dev.sh
 ```
