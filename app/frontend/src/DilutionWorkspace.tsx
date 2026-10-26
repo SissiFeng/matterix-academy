@@ -220,7 +220,6 @@ export default function DilutionWorkspace({
       </div>
       <div className={s.experimentHeading}>
         <div>
-          <div className={s.eyebrow}>FLEX FOUNDATIONS / EXPERIMENT</div>
           {editable ? (
             <input
               className={s.titleInput}

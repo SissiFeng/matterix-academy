@@ -367,14 +367,7 @@ export default function NativeStudioRun({
       data-testid="native-studio-run"
     >
       <header className={s.heading}>
-        <div>
-          <p className={s.eyebrow}>SAVED WORKFLOW / NATIVE SIMULATION</p>
-          <h2>Take this design into Matterix.</h2>
-          <p>
-            Run your saved workflow in a connected Matterix simulation and watch
-            it here.
-          </p>
-        </div>
+        <h2>Matterix simulation</h2>
         <span className={s.badge}>
           {run?.evidence === "native"
             ? "Native observations received"
@@ -393,13 +386,12 @@ export default function NativeStudioRun({
         </strong>
         <p>
           {preflight?.message ??
-            "Checking worker availability and the saved plan. Teaching simulation remains a separate option."}
+            "Checking worker availability and the saved plan."}
         </p>
         {preflight && (
           <small>
             {INSTRUMENT_NAMES[preflight.instrument]} · Saved revision{" "}
-            {preflight.session_version} · Compatibility is not execution
-            evidence
+            {preflight.session_version}
           </small>
         )}
         {!!preflight?.issues.length && (
@@ -543,10 +535,6 @@ export default function NativeStudioRun({
                   .join(" · ")}
                 .
               </p>
-              <small>
-                These liquid amounts come from the native semantic model. They
-                do not validate fluid physics or chemistry.
-              </small>
             </div>
           )}
           <p className={s.metadata}>
@@ -599,17 +587,13 @@ export default function NativeStudioRun({
       ) : (
         <div className={s.empty}>
           <Monitor size={23} />
-          <p>
-            The live Isaac view appears here when this saved run starts. An
-            illustration or teaching-model result is never used in its place.
-          </p>
+          <p>Live Isaac video appears here when the saved run starts.</p>
         </div>
       )}
       <p className={s.boundary}>
-        Native robot motion and semantic liquid accounting are separate from
-        teaching-model results; they do not validate fluid physics or chemistry.
-        Video is view-only and has its own connection status. Closing this page
-        does not cancel a run. No physical instrument is controlled.
+        Native simulation, not physical instrument control. Liquid amounts use
+        semantic accounting, not validated fluid physics or chemistry. Video is
+        view-only; closing this page does not cancel a run.
       </p>
     </section>
   );

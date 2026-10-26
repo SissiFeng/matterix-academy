@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  BookOpen,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -373,7 +372,6 @@ export default function LearningLab({
       </div>
       <header className={s.heading}>
         <div>
-          <span className={s.eyebrow}>FROM MANUAL PIPETTING TO AUTOMATION</span>
           <h1>
             Move {volume} µL <em>to the right place.</em>
           </h1>
@@ -398,7 +396,6 @@ export default function LearningLab({
       )}
       <div className={s.learningGrid}>
         <nav className={s.phaseNav} aria-label="Lesson stages">
-          <span className={s.eyebrow}>YOUR LEARNING PATH</span>
           {PHASES.map((p, i) => (
             <button
               key={p.id}
@@ -420,16 +417,6 @@ export default function LearningLab({
               </span>
             </button>
           ))}
-          <div className={s.pathNote}>
-            <BookOpen size={19} />
-            <p>
-              You already know how to pipette.
-              <br />
-              Now, tell the robot
-              <br />
-              what to do, one step at a time.
-            </p>
-          </div>
           <a
             href="https://docs.opentrons.com/flex/"
             target="_blank"

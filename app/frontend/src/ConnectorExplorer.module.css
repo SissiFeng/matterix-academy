@@ -74,10 +74,6 @@
   line-height: 1.35;
   margin: 15px 0 12px;
 }
-.heroStamp span {
-  font-size: 11px;
-  line-height: 1.8;
-}
 .courseBar {
   display: flex;
   justify-content: space-between;

@@ -20,16 +20,14 @@ async function connect(page: Page) {
   await expect(
     page.getByRole("heading", { name: "Connect your instrument." }),
   ).toBeVisible();
-  await expect(page.getByLabel("Instrument connection name")).toBeVisible();
+  await expect(page.getByLabel("Connection name")).toBeVisible();
 }
 
 async function create(page: Page, model: "Flex" | "OT-2" = "Flex") {
   await page
     .getByRole("radio", { name: `Opentrons ${model}`, exact: true })
     .check();
-  await page
-    .getByLabel("Instrument connection name")
-    .fill(`Teaching bench ${model}`);
+  await page.getByLabel("Connection name").fill(`Teaching bench ${model}`);
   await page
     .getByRole("button", { name: "Save instrument connection", exact: true })
     .click();
@@ -47,18 +45,27 @@ test("real local API: save, refresh, pair, expire and revoke without claiming in
   page.on("pageerror", (error) => errors.push(error.message));
   await enter(page);
   await connect(page);
-  await expect(
-    page.getByLabel("Connected computer’s operating system"),
-  ).toHaveValue("macos");
+  await expect(page.getByLabel("Computer operating system")).toHaveValue(
+    "macos",
+  );
   await expect(
     page.getByRole("button", { name: "Download companion", exact: true }),
   ).toBeDisabled();
+  await expect(
+    page.getByRole("checkbox", { name: /I am using the computer connected/ }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Installer awaiting publication", { exact: true }),
+  ).toBeVisible();
   await page
-    .getByRole("checkbox", { name: /I am using the computer connected/ })
-    .check();
-  await expect(
-    page.getByRole("button", { name: "Download companion", exact: true }),
-  ).toBeDisabled();
+    .locator("summary")
+    .filter({ hasText: "Connector release" })
+    .click();
+  await expect(page.getByText(/Source candidate only:/)).toBeVisible();
+  await page
+    .locator("summary")
+    .filter({ hasText: "Connector release" })
+    .click();
   const id = await create(page);
   await page.screenshot({
     path: testInfo.outputPath("connector-setup-desktop.png"),
@@ -87,7 +94,7 @@ test("real local API: save, refresh, pair, expire and revoke without claiming in
     probe: null,
   });
   await page.reload();
-  await expect(page.getByLabel("Instrument connection name")).toHaveValue(
+  await expect(page.getByLabel("Connection name")).toHaveValue(
     "Teaching bench Flex",
   );
   await expect(page.getByLabel("Pairing code", { exact: true })).toHaveCount(0);
@@ -137,11 +144,11 @@ test("real local API: OT-2 connection fits a phone and remains blocked without n
   await page
     .getByRole("button", { name: "Refresh read-only checks", exact: true })
     .click();
+  await expect(page.getByText("Awaiting report")).toBeVisible();
   await expect(
-    page.getByText("No instrument report has been received."),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Not qualified for physical execution."),
+    page
+      .getByRole("region", { name: "Check the instrument", exact: true })
+      .getByText("Not qualified"),
   ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("connector-setup-mobile.png"),

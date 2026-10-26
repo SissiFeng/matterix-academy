@@ -591,10 +591,6 @@
   gap: 25px;
   margin-top: 30px;
 }
-.onboarding > .caption {
-  text-align: center;
-  margin-top: auto;
-}
 .choices {
   display: grid;
   gap: 10px;
@@ -616,12 +612,6 @@
 .choices strong {
   display: block;
   font-size: 14px;
-}
-.choices small {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 5px;
 }
 .safetyNote {
   display: flex;
@@ -706,23 +696,6 @@
 .sidebarBottom {
   margin-top: auto;
 }
-.sidebarTip {
-  padding: 20px 10px;
-  margin-top: 40px;
-}
-.sidebarTip > svg {
-  color: var(--muted);
-}
-.sidebarTip strong {
-  display: block;
-  font-size: 12px;
-  margin: 13px 0 8px;
-}
-.sidebarTip p {
-  font-size: 11px;
-  line-height: 1.7;
-  color: var(--muted);
-}
 .helpButton {
   display: flex;
   align-items: center;
@@ -758,12 +731,6 @@
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.user small {
-  display: block;
-  font-size: 9px;
-  margin-top: 3px;
-  color: var(--muted);
 }
 .user button {
   border: 0;
@@ -811,10 +778,6 @@
   font-size: 29px;
   letter-spacing: -1px;
   margin: 12px 0;
-}
-.pageHeading p {
-  font-size: 13px;
-  color: var(--muted);
 }
 .dayLabel {
   white-space: nowrap;
@@ -1840,7 +1803,6 @@
     display: none;
   }
   .sidebarLabel,
-  .sidebarTip,
   .helpButton,
   .user div {
     display: none;
@@ -1960,9 +1922,6 @@
   .appFooter {
     padding: 18px 22px;
   }
-  .appFooter > span:nth-child(2) {
-    display: none;
-  }
 }
 @media (max-width: 550px) {
   .welcome {
@@ -2044,10 +2003,6 @@
   .pageHeading h1 {
     font-size: 24px;
     line-height: 1.35;
-  }
-  .pageHeading p {
-    line-height: 1.8;
-    font-size: 12px;
   }
   .courseFeature > section {
     padding: 24px 20px;

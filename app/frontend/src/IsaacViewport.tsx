@@ -218,7 +218,7 @@ export default function IsaacViewport({ run }: { run: ViewportRun | null }) {
       <div className={s.viewportBar}>
         <span>
           <i className={connected ? s.liveDot : s.waitDot} />
-          {status}
+          {connected ? status : "Simulation video"}
         </span>
         <span>ISAAC / MATTERIX</span>
       </div>
@@ -235,11 +235,15 @@ export default function IsaacViewport({ run }: { run: ViewportRun | null }) {
           <div className={s.videoEmpty}>
             <Monitor size={40} strokeWidth={1} />
             <strong>{status}</strong>
-            <p>
-              {ended
-                ? "The observed result is saved beside this view."
-                : "The Ubuntu GPU renders this view. A run must be connected before experiment motion begins."}
-            </p>
+            {ended ? (
+              <p>The observed result is saved beside this view.</p>
+            ) : !started ? (
+              <p>
+                {run
+                  ? "Video appears when rendering starts."
+                  : "Start a simulation to see live video."}
+              </p>
+            ) : null}
             {started && !ended && (
               <button onClick={() => setAttempt((n) => n + 1)}>
                 <RefreshCw size={15} /> Reconnect video

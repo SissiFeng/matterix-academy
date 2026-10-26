@@ -190,12 +190,8 @@ export default function WorkflowCourse({
         <ArrowLeft size={16} /> Back to learning lab
       </button>
       <header className={s.header}>
-        <span className={s.eyebrow}>WORKFLOW JUDGMENT / 15–20 MIN</span>
+        <span className={s.eyebrow}>15–20 MIN</span>
         <h1>Can this workflow run?</h1>
-        <p>
-          Review an agent’s proposal. Repair its assumptions. Decide what the
-          evidence allows.
-        </p>
         <p className={s.boundary}>
           <FileSearch size={18} /> Synthetic teaching only · No Isaac/GPU,
           physical robot or chemical validation. Course completion grants no

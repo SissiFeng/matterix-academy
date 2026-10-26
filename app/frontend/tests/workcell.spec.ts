@@ -9,7 +9,7 @@ async function enter(page: Page) {
   await page.getByRole("button", { name: "Open my workspace" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Your first workcell starts with one device.",
+      name: "No devices yet.",
     }),
   ).toBeVisible();
 }

@@ -15,7 +15,7 @@
   font-size: clamp(25px, 2.8vw, 39px);
   line-height: 1.2;
   letter-spacing: -1.6px;
-  margin: 12px 0;
+  margin: 0;
   font-weight: 600;
 }
 .page p {
@@ -112,12 +112,8 @@
 .hero h2 {
   font-size: clamp(23px, 2.4vw, 33px);
   line-height: 1.4;
-  margin: 16px 0 12px;
+  margin: 0 0 12px;
   letter-spacing: -1px;
-}
-.hero h2 em {
-  font-style: normal;
-  color: var(--muted);
 }
 .hero p {
   max-width: 450px;
@@ -282,7 +278,7 @@
   border-block: var(--hairline) solid var(--line);
 }
 .practice h2 {
-  margin: 10px 0;
+  margin: 0;
 }
 .practice .actions {
   flex-shrink: 0;
@@ -366,7 +362,7 @@
   min-width: 0;
 }
 .wizardMain > h2 {
-  margin: 14px 0;
+  margin: 0 0 14px;
   font-size: 25px;
 }
 .wizardMain > p {
@@ -476,11 +472,8 @@
   margin-top: 22px;
   border-radius: 5px;
 }
-.inset strong {
-  font-size: 13px;
-}
 .inset p {
-  margin-top: 8px;
+  margin: 0;
   font-size: 12px;
 }
 .pair {
@@ -694,7 +687,7 @@
   min-width: 0;
 }
 .statePanel h2 {
-  margin: 12px 0;
+  margin: 0 0 12px;
 }
 .statePanel > p {
   font-size: 12px;
@@ -771,7 +764,7 @@
 }
 .readinessHero h2 {
   font-size: 28px;
-  margin: 14px 0;
+  margin: 0 0 14px;
 }
 .readinessCount {
   flex-shrink: 0;

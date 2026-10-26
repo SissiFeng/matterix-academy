@@ -256,7 +256,7 @@ function Onboarding({
             <span key={n} className={n <= step ? s.done : ""} />
           ))}
         </div>
-        <div className={s.eyebrow}>A QUICK HELLO · {step + 1} OF 3</div>
+        <div className={s.eyebrow}>{step + 1} OF 3</div>
         {step === 0 ? (
           <>
             <h1>
@@ -287,32 +287,17 @@ function Onboarding({
             <div className={s.choices}>
               {(
                 [
-                  [
-                    "new",
-                    "This is my first time",
-                    "Let’s start with the basics.",
-                  ],
-                  [
-                    "some",
-                    "I’ve seen them in action",
-                    "I know the idea. I want to practice.",
-                  ],
-                  [
-                    "experienced",
-                    "I’ve worked with them",
-                    "I’m here to explore and refine.",
-                  ],
+                  ["new", "This is my first time"],
+                  ["some", "I’ve seen them in action"],
+                  ["experienced", "I’ve worked with them"],
                 ] as const
-              ).map(([value, title, detail]) => (
+              ).map(([value, title]) => (
                 <button
                   key={value}
                   className={experience === value ? s.chosen : ""}
                   onClick={() => setExperience(value)}
                 >
-                  <span>
-                    <strong>{title}</strong>
-                    <small>{detail}</small>
-                  </span>
+                  <strong>{title}</strong>
                   {experience === value ? (
                     <Check size={19} />
                   ) : (
@@ -376,7 +361,6 @@ function Onboarding({
           </button>
         </div>
       </div>
-      <span className={s.caption}>A little practice goes a long way.</span>
     </main>
   );
 }
@@ -407,17 +391,11 @@ function Dashboard({
     <div className={s.dashboard}>
       <div className={s.pageHeading}>
         <div>
-          <div className={s.eyebrow}>YOUR LEARNING WORKSPACE</div>
           <h1>
             {view === "history"
               ? "Every attempt teaches you."
               : `Welcome to the lab, ${profile.name}.`}
           </h1>
-          <p>
-            {view === "history"
-              ? "Pick up an experiment where you left off."
-              : "There’s no perfect first attempt. Let’s make a useful one."}
-          </p>
         </div>
         <span className={s.dayLabel}>
           <span className={s.noteDot} /> Simulation only
@@ -455,10 +433,7 @@ function Dashboard({
                 {courses.find((course) => course.id === "flex-foundations")
                   ?.title ?? "A little less, each time."}
               </h2>
-              <p>
-                Turn one stock solution into three dilutions.
-                <br />A small experiment with a lot to teach you.
-              </p>
+              <p>Turn one stock solution into three dilutions.</p>
               <div className={s.courseMeta}>
                 <span>
                   <Clock3 size={15} /> 15–20 minutes
@@ -901,13 +876,6 @@ export default function App() {
               )}
             </nav>
             <div className={s.sidebarBottom}>
-              <div className={s.sidebarTip}>
-                <Beaker size={22} />
-                <strong>Practice makes progress.</strong>
-                <p>
-                  Your next attempt starts with what you learned from the last.
-                </p>
-              </div>
               <button className={s.helpButton} onClick={() => setHelp(true)}>
                 <CircleHelp size={17} /> About this learning lab
               </button>
@@ -916,7 +884,6 @@ export default function App() {
                 <span>{profile.name.slice(0, 1).toUpperCase()}</span>
                 <div>
                   <strong>{profile.name}</strong>
-                  <small>Learner workspace</small>
                 </div>
                 <button
                   aria-label="Sign out"
@@ -1113,7 +1080,6 @@ export default function App() {
             </Suspense>
             <footer className={s.appFooter}>
               <span>LAB ONBOARDING</span>
-              <span>Explore freely. Learn deliberately.</span>
               <span>
                 {view === "connect"
                   ? "Physical execution · qualification required"

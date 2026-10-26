@@ -49,11 +49,11 @@ const steps = [
   "Validate",
 ];
 const titles = {
-  overview: "Your workcell, from intent to evidence.",
-  onboard: "Bring a device into your workspace.",
-  twin: "Two sides. One clear view.",
-  readiness: "Know what is ready. See what is missing.",
-  runs: "Every run has a story.",
+  overview: "Your workcell",
+  onboard: "Onboard a device",
+  twin: "Teaching twin",
+  readiness: "Sim → Real",
+  runs: "Teaching runs",
 };
 const actionName = (action: Session["experiment"]["actions"][number]) =>
   `${capabilityLabels[action.kind]}${["aspirate", "dispense"].includes(action.kind) ? ` ${action.volume} µL · ${action.well}` : ""}`;
@@ -429,26 +429,11 @@ export default function Workcell({
     <div className={s.page}>
       <header className={s.heading}>
         <div>
-          <span className={s.kicker}>
-            WORKCELL /{" "}
-            {view === "readiness" ? "SIM → REAL" : view.toUpperCase()}
-          </span>
           <h1>
             {view === "overview"
               ? `Welcome to the lab, ${name}.`
               : titles[view]}
           </h1>
-          <p>
-            {view === "overview"
-              ? "Meet the instruments, borrow a workflow, then make it your own."
-              : view === "onboard"
-                ? "Five steps from a device record to an honest validation checklist."
-                : view === "twin"
-                  ? "Compare saved teaching state with what is known about the physical device."
-                  : view === "readiness"
-                    ? "Teaching progress and physical readiness are assessed separately."
-                    : "Trace saved teaching steps alongside the physical observations still to come."}
-          </p>
         </div>
         <button
           className={s.iconButton}
@@ -500,16 +485,8 @@ export default function Workcell({
                 <summary>Workcell setup and connection status</summary>
                 <section className={s.hero}>
                   <div>
-                    <span className={s.kicker}>CURRENT OPERATING STATE</span>
-                    <h2>
-                      Practice is available.
-                      <br />
-                      <em>Physical execution is not connected.</em>
-                    </h2>
-                    <p>
-                      Build your workcell here, then use its missing evidence as
-                      a guide to qualification.
-                    </p>
+                    <h2>Synthetic practice is available.</h2>
+                    <p>Physical execution is not connected.</p>
                     <button
                       className={s.primary}
                       onClick={() => onNavigate("onboard")}
@@ -545,14 +522,12 @@ export default function Workcell({
               </details>
               <div className={s.metrics}>
                 <div>
-                  <span>Registered devices</span>
+                  <span>Device records</span>
                   <strong>{devices.length}</strong>
-                  <small>Manually declared · connectivity unverified</small>
                 </div>
                 <div>
-                  <span>Paired teaching twins</span>
+                  <span>Synthetic teaching twins</span>
                   <strong>{paired.length}</strong>
-                  <small>Synthetic models · physical sync unverified</small>
                 </div>
                 <div>
                   <span>Teaching experiments</span>
@@ -572,7 +547,6 @@ export default function Workcell({
               </div>
               <div className={s.sectionHeading}>
                 <h2>Your workcells</h2>
-                <span>{workcells.length} registered</span>
               </div>
               {workcells.length ? (
                 <div className={s.workcells}>
@@ -613,11 +587,8 @@ export default function Workcell({
               ) : (
                 <div className={s.empty}>
                   <Layers3 size={30} />
-                  <h3>Your first workcell starts with one device.</h3>
-                  <p>
-                    Register your Flex and choose a connection plan. No network
-                    discovery or device commands are sent.
-                  </p>
+                  <h3>No devices yet.</h3>
+                  <p>Register a Flex for synthetic practice.</p>
                   <button
                     className={s.secondary}
                     onClick={() => onNavigate("onboard")}
@@ -628,12 +599,7 @@ export default function Workcell({
               )}
               <section className={s.practice}>
                 <div>
-                  <span className={s.kicker}>LEARN WHILE YOU PREPARE</span>
-                  <h2>A small transfer. A useful first step.</h2>
-                  <p>
-                    Explore the Flex, predict liquid movement and inspect every
-                    teaching step.
-                  </p>
+                  <h2>Learn a 100 µL transfer.</h2>
                 </div>
                 <div className={s.actions}>
                   <button className={s.primary} onClick={onFirstLesson}>
@@ -903,7 +869,6 @@ export default function Workcell({
                   </ol>
                   <div className={s.wizard}>
                     <section className={s.wizardMain}>
-                      <span className={s.kicker}>STEP {step + 1} / 5</span>
                       <h2>
                         {
                           [
@@ -1049,22 +1014,15 @@ export default function Workcell({
                           </p>
                           <Pair device={selected} />
                           <div className={s.inset}>
-                            <strong>What this creates</strong>
                             <p>
-                              A persistent teaching session that you can edit,
-                              run and review. Geometry, calibration, live state
-                              synchronization and physical execution remain
-                              unverified.
+                              Geometry, calibration, live state synchronization
+                              and physical execution remain unverified.
                             </p>
                           </div>
                         </>
                       )}
                       {step === 4 && selected && (
                         <>
-                          <p>
-                            {selected.name} is paired with a teaching model. Use
-                            these checks to plan the next qualification work.
-                          </p>
                           <Checks checks={selected.checks} />
                           <div className={s.actions}>
                             <button
@@ -1122,7 +1080,6 @@ export default function Workcell({
                     </section>
                     <aside className={s.wizardAside}>
                       <Box size={30} />
-                      <span className={s.kicker}>YOUR DEVICE RECORD</span>
                       <h3>{draft.name || "A new Flex"}</h3>
                       <p>{draft.workcell}</p>
                       <dl>
@@ -1151,10 +1108,6 @@ export default function Workcell({
                 <div className={s.empty}>
                   <Box size={30} />
                   <h2>Select or onboard a device.</h2>
-                  <p>
-                    A device record keeps the physical identity and teaching
-                    twin together.
-                  </p>
                   <button
                     className={s.primary}
                     onClick={() => onNavigate("onboard")}
@@ -1192,7 +1145,6 @@ export default function Workcell({
                           </div>
                         </section>
                         <aside className={s.statePanel}>
-                          <span className={s.kicker}>PHYSICAL ↔ DIGITAL</span>
                           <h2>State difference</h2>
                           <p>
                             Physical state has not been observed. Differences
@@ -1290,12 +1242,8 @@ export default function Workcell({
                 <>
                   <section className={s.readinessHero}>
                     <div>
-                      <span className={s.kicker}>
-                        SIM → REAL / {selected.name}
-                      </span>
                       <h2>Physical readiness is unverified.</h2>
                       <p>
-                        {missingPhysical.length} physical checks need evidence.
                         Passing a teaching trial does not clear these checks.
                       </p>
                     </div>
@@ -1306,7 +1254,7 @@ export default function Workcell({
                   </section>
                   <section className={s.panel}>
                     <div className={s.sectionHeading}>
-                      <h2>01 / Teaching evidence</h2>
+                      <h2>Teaching evidence</h2>
                       <span className={s.tag}>Synthetic only</span>
                     </div>
                     <Checks
@@ -1317,7 +1265,7 @@ export default function Workcell({
                   </section>
                   <section className={s.panel}>
                     <div className={s.sectionHeading}>
-                      <h2>02 / Physical qualification</h2>
+                      <h2>Physical qualification</h2>
                       <span className={s.tag}>Not connected</span>
                     </div>
                     <Checks checks={missingPhysical} />

@@ -112,18 +112,11 @@ export default function InstrumentStories({
       data-testid="instrument-stories"
     >
       <header className={s.header}>
-        <div>
-          <p className={s.eyebrow}>Two instruments. Your imagination.</p>
-          <Heading id={`${id}-title`}>
-            See it move.
-            <br />
-            <span>Then make it yours.</span>
-          </Heading>
-        </div>
-        <p className={s.introduction}>
-          Meet the instruments, follow the liquid, then build a workflow of your
-          own. No lab experience needed.
-        </p>
+        <Heading id={`${id}-title`}>
+          See it move.
+          <br />
+          <span>Then make it yours.</span>
+        </Heading>
       </header>
 
       <div
@@ -143,14 +136,9 @@ export default function InstrumentStories({
             <div className={s.miniInstrument} aria-hidden="true">
               <InstrumentIllustration instrument={choice} overview />
             </div>
-            <div>
-              <span className={s.instrumentName}>
-                {storyInstruments[choice].name}
-              </span>
-              <span className={s.instrumentDescription}>
-                {storyInstruments[choice].description}
-              </span>
-            </div>
+            <span className={s.instrumentName}>
+              {storyInstruments[choice].name}
+            </span>
             <span className={s.choiceIndicator} aria-hidden="true">
               {instrument === choice ? (
                 <Check size={17} />
@@ -221,7 +209,6 @@ export default function InstrumentStories({
             <span className={s.teachingBadge}>
               <span /> Illustrative teaching animation
             </span>
-            <span>36 sec · Explore at your pace</span>
           </div>
           <InstrumentIllustration
             instrument={instrument}
@@ -251,7 +238,6 @@ export default function InstrumentStories({
             <span>/ {String(storyChapters.length).padStart(2, "0")}</span>
           </div>
           <div className={s.caption} aria-live="polite" aria-atomic="true">
-            <p className={s.chapterLabel}>{storyChapters[chapter].label}</p>
             <h3>{caption.heading}</h3>
             <p>{caption.body}</p>
           </div>
@@ -287,58 +273,49 @@ export default function InstrumentStories({
 
       <div className={s.workflowInvitation}>
         <div className={s.workflowHeading}>
-          <p className={s.eyebrow}>From watching to making</p>
-          <h3>Where will you start?</h3>
+          <h3>Choose a workflow</h3>
         </div>
         <div
           className={s.workflowChoices}
           role="group"
           aria-label="Choose a starting workflow"
         >
-          {(Object.keys(storyWorkflows) as StoryWorkflow[]).map(
-            (choice, index) => (
-              <button
-                key={choice}
-                type="button"
-                aria-label={storyWorkflows[choice].label}
-                aria-pressed={workflow === choice}
-                className={workflow === choice ? s.selectedWorkflow : undefined}
-                onClick={() => {
-                  setWorkflow(choice);
-                  seek(20);
-                }}
-              >
-                <WorkflowMark kind={choice} />
-                <span>
-                  <small>{String(index + 1).padStart(2, "0")}</small>
-                  {storyWorkflows[choice].label}
-                </span>
-                <p>{storyWorkflows[choice].description}</p>
-              </button>
-            ),
-          )}
+          {(Object.keys(storyWorkflows) as StoryWorkflow[]).map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              aria-label={storyWorkflows[choice].label}
+              aria-pressed={workflow === choice}
+              className={workflow === choice ? s.selectedWorkflow : undefined}
+              onClick={() => {
+                setWorkflow(choice);
+                seek(20);
+              }}
+            >
+              <WorkflowMark kind={choice} />
+              <span>{storyWorkflows[choice].label}</span>
+              <p>{storyWorkflows[choice].description}</p>
+            </button>
+          ))}
         </div>
         <div className={s.designActions}>
-          <p>Combine steps. Change the volumes. See what happens.</p>
-          <div>
-            <button
-              type="button"
-              className={s.primaryButton}
-              disabled={busy}
-              onClick={() => onDesign(instrument, workflow)}
-            >
-              {busy ? "Opening studio…" : "Use this workflow"}
-              <ArrowUpRight size={19} />
-            </button>
-            <button
-              type="button"
-              className={s.blankButton}
-              disabled={busy}
-              onClick={() => onDesign(instrument, "blank")}
-            >
-              Start with a blank deck
-            </button>
-          </div>
+          <button
+            type="button"
+            className={s.primaryButton}
+            disabled={busy}
+            onClick={() => onDesign(instrument, workflow)}
+          >
+            {busy ? "Opening studio…" : "Use this workflow"}
+            <ArrowUpRight size={19} />
+          </button>
+          <button
+            type="button"
+            className={s.blankButton}
+            disabled={busy}
+            onClick={() => onDesign(instrument, "blank")}
+          >
+            Start with a blank deck
+          </button>
         </div>
       </div>
       <p className={s.boundary}>

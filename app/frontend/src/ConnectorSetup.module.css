@@ -6,17 +6,10 @@
   margin: 0 auto;
   padding: 38px 4.3% 72px;
 }
-.eyebrow {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.7px;
-  text-transform: uppercase;
-}
 .heading {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--setup-gap);
   margin-bottom: 30px;
 }
@@ -30,10 +23,6 @@
   color: var(--muted);
   font-size: 13px;
   line-height: 1.7;
-}
-.heading p {
-  max-width: 620px;
-  margin: 0;
 }
 .page h2 {
   font-size: 21px;
@@ -85,13 +74,13 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
-.page :is(button, input, select, a):focus-visible {
+.page :is(button, input, select, a, summary):focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 .layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 160px minmax(0, 1fr);
   gap: 36px;
 }
 .rail {
@@ -118,14 +107,6 @@
   font-size: 13px;
   font-weight: 600;
 }
-.rail small {
-  display: block;
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--muted);
-  margin: 7px 0;
-  line-height: 1.6;
-}
 .stepMarker {
   position: absolute;
   left: -12px;
@@ -145,10 +126,6 @@
   border-color: var(--device-blue);
   background: var(--device-blue-soft);
 }
-.railNote {
-  border-top: 1px solid var(--line);
-  padding-top: 18px;
-}
 .sections {
   min-width: 0;
 }
@@ -165,6 +142,7 @@
   display: flex;
   gap: 18px;
   align-items: baseline;
+  margin-bottom: 18px;
 }
 .sectionNumber {
   font-size: 11px;
@@ -228,10 +206,17 @@
   accent-color: var(--device-blue);
 }
 .release {
-  border-left: 3px solid var(--info);
-  background: var(--surface-2);
-  padding: 17px 20px;
+  border-block: 1px solid var(--line);
+  padding: 12px 0;
   margin: 18px 0;
+  font-size: 12px;
+}
+.release summary {
+  cursor: pointer;
+  color: var(--ink-2);
+}
+.release summary .status {
+  margin-left: 10px;
 }
 .release p {
   margin: 5px 0;
@@ -339,6 +324,13 @@
   color: var(--ink);
   font-weight: 600;
 }
+.section > .checks li > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  width: 100%;
+}
 .checks small {
   font-size: 11px;
   color: var(--muted);
@@ -420,15 +412,18 @@
     padding: 0 0 0 20px;
     border: 0;
   }
-  .railNote {
-    display: none;
-  }
   .heading {
     flex-direction: column;
+    align-items: flex-start;
     gap: 12px;
   }
   .fields {
     grid-template-columns: 1fr;
+  }
+  .section > .checks li > div {
+    display: grid;
+    justify-content: start;
+    gap: 2px;
   }
   .binding {
     grid-template-columns: 1fr;

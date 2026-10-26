@@ -559,13 +559,7 @@ export default function ConnectorSetup({
       </button>
       <header className={s.heading}>
         <div>
-          <span className={s.eyebrow}>SIM → REAL / INSTRUMENT CONNECTION</span>
           <h1>Connect your instrument.</h1>
-          <p>
-            Prepare the computer beside your robot. Pair its local companion,
-            check the connection, then review the exact workflow before physical
-            motion.
-          </p>
         </div>
         <button
           className={s.secondary}
@@ -599,31 +593,11 @@ export default function ConnectorSetup({
           <nav className={s.rail} aria-label="Instrument connection steps">
             <ol>
               {[
-                [
-                  "install",
-                  "Install companion",
-                  "On the computer connected to your robot",
-                  false,
-                ],
-                [
-                  "pair",
-                  "Pair this computer",
-                  "A short-lived, single-use code",
-                  connection?.status === "paired",
-                ],
-                [
-                  "checks",
-                  "Check the instrument",
-                  "Read-only checks and qualification",
-                  connection?.qualified === true,
-                ],
-                [
-                  "workflow",
-                  "Review & run",
-                  "Saved design → native DT → instrument",
-                  preflight?.ready === true,
-                ],
-              ].map(([id, title, detail, done], index) => (
+                ["install", "Install", false],
+                ["pair", "Pair", connection?.status === "paired"],
+                ["checks", "Check", connection?.qualified === true],
+                ["workflow", "Review & run", preflight?.ready === true],
+              ].map(([id, title, done], index) => (
                 <li key={String(id)}>
                   <span className={s.stepMarker} data-done={done}>
                     {done ? <Check size={12} /> : index + 1}
@@ -638,16 +612,10 @@ export default function ConnectorSetup({
                     }}
                   >
                     {title}
-                    <small>{detail}</small>
                   </a>
                 </li>
               ))}
             </ol>
-            <p className={s.railNote}>
-              Teaching results, native DT evidence and physical execution have
-              separate checks. A cable connection alone does not qualify an
-              instrument.
-            </p>
           </nav>
           <div className={s.sections}>
             <section
@@ -657,17 +625,11 @@ export default function ConnectorSetup({
             >
               <div className={s.sectionHeading}>
                 <span className={s.sectionNumber}>01</span>
-                <h2 id="connector-install-title">
-                  Install the local companion
-                </h2>
+                <h2 id="connector-install-title">Install companion</h2>
               </div>
-              <p>
-                Your browser coordinates the workflow. A companion on the
-                connected computer handles the local instrument link.
-              </p>
               {connections.length > 0 && (
                 <label className={s.field}>
-                  Saved instrument connection
+                  Saved connection
                   <select
                     value={connection?.id ?? currentId.current}
                     disabled={busy}
@@ -704,7 +666,7 @@ export default function ConnectorSetup({
               </fieldset>
               <div className={s.fields}>
                 <label className={s.field}>
-                  Instrument connection name
+                  Connection name
                   <input
                     value={name}
                     maxLength={80}
@@ -713,7 +675,7 @@ export default function ConnectorSetup({
                   />
                 </label>
                 <label className={s.field}>
-                  Connected computer’s operating system
+                  Computer operating system
                   <select
                     value={platform}
                     disabled={busy || !!connection || !!currentId.current}
@@ -739,15 +701,19 @@ export default function ConnectorSetup({
                   <Laptop size={16} /> Save instrument connection
                 </button>
               )}
-              <div className={s.release}>
-                <h3>{release?.name ?? `${modelName(instrument)} connector`}</h3>
+              <details className={s.release}>
+                <summary>
+                  Connector release
+                  <span className={s.status}>
+                    {release?.status ?? "Unavailable"}
+                  </span>
+                </summary>
                 <p>
                   {release?.reason ??
                     "No connector release information is available."}
                 </p>
                 {release && (
                   <p>
-                    <span className={s.status}>{release.status}</span>{" "}
                     {release.version} ·{" "}
                     <code>{release.source_commit.slice(0, 12)}</code>
                   </p>
@@ -762,22 +728,19 @@ export default function ConnectorSetup({
                     <code>{catalog.companion.artifact_sha256}</code>
                   </p>
                 )}
-                {!supportedPlatform && (
-                  <p>
-                    An approved {platformName[platform]} package is not
-                    available.
-                  </p>
+              </details>
+              {catalog?.companion.status === "available" &&
+                supportedPlatform && (
+                  <label className={s.checkLabel}>
+                    <input
+                      type="checkbox"
+                      checked={installConsent}
+                      onChange={(e) => setInstallConsent(e.target.checked)}
+                    />
+                    I am using the computer connected to this instrument and
+                    will review the installation prompt.
+                  </label>
                 )}
-              </div>
-              <label className={s.checkLabel}>
-                <input
-                  type="checkbox"
-                  checked={installConsent}
-                  onChange={(e) => setInstallConsent(e.target.checked)}
-                />
-                I am using the computer connected to this instrument. I will
-                review and accept the operating system’s installation prompt.
-              </label>
               <div className={s.actions}>
                 {canDownload ? (
                   <button
@@ -793,17 +756,23 @@ export default function ConnectorSetup({
                     <Download size={16} /> Download companion
                   </button>
                 )}
-                <span className={s.status}>
-                  {catalog?.companion.status === "available"
-                    ? "Installation requires your permission"
-                    : "Installer awaiting publication"}
-                </span>
+                {catalog?.companion.status !== "available" ? (
+                  <span className={s.status}>
+                    Installer awaiting publication
+                  </span>
+                ) : !supportedPlatform ? (
+                  <span className={s.status}>
+                    No approved {platformName[platform]} package
+                  </span>
+                ) : null}
               </div>
-              <p>
-                Downloading a package does not install or start it. Open the
-                approved package locally, review its permissions, and keep the
-                companion running while using your instrument.
-              </p>
+              {catalog?.companion.status === "available" &&
+                supportedPlatform && (
+                  <p>
+                    Open the package on this computer and keep the companion
+                    running.
+                  </p>
+                )}
             </section>
             <section
               className={s.section}
@@ -815,9 +784,8 @@ export default function ConnectorSetup({
                 <h2 id="connector-pair-title">Pair this computer</h2>
               </div>
               <p>
-                Enter a pairing code in the local companion. The code links this
-                computer to your Academy account; it does not permit physical
-                motion.
+                Enter the code in your local companion. Pairing does not permit
+                physical motion.
               </p>
               <span
                 className={s.status}
@@ -828,7 +796,6 @@ export default function ConnectorSetup({
               </span>
               {pairing && connection?.status !== "paired" && (
                 <div className={s.pairCode}>
-                  <span className={s.eyebrow}>Single-use pairing code</span>
                   {expiresIn > 0 ? (
                     <>
                       <output aria-label="Pairing code">{pairing.code}</output>
@@ -847,8 +814,8 @@ export default function ConnectorSetup({
                       </button>
                       <p>
                         Expires in {Math.floor(expiresIn / 60)}:
-                        {String(expiresIn % 60).padStart(2, "0")}. Shown only in
-                        this view. Do not share it.
+                        {String(expiresIn % 60).padStart(2, "0")}. Single use;
+                        do not share.
                       </p>
                     </>
                   ) : (
@@ -885,12 +852,15 @@ export default function ConnectorSetup({
                   )}
               </div>
               {connection?.installation_id && (
-                <dl className={s.binding}>
-                  <dt>Paired installation</dt>
-                  <dd>
-                    <code>{connection.installation_id}</code>
-                  </dd>
-                </dl>
+                <details className={s.details}>
+                  <summary>Pairing details</summary>
+                  <dl className={s.binding}>
+                    <dt>Installation</dt>
+                    <dd>
+                      <code>{connection.installation_id}</code>
+                    </dd>
+                  </dl>
+                </details>
               )}
             </section>
             <section
@@ -902,11 +872,6 @@ export default function ConnectorSetup({
                 <span className={s.sectionNumber}>03</span>
                 <h2 id="connector-checks-title">Check the instrument</h2>
               </div>
-              <p>
-                The companion reports instrument identity, connector version and
-                read-only connectivity. Refreshing these results sends no motion
-                command.
-              </p>
               <ul className={s.checks}>
                 <li data-passed={connection?.status === "paired"}>
                   {connection?.status === "paired" ? (
@@ -917,8 +882,8 @@ export default function ConnectorSetup({
                   <div>
                     <strong>Computer pairing</strong>
                     {connection?.status === "paired"
-                      ? "Paired with your Academy account."
-                      : "Waiting for the companion to redeem a pairing code."}
+                      ? "Paired"
+                      : "Waiting for pairing"}
                   </div>
                 </li>
                 <li data-passed={!!connection?.probe}>
@@ -929,9 +894,7 @@ export default function ConnectorSetup({
                   )}
                   <div>
                     <strong>Read-only instrument report</strong>
-                    {connection?.probe
-                      ? "A report is available. Review its findings below; a report alone does not qualify the instrument."
-                      : "No instrument report has been received."}
+                    {connection?.probe ? "Report received" : "Awaiting report"}
                   </div>
                 </li>
                 <li data-passed={!!connection?.approved_release}>
@@ -943,8 +906,8 @@ export default function ConnectorSetup({
                   <div>
                     <strong>Approved connector release</strong>
                     {connection?.approved_release
-                      ? "The server reports an approved release for this connection."
-                      : "A qualified and published connector release is required."}
+                      ? "Approved"
+                      : "Approval required"}
                   </div>
                 </li>
                 <li data-passed={connection?.qualified === true}>
@@ -955,9 +918,7 @@ export default function ConnectorSetup({
                   )}
                   <div>
                     <strong>Physical qualification</strong>
-                    {connection?.qualified
-                      ? "The server reports this installation as qualified."
-                      : "Not qualified for physical execution."}
+                    {connection?.qualified ? "Qualified" : "Not qualified"}
                   </div>
                 </li>
               </ul>
@@ -1011,14 +972,11 @@ export default function ConnectorSetup({
             >
               <div className={s.sectionHeading}>
                 <span className={s.sectionNumber}>04</span>
-                <h2 id="connector-workflow-title">
-                  Review the workflow, then run
-                </h2>
+                <h2 id="connector-workflow-title">Review & run</h2>
               </div>
               <p>
-                Choose a saved Studio design. The server checks native DT
-                evidence for that exact plan and verifies this instrument’s
-                readiness before enabling a physical request.
+                Requires a qualified instrument and native DT evidence for this
+                saved workflow. Teaching results cannot unlock physical runs.
               </p>
               <label className={s.field}>
                 Saved Studio workflow
@@ -1037,20 +995,14 @@ export default function ConnectorSetup({
                 </select>
               </label>
               {!sessions.length && (
-                <p>
-                  No saved Studio workflow yet. Start from an instrument
-                  introduction, design a workflow, and save it.
-                </p>
+                <p>Save a workflow in Studio to continue.</p>
               )}
               {session && (
                 <div className={s.workflow}>
-                  <span className={s.eyebrow}>
-                    SAVED DESIGN · VERSION {session.version}
-                  </span>
                   <h3>{session.experiment.title}</h3>
                   <p>
                     {modelName(session.experiment.instrument ?? "flex")} ·{" "}
-                    {session.experiment.actions.length} steps ·{" "}
+                    Version {session.version} ·{" "}
                     {Object.entries(session.experiment.layout)
                       .map(([slot, asset]) => `${slot}: ${asset}`)
                       .join(" · ")}
@@ -1093,25 +1045,28 @@ export default function ConnectorSetup({
                       : "Physical run blocked"}
                   </span>
                   {preflight.native_run_id && (
-                    <dl className={s.binding}>
-                      <dt>Native DT evidence</dt>
-                      <dd>
-                        <code>{preflight.native_run_id}</code>
-                      </dd>
-                      <dt>Saved plan fingerprint</dt>
-                      <dd>
-                        <code>{preflight.plan_hash}</code>
-                      </dd>
-                    </dl>
+                    <details className={s.details}>
+                      <summary>Native DT evidence</summary>
+                      <dl className={s.binding}>
+                        <dt>Native DT evidence</dt>
+                        <dd>
+                          <code>{preflight.native_run_id}</code>
+                        </dd>
+                        <dt>Saved plan fingerprint</dt>
+                        <dd>
+                          <code>{preflight.plan_hash}</code>
+                        </dd>
+                      </dl>
+                    </details>
                   )}
                 </>
-              ) : (
-                <p>
-                  {connection && session
-                    ? "Checking the saved plan and native evidence…"
-                    : "Save a connection and select a workflow to check readiness."}
+              ) : connection && session ? (
+                <p role="status">
+                  Checking the saved plan and native evidence…
                 </p>
-              )}
+              ) : session && !connection ? (
+                <p>Save an instrument connection to continue.</p>
+              ) : null}
               <label className={s.checkLabel}>
                 <input
                   type="checkbox"
@@ -1133,15 +1088,11 @@ export default function ConnectorSetup({
                 </button>
               </div>
               <p>
-                Teaching completion cannot unlock this control. A native DT run
-                also does not establish physical volume accuracy or chemical
-                validity.
+                Native DT does not validate physical volume accuracy or
+                chemistry.
               </p>
               {pendingId && (
                 <div className={s.run} aria-label="Physical run status">
-                  <span className={s.eyebrow}>
-                    PHYSICAL EXECUTION · SEPARATE FROM NATIVE DT
-                  </span>
                   <h3>
                     {run
                       ? `Physical run: ${run.status}`
