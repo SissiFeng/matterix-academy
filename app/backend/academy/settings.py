@@ -20,6 +20,11 @@ class Settings:
     gateway_token: str = ""
     remote_enabled: bool = False
     self_signup_email_domains: tuple[str, ...] = ()
+    # Sim-to-real coordination and physical execution are separate, default-off switches.
+    pairing_enabled: bool = False
+    real_enabled: bool = False
+    operator_group: str = "lab-operators"
+    local_operator: bool = False
 
     def __post_init__(self):
         if self.runtime not in {"local", "aws"}:
@@ -32,6 +37,10 @@ class Settings:
             raise ValueError(
                 "AWS requires Cognito, DynamoDB, an HTTPS application URL, and demo login disabled"
             )
+        if self.real_enabled and not self.pairing_enabled:
+            raise ValueError("Physical execution requires sim-to-real coordination to be enabled")
+        if self.local_operator and (self.runtime != "local" or not self.allow_demo):
+            raise ValueError("Local operator access exists only for the loopback demo")
         if self.runtime == "local" and self.allow_demo and len(self.secret) < 32:
             raise ValueError("Local demo requires a secret of at least 32 characters")
 
@@ -67,4 +76,8 @@ class Settings:
             self_signup_email_domains=tuple(
                 json.loads(os.getenv("ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS", "[]"))
             ),
+            pairing_enabled=os.getenv("ACADEMY_PAIRING_ENABLED", "false").lower() == "true",
+            real_enabled=os.getenv("ACADEMY_REAL_ENABLED", "false").lower() == "true",
+            operator_group=os.getenv("ACADEMY_OPERATOR_GROUP", "lab-operators"),
+            local_operator=os.getenv("ACADEMY_LOCAL_OPERATOR", "false").lower() == "true",
         )

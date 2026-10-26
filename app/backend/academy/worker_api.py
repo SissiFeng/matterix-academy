@@ -10,10 +10,14 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from mangum import Mangum
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from . import external, protocol_api
+from .instruments import gateway_credential
 from .media import MediaService
 from .models import StrictModel
+from .pairing import PairRunService
 from .runs import (
     BindRequest,
     CleanupRequest,
@@ -47,19 +51,66 @@ def machine_store():
 
 
 def authorize(event, context):
+    """Simulation-worker authorizer: worker registry only, never gateway credentials."""
     worker = worker_credential(machine_store(), event.get("headers", {}).get("authorization", ""))
-    if not worker:
+    if not worker or worker.get("worker_class", "simulation") != "simulation":
         return {"isAuthorized": False}
     return {
         "isAuthorized": True,
         "context": {
             "worker_id": worker["worker_id"],
             "credential_version": str(worker["credential_version"]),
+            "worker_class": "simulation",
         },
     }
 
 
-def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
+def authorize_gateway(event, context):
+    """Device-gateway authorizer: gateway registry only, never simulation credentials."""
+    gateway = gateway_credential(machine_store(), event.get("headers", {}).get("authorization", ""))
+    if not gateway:
+        return {"isAuthorized": False}
+    return {
+        "isAuthorized": True,
+        "context": {
+            "gateway_id": gateway["gateway_id"],
+            "credential_version": str(gateway["credential_version"]),
+            "worker_class": "device",
+        },
+    }
+
+
+def authorize_orchestrator(event, context):
+    """External-orchestrator authorizer: orchestrator registry only."""
+    client = external.orchestrator_credential(
+        machine_store(), event.get("headers", {}).get("authorization", "")
+    )
+    if not client:
+        return {"isAuthorized": False}
+    return {
+        "isAuthorized": True,
+        "context": {
+            "client_id": client["client_id"],
+            "credential_version": str(client["credential_version"]),
+            "worker_class": "orchestrator",
+        },
+    }
+
+
+def flag(name):
+    return os.getenv(name, "false").lower() == "true"
+
+
+def create_worker_app(
+    store=None,
+    *,
+    runtime=None,
+    enabled=None,
+    clock=None,
+    pairing_enabled=None,
+    real_enabled=None,
+    poll_wait=None,
+):
     runtime = runtime or os.getenv("ACADEMY_RUNTIME", "local")
     if runtime not in {"local", "aws"}:
         raise ValueError("Invalid worker API runtime")
@@ -70,8 +121,22 @@ def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
         else os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true"
     )
     service = RunService(store, enabled, **({"clock": clock} if clock else {}))
+    pairing_enabled = (
+        flag("ACADEMY_PAIRING_ENABLED") if pairing_enabled is None else pairing_enabled
+    )
+    real_enabled = flag("ACADEMY_REAL_ENABLED") if real_enabled is None else real_enabled
+    if real_enabled and not pairing_enabled:
+        raise ValueError("Physical execution requires sim-to-real coordination to be enabled")
+    pairing = PairRunService(
+        store,
+        pairing_enabled=pairing_enabled,
+        real_enabled=real_enabled,
+        **({"clock": clock} if clock else {}),
+    )
+    poll_wait = float(os.getenv("ACADEMY_POLL_WAIT_S", "8")) if poll_wait is None else poll_wait
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.state.runs = service
+    app.state.pairing = pairing
     app.state.media = MediaService(service)
     if runtime == "local":
         app.add_middleware(
@@ -82,6 +147,17 @@ def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
     async def conflict(request, exc):
         return JSONResponse(
             {"detail": "State changed; recover the saved run before continuing"}, status_code=409
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def coded(request, exc):
+        # Worker agents choose recovery from ``code``: a rejected credential stops them.
+        code = {401: "credential", 403: "credential", 409: "conflict"}.get(
+            exc.status_code, "invalid"
+        )
+        return JSONResponse(
+            {"detail": exc.detail, "code": code, "error": str(exc.detail)},
+            status_code=exc.status_code,
         )
 
     @app.middleware("http")
@@ -190,6 +266,10 @@ def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
     def viewers(run_id: UUID, data: LeaseRequest, worker_id: str = Depends(identify_worker)):
         return app.state.media.viewers(worker_id, run_id, data.claim_token)
 
+    protocol_api.install(
+        app, store=store, runs=service, pairing=pairing, runtime=runtime, poll_wait=poll_wait
+    )
+    external.install(app, store=store, pairing=pairing, runtime=runtime)
     return app
 
 
@@ -198,7 +278,15 @@ handler = Mangum(app, lifespan="off")
 
 
 def reap_handler(event, context):
-    runs = RunService(
-        machine_store(), enabled=os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true"
+    store = machine_store()
+    runs = RunService(store, enabled=flag("ACADEMY_REMOTE_ENABLED"))
+    pairing = PairRunService(
+        store,
+        pairing_enabled=flag("ACADEMY_PAIRING_ENABLED"),
+        real_enabled=flag("ACADEMY_REAL_ENABLED"),
     )
-    return {"expired_runs": runs.reap(), "closed_viewports": MediaService(runs).reap()}
+    return {
+        "expired_runs": runs.reap(),
+        "closed_viewports": MediaService(runs).reap(),
+        "expired_commands": pairing.reap(),
+    }

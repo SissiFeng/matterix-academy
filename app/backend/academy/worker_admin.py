@@ -20,6 +20,7 @@ from typing import Literal
 from uuid import UUID
 
 import boto3
+from labtwin import workflows
 from pydantic import Field, StrictBool, model_validator
 
 from .models import StrictModel
@@ -78,7 +79,7 @@ def enrollment_credential(path, worker_id):
 
 
 def enroll(store, worker_id, engine_version, asset_version, credential_file, clock=time.time):
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", worker_id):
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", worker_id) or worker_id == "gw":
         raise ValueError("Invalid worker ID")
     if not all(
         isinstance(value, str) and 1 <= len(value) <= 100
@@ -310,9 +311,16 @@ def qualification_changes(old: dict, evidence: dict) -> dict:
     if not isinstance(controls, list) or not set(controls) <= {"pause", "resume", "cancel"}:
         raise ValueError("Invalid qualified control list")
     scenes = evidence.get("scenes")
+    pair_models = evidence.get("pair_models", [])
+    if not isinstance(pair_models, list) or not set(pair_models) <= set(workflows.MODELS):
+        raise ValueError("Invalid sim-to-real instrument model list")
+    if pair_models and evidence.get("pair_protocol_verified") is not True:
+        raise ValueError(
+            "Sim-to-real qualification requires a verified protocol-2 ledger and registered-workflow report"
+        )
     if (
         not isinstance(scenes, list)
-        or not scenes
+        or not (scenes or pair_models)
         or not set(scenes) <= {"flex-first-transfer", "flex-mixing"}
     ):
         raise ValueError("Invalid qualified scene list")
@@ -336,6 +344,8 @@ def qualification_changes(old: dict, evidence: dict) -> dict:
         "controls": controls,
         "scenes": scenes,
         "capabilities": capabilities,
+        "pair_models": sorted(set(pair_models)),
+        "worker_class": "simulation",
         "qualification": evidence,
     }
 

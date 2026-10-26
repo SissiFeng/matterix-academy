@@ -288,6 +288,10 @@ class RunService:
             return self.machine_view(self.raw(worker["active_run"]), worker_id)
         if worker["state"] != "ready":
             return None
+        target = self.store.get("system#targets", f"sim:{worker_id}")
+        if target and target.get("reservation"):
+            # Reserved by a sim-to-real run; never interleave a learner run on that runtime.
+            return None
         for candidate in self.store.partition(QUEUE):
             run = self.raw(candidate["run_id"])
             if run["status"] != "queued":

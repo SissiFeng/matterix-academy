@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from . import sim2real_api
 from .auth import identify, local_signer
 from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
@@ -13,6 +14,7 @@ from .learning import present, readiness
 from .media import MediaService, ViewerRequest
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
 from .onboarding import DeviceUpdate, OnboardingService, TwinCreate
+from .pairing import PairRunService
 from .recipes import MIXING, CreateMixing, MixingPlan, mixing_session
 from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
@@ -36,7 +38,12 @@ def create_app(settings: Settings | None = None, store=None):
         else SQLiteStore(settings.data_path)
     )
     app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
-    app.state.onboarding = OnboardingService(app.state.store)
+    app.state.pairing = PairRunService(
+        app.state.store,
+        pairing_enabled=settings.pairing_enabled,
+        real_enabled=settings.real_enabled,
+    )
+    app.state.onboarding = OnboardingService(app.state.store, pairing=app.state.pairing)
     app.state.media = MediaService(app.state.runs)
     if settings.runtime == "local":
         app.add_middleware(
@@ -367,6 +374,7 @@ def create_app(settings: Settings | None = None, store=None):
                 )
         return save(owner, control(session, command), data.version)
 
+    sim2real_api.install(app, store=app.state.store, pairing=app.state.pairing)
     return app
 
 
