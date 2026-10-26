@@ -1,11 +1,11 @@
-"""Vendor the shared labtwin contracts from the connector repository.
+"""Vendor the shared labtwin contracts from the lab-bridge repository.
 
-The canonical package is ``packages/labtwin`` in the OT-2/Flex connector
+The canonical package is ``packages/labtwin`` in the lab-bridge
 repository. Lambda packaging cannot reach another repository, so a byte copy is
 kept here and pinned by ``app/backend/labtwin/CONTRACT.sha256``. Never edit the
 vendored files directly; change the canonical package and re-run:
 
-    uv run python scripts/sync-labtwin.py --source ../opentrons-ot2-digital-twin-connector/packages/labtwin
+    uv run python scripts/sync-labtwin.py --source ../lab-bridge/packages/labtwin
 """
 
 import argparse
