@@ -317,7 +317,11 @@ def test_native_child_exits_after_saving_result_despite_extension_thread(tmp_pat
         ]
     )
     result = subprocess.run(
-        [sys.executable, "-c", script, str(output)], capture_output=True, text=True, timeout=5
+        [sys.executable, "-c", script, str(output)],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        env=os.environ | {"PYTHONPATH": str(Path(native_kit.__file__).resolve().parents[1])},
     )
     assert result.returncode == status
     assert output.read_text() == "saved after native teardown"
