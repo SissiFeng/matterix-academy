@@ -35,10 +35,11 @@ from .broker import CommandBroker, Held, Offline
 from .instruments import RECONCILIATIONS, InstrumentService, device_target
 from .models import StrictModel
 from .runs import WORKERS
-from .store import Conflict
+from .store import Conflict, Write
 
 LOG = logging.getLogger(__name__)
 PAIR_RUNS = "system#pair-runs"
+ACTIVE = "system#active-pair-runs"
 PAIRS = "system#pairs"
 MODES = ("sim_only", "real_only", "sim_first", "paired")
 TERMINAL = {
@@ -252,7 +253,12 @@ class PairRunService:
             "updated_at": now,
             "events": [{"at": now, "event": "created"}],
         }
-        self.store.put(PAIR_RUNS, data.run_id, run, None)
+        self.store.transact(
+            [
+                Write(PAIR_RUNS, data.run_id, run, None),
+                Write(ACTIVE, data.run_id, {"version": 1, "run_id": data.run_id}, None),
+            ]
+        )
         if not uses_real(data.mode):
             run = self._start(run)
         return self.public(run)
@@ -378,13 +384,17 @@ class PairRunService:
         if not run.get("approval"):
             return "Physical execution requires an operator approval"
         holder = f"run:{run['run_id']}"
-        if self.instruments.lease_holder(run["instrument_id"]) != holder:
-            return "The instrument lease expired or belongs to another control source"
-        try:
-            self.instruments.acquire(run["instrument_id"], holder, seconds=LEASE_S, kind="run")
-        except (HTTPException, Conflict):
-            return "The instrument lease could not be renewed"
-        return ""
+        for _ in range(3):
+            if self.instruments.lease_holder(run["instrument_id"]) != holder:
+                return "The instrument lease expired or belongs to another control source"
+            try:
+                self.instruments.acquire(run["instrument_id"], holder, seconds=LEASE_S, kind="run")
+                return ""
+            except Conflict:
+                continue  # a concurrent renewal by this run; re-check the holder
+            except HTTPException:
+                return "The instrument lease could not be renewed"
+        return "The instrument lease could not be renewed"
 
     def _configuration_now(self, run):
         """Configuration revision from the instrument as it is now (not as it was at creation)."""
@@ -410,7 +420,8 @@ class PairRunService:
                 continue
             target = sim_target(worker["worker_id"])
             status = self.broker.status(target)
-            if not status["online"] or status["fault"] or status["reservation"]:
+            mine = status["reservation"] == f"run:{run['run_id']}"
+            if not status["online"] or status["fault"] or (status["reservation"] and not mine):
                 continue
             try:
                 self.broker.reserve(target, f"run:{run['run_id']}")
@@ -694,23 +705,26 @@ class PairRunService:
         return changed
 
     def _unqueued(self, run_id, command_id, exc):
-        """A command that was never queued: drop it from the run and fail or skip cleanly."""
+        """A command that could not be queued: drop every never-queued command of the run
+        (so none can be queued later) and fail, or skip a closing command."""
         for _ in range(5):
             run = self.raw(run_id)
             entry = run["waiting"].get(command_id)
             if entry is None or self.broker.command(command_id) is not None:
                 return run
-            waiting = {k: v for k, v in run["waiting"].items() if k != command_id}
+            dropped = {k: v for k, v in run["waiting"].items() if self.broker.command(k) is None}
+            waiting = {k: v for k, v in run["waiting"].items() if k not in dropped}
             changed = revised(run, waiting=waiting, updated_at=self.clock())
-            if entry["kind"] == "finish":
-                changed["finished"][entry["side"]] = False
+            for item in dropped.values():
+                if item["kind"] == "finish":
+                    changed["finished"][item["side"]] = False
             try:
                 self.store.put(PAIR_RUNS, run_id, changed, run["version"])
             except Conflict:
                 continue
-            if entry["kind"] == "finish":
+            if all(item["kind"] == "finish" for item in dropped.values()):
                 return self._advance(changed) if not waiting else changed
-            touched = entry["side"] == "real" and bool(changed.get("real_begun"))
+            touched = bool(changed.get("real_begun"))
             return self._fail(
                 changed,
                 "failed",
@@ -718,6 +732,27 @@ class PairRunService:
                 hold=touched,
             )
         raise Conflict
+
+    def _requeue_allowed(self, run, entry):
+        """Repeating an interrupted queueing re-applies every gate the first attempt passed."""
+        closing = entry["kind"] in {"finish", "stop"}
+        if run["status"] in TERMINAL or run.get("stop_requested"):
+            return "" if closing else "The run ended before this command was queued"
+        if entry["side"] != "real" or entry["kind"] in {"finish", "stop", "inspect"}:
+            return ""
+        blocked = self._authorize_physical(run)
+        if blocked:
+            return blocked
+        if run["mode"] == "sim_first" and entry["kind"] == "execute":
+            step = run["steps"][entry["step"]]
+            receipt = step.get("receipt") or {}
+            if (
+                not receipt.get("passed")
+                or receipt.get("expires_at", 0) <= self.clock()
+                or receipt.get("configuration_revision") != self._configuration_now(run)
+            ):
+                return "The twin prediction expired or the configuration changed before dispatch"
+        return ""
 
     def _advance(self, run):
         if run["waiting"]:
@@ -746,7 +781,10 @@ class PairRunService:
             if not run.get("released"):
                 self._release(run)
                 released = revised(run, released=True)
-                self.store.put(PAIR_RUNS, run["run_id"], released, run["version"])
+                writes = [Write(PAIR_RUNS, run["run_id"], released, run["version"])]
+                if self.store.get(ACTIVE, run["run_id"]):
+                    writes.append(Write(ACTIVE, run["run_id"], None, 1))
+                self.store.transact(writes)
                 run = released
             return run
         if run["status"] != "running":
@@ -836,16 +874,29 @@ class PairRunService:
         run = self.store.get(PAIR_RUNS, run_id)
         if run is None or (run["status"] in TERMINAL and run.get("released")):
             return run
+        stale = self.clock() - run["updated_at"] >= grace_s
+        if (
+            run["status"] == "queued"
+            and stale
+            and (run.get("approval") or not uses_real(run["mode"]))
+        ):
+            # Crashed between approval (or creation) and start: start exactly as before.
+            return self._start(run)
         for command_id, entry in list(run["waiting"].items()):
             command = self.broker.command(command_id)
             if command is None:
-                if self.clock() - run["updated_at"] >= grace_s:
-                    try:
-                        self._enqueue(
-                            run, entry["side"], entry["kind"], entry["payload"], command_id
-                        )
-                    except (Offline, Held) as exc:
-                        self._unqueued(run_id, command_id, exc)
+                if not stale:
+                    continue
+                reason = self._requeue_allowed(run, entry)
+                if reason:
+                    self._unqueued(run_id, command_id, reason)
+                    run = self.raw(run_id)
+                    continue
+                try:
+                    self._enqueue(run, entry["side"], entry["kind"], entry["payload"], command_id)
+                except (Offline, Held) as exc:
+                    self._unqueued(run_id, command_id, exc)
+                    run = self.raw(run_id)
             elif command["state"] in {"returned", "not-dispatched", "unknown"}:
                 self.on_settled(command)
         run = self.raw(run_id)
@@ -932,7 +983,12 @@ class PairRunService:
             "updated_at": now,
             "events": [{"at": now, "event": "prediction requested"}],
         }
-        self.store.put(PAIR_RUNS, prediction_id, run, None)
+        self.store.transact(
+            [
+                Write(PAIR_RUNS, prediction_id, run, None),
+                Write(ACTIVE, prediction_id, {"version": 1, "run_id": prediction_id}, None),
+            ]
+        )
         return self.public(self._start(run))
 
     def claim_prediction(self, client, prediction_id, operation, current_observation):
@@ -1077,21 +1133,26 @@ class PairRunService:
         """Expire commands, then repair every unfinished run and release leaked reservations."""
         expired = self.broker.reap()
         repaired = 0
-        for run in self.store.partition(PAIR_RUNS, limit=500):
-            if run["status"] == "awaiting_approval" or (
-                run["status"] in TERMINAL and run.get("released")
-            ):
-                continue
+        for row in self.store.partition(ACTIVE, limit=1000):
+            run_id = row["run_id"]
             try:
-                self.repair(run["run_id"])
+                run = self.store.get(PAIR_RUNS, run_id)
+                if run is None or run["status"] == "awaiting_approval":
+                    continue
+                self.repair(run_id)
                 repaired += 1
             except Exception:  # noqa: BLE001 - one run must not stop the sweep
-                LOG.exception("Could not repair run %s", run["run_id"])
+                LOG.exception("Could not repair run %s", run_id)
         for target in self.store.partition("system#targets", "sim:", limit=200):
             holder = target.get("reservation") or ""
             if holder.startswith("run:"):
                 run = self.store.get(PAIR_RUNS, holder[4:])
-                if run is None or (run["status"] in TERMINAL and run.get("released")):
+                worker = target["target"][4:]
+                if (
+                    run is None
+                    or (run["status"] in TERMINAL and run.get("released"))
+                    or (run["status"] != "queued" and run.get("sim_target") != worker)
+                ):
                     self.broker.release(target["target"], holder)
         return {"expired": expired, "repaired": repaired}
 

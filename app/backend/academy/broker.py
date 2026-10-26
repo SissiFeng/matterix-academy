@@ -584,6 +584,10 @@ class CommandBroker:
                 return changed
             except Conflict:
                 current = self.command(command["command_id"])
+                if current is not None and current["state"] == "unknown":
+                    # Expired concurrently: keep the result as late evidence, never drop it.
+                    self._late(target, data, current["kind"])
+                    return None
                 if current is None or current["state"] not in {"delivered", "acked"}:
                     return None
                 command = current

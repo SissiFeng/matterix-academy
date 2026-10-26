@@ -308,3 +308,64 @@ def test_leaked_simulation_reservations_are_released(lab):
     pairing.broker.reserve("sim:sim-1", "run:does-not-exist")
     pairing.reap()
     assert pairing.broker.status("sim:sim-1")["reservation"] is None
+
+
+def test_repair_never_queues_a_physical_step_for_a_failed_run(lab):
+    from academy.broker import Offline
+
+    run = approve(lab, create(lab, "paired"))
+    pairing = machine_pairing(lab)
+    original = pairing.broker.enqueue
+
+    def sim_offline(target, kind, payload=None, **kwargs):
+        if kind == "execute" and target.startswith("sim:"):
+            raise Offline("sim offline")
+        return original(target, kind, payload, **kwargs)
+
+    pairing.broker.enqueue = sim_offline
+    lab.pump(60)
+    pairing.broker.enqueue = original
+    pairing.repair(run["run_id"], grace_s=0)
+    lab.pump(60)
+    record = lab.store.get(PAIR_RUNS, run["run_id"])
+    assert record["status"] == "failed" and lab.device.executed == []
+    assert not any(e["kind"] == "execute" for e in record["waiting"].values())
+
+
+def test_repair_reapplies_the_physical_gates(lab):
+    run = approve(lab, create(lab, "real_only"))
+    pairing = machine_pairing(lab)
+    original = pairing.broker.enqueue
+
+    def crash(target, kind, payload=None, **kwargs):
+        if kind == "execute":
+            raise RuntimeError("lambda crashed after persisting intent")
+        return original(target, kind, payload, **kwargs)
+
+    pairing.broker.enqueue = crash
+    lab.pump(60)
+    pairing.broker.enqueue = original
+    pairing.real_enabled = False  # an operator switched physical execution off meanwhile
+    pairing.repair(run["run_id"], grace_s=0)
+    lab.pump(30)
+    assert lab.device.executed == []
+    assert read(lab, run["run_id"])["status"] == "failed"
+
+
+def test_a_crash_between_approval_and_start_is_restarted_by_repair(lab):
+    pairing = machine_pairing(lab)
+    run = create(lab, "real_only")
+    original = pairing.__class__._start
+    record = lab.store.get(PAIR_RUNS, run["run_id"])
+    approved = {
+        **record,
+        "status": "queued",
+        "approval": {"by": "op", "at": 0, "confirmation": {}},
+        "version": record["version"] + 1,
+    }
+    lab.store.put(PAIR_RUNS, run["run_id"], approved, record["version"])
+    pairing.instruments.acquire("flex-a", f"run:{run['run_id']}", seconds=600, kind="run")
+    pairing.repair(run["run_id"], grace_s=0)
+    lab.pump(60)
+    assert read(lab, run["run_id"])["status"] == "completed"
+    assert original is pairing.__class__._start
