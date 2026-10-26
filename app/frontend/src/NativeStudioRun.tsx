@@ -11,6 +11,16 @@ import IsaacViewport from "./IsaacViewport";
 import { terminalRuns, type SimulationRun } from "./simulationTypes";
 import { INSTRUMENT_NAMES } from "./studioContent";
 import type { Session } from "./types";
+import {
+  acceptanceReport,
+  readEvidence,
+  saveEvidence,
+  recordSubmission,
+  recordRead,
+  recordVideo,
+  type ServerReport,
+  type VideoReceipt,
+} from "./commissioningEvidence";
 import s from "./NativeStudioRun.module.css";
 
 type Preflight = {
@@ -54,6 +64,12 @@ const labels: Record<string, string> = {
 const amount = (value: number | null | undefined) =>
   value == null ? "Not observed" : `${Number(value.toFixed(2))} µL`;
 const requestKey = (id: string) => `academy.studio-native.${id}`;
+const documentId = crypto.randomUUID();
+const reloadedDocument = () =>
+  (
+    performance.getEntriesByType("navigation")[0] as
+      PerformanceNavigationTiming | undefined
+  )?.type === "reload";
 export function hasPendingNativeSubmission(id: string): boolean {
   try {
     return sessionStorage.getItem(requestKey(id)) !== null;
@@ -111,6 +127,9 @@ export default function NativeStudioRun({
   const [error, setError] = useState("");
   const [pollingError, setPollingError] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const [evidenceError, setEvidenceError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const commissioningReport = useRef<ServerReport | null>(null);
   const current = useRef({
     session,
     dirty,
@@ -125,6 +144,52 @@ export default function NativeStudioRun({
   const acceptedRun = useRef<NativeRun | null>(null);
   const pendingRequest = useRef<Submission | null>(cachedAtMount.request);
   const id = session.id;
+
+  const observeVideo = (receipt: VideoReceipt) => {
+    const report = commissioningReport.current;
+    if (!report || receipt.session_id !== current.current.session.id) return;
+    try {
+      saveEvidence(
+        sessionStorage,
+        recordVideo(readEvidence(sessionStorage, report), receipt, documentId),
+      );
+    } catch {
+      setEvidenceError(
+        "Acceptance evidence could not be saved. The native run is unchanged.",
+      );
+    }
+  };
+  const downloadEvidence = async () => {
+    setExporting(true);
+    setEvidenceError("");
+    try {
+      const report = await api<ServerReport>("/commissioning/report");
+      const result = acceptanceReport(
+        readEvidence(sessionStorage, report),
+        report,
+      );
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(result, null, 2) + "\n"], {
+          type: "application/json",
+        }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `studio-acceptance-${report.grant_id}.json`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (result.status !== "completed")
+        setEvidenceError(
+          "Downloaded incomplete evidence. " + result.issues.join(" "),
+        );
+    } catch {
+      setEvidenceError(
+        "Acceptance evidence could not be downloaded. Check connection and try again.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const acceptRun = (next: NativeRun | null) => {
     if (!next) return;
@@ -204,6 +269,32 @@ export default function NativeStudioRun({
           );
         setPreflight(compatibility);
         acceptRun(linkedRun);
+        if (compatibility.commissioning) {
+          try {
+            const report =
+              commissioningReport.current ??
+              (await api<ServerReport>("/commissioning/report", {
+                signal: controller.signal,
+              }));
+            if (!active || epoch !== mutation.current) return;
+            commissioningReport.current = report;
+            let receipts = readEvidence(sessionStorage, report);
+            if (linkedRun)
+              receipts = recordRead(
+                receipts,
+                linkedRun,
+                documentId,
+                reloadedDocument(),
+                Date.now(),
+              );
+            saveEvidence(sessionStorage, receipts);
+          } catch {
+            if (active)
+              setEvidenceError(
+                "Acceptance recording is unavailable. Check connection before submitting.",
+              );
+          }
+        }
         if (saved) {
           if (linkedRun?.run_id === saved.run_id) {
             clearSubmission();
@@ -295,6 +386,19 @@ export default function NativeStudioRun({
       expected_version: current.current.session.version,
     };
     try {
+      if (preflight?.commissioning) {
+        // Count durably BEFORE the existing POST; unknown outcomes stay counted.
+        const report = await api<ServerReport>("/commissioning/report");
+        commissioningReport.current = report;
+        saveEvidence(
+          sessionStorage,
+          recordSubmission(readEvidence(sessionStorage, report), {
+            ...request,
+            plan_hash: preflight.plan_hash,
+            document_id: documentId,
+          }),
+        );
+      }
       // If durable local recovery cannot be saved, no request is transmitted.
       sessionStorage.setItem(requestKey(id), JSON.stringify(request));
       pendingRequest.current = request;
@@ -494,7 +598,10 @@ export default function NativeStudioRun({
               seconds old. Progress is not estimated.
             </p>
           )}
-          <IsaacViewport run={run} />
+          <IsaacViewport
+            run={run}
+            onEvidence={preflight?.commissioning ? observeVideo : undefined}
+          />
           <div className={s.observations}>
             {(["stock", "A1", "A2", "A3"] as const).map((well) => (
               <div key={well}>
@@ -589,6 +696,26 @@ export default function NativeStudioRun({
           <Monitor size={23} />
           <p>Live Isaac video appears here when the saved run starts.</p>
         </div>
+      )}
+      {preflight?.commissioning && (
+        <details>
+          <summary>Acceptance evidence</summary>
+          <div className={s.actions}>
+            <button
+              disabled={exporting}
+              onClick={() => void downloadEvidence()}
+            >
+              {exporting
+                ? "Preparing download…"
+                : "Download acceptance evidence"}
+            </button>
+          </div>
+          {evidenceError && (
+            <p className={s.warning} role="status">
+              {evidenceError}
+            </p>
+          )}
+        </details>
       )}
       <p className={s.boundary}>
         Native simulation, not physical instrument control. Liquid amounts use
