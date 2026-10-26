@@ -109,7 +109,7 @@ def main():
     from .native_isaac import activate
 
     activate(Path(cfg["matterix_root"]))
-    from .native_kit import close_native_app, launch_native_app
+    from .native_kit import close_native_app, configure_native_camera, launch_native_app
 
     app = launch_native_app(
         headless=True, protected_roots=(cfg["matterix_root"], cfg["assets_data_dir"])
@@ -137,6 +137,7 @@ def main():
         scene.viewer.env_index = 0
         env = gym.make(task, cfg=scene, render_mode="rgb_array").unwrapped
         env.reset()
+        configure_native_camera(env)
         scene_ready_at = time.monotonic()
         frames = 0
         for _ in range(30):
