@@ -31,8 +31,8 @@ variable "build_instance_type" {
   type    = string
   default = "g6.4xlarge"
   validation {
-    condition     = contains(["g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"], var.build_instance_type)
-    error_message = "Use an evaluated full L4/L40S single-GPU candidate. g6.2xlarge is a measured capacity trial."
+    condition     = contains(["g5.2xlarge", "g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"], var.build_instance_type)
+    error_message = "Use a full A10G/L4/L40S single-GPU commissioning candidate; native probes and qualification remain required."
   }
 }
 variable "expected_account_id" {

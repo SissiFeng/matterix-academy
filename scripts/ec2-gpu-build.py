@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_TYPES = {"g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"}
+BUILD_TYPES = {"g5.2xlarge", "g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"}
 
 
 def validate_instance(instance):
@@ -23,11 +23,11 @@ def validate_instance(instance):
         and "x86_64" in instance.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
         and len(gpus) == 1
         and gpus[0].get("Count") == 1
-        and gpus[0].get("Name") in {"L4", "L40S"}
+        and gpus[0].get("Name") in {"A10G", "L4", "L40S"}
         and gpus[0].get("MemoryInfo", {}).get("SizeInMiB", 0) >= 22000
     ):
         raise ValueError(
-            "Build requires at least 8 vCPU, 32 GiB and one full L4/L40S with 22000 MiB"
+            "Build requires at least 8 vCPU, 32 GiB and one full A10G/L4/L40S with 22000 MiB"
         )
 
 

@@ -20,19 +20,25 @@ def builder():
     return module
 
 
-def instance():
+def instance(instance_type="g6.2xlarge", gpu="L4"):
     return {
-        "InstanceType": "g6.2xlarge",
+        "InstanceType": instance_type,
         "VCpuInfo": {"DefaultVCpus": 8},
         "MemoryInfo": {"SizeInMiB": 32768},
         "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
-        "GpuInfo": {"Gpus": [{"Name": "L4", "Count": 1, "MemoryInfo": {"SizeInMiB": 22888}}]},
+        "GpuInfo": {"Gpus": [{"Name": gpu, "Count": 1, "MemoryInfo": {"SizeInMiB": 22888}}]},
     }
 
 
+@pytest.mark.parametrize("instance_type,gpu", [("g6.2xlarge", "L4"), ("g5.2xlarge", "A10G")])
+def test_full_rtx_candidates_meet_the_same_commissioning_minimum(instance_type, gpu):
+    builder().validate_instance(instance(instance_type, gpu))
+
+
+@pytest.mark.parametrize("instance_type,gpu", [("g6.2xlarge", "L4"), ("g5.2xlarge", "A10G")])
 @pytest.mark.parametrize("bad", ["ram", "cpu", "fractional", "vram", "gpu", "arch", "type"])
-def test_capacity_rejects_lower_or_unreviewed_hardware(bad):
-    row = instance()
+def test_capacity_rejects_lower_or_unreviewed_hardware(bad, instance_type, gpu):
+    row = instance(instance_type, gpu)
     if bad == "ram":
         row["MemoryInfo"]["SizeInMiB"] = 16384
     elif bad == "cpu":
@@ -42,7 +48,7 @@ def test_capacity_rejects_lower_or_unreviewed_hardware(bad):
     elif bad == "vram":
         row["GpuInfo"]["Gpus"][0]["MemoryInfo"]["SizeInMiB"] = 16000
     elif bad == "gpu":
-        row["GpuInfo"]["Gpus"][0]["Name"] = "A10G"
+        row["GpuInfo"]["Gpus"][0]["Name"] = "A100"
     elif bad == "arch":
         row["ProcessorInfo"]["SupportedArchitectures"] = ["arm64"]
     else:
@@ -54,7 +60,10 @@ def test_capacity_rejects_lower_or_unreviewed_hardware(bad):
 @pytest.mark.parametrize(
     "quota,active,passes", [(8, False, True), (0, False, False), (8, True, False)]
 )
-def test_build_capacity_preflight_uses_frozen_identity_and_blocks_overlap(quota, active, passes):
+@pytest.mark.parametrize("instance_type,gpu", [("g6.2xlarge", "L4"), ("g5.2xlarge", "A10G")])
+def test_build_capacity_preflight_uses_frozen_identity_and_blocks_overlap(
+    quota, active, passes, instance_type, gpu
+):
     calls = []
 
     def client(name, **kwargs):
@@ -62,7 +71,7 @@ def test_build_capacity_preflight_uses_frozen_identity_and_blocks_overlap(quota,
         if name == "service-quotas":
             return SimpleNamespace(get_service_quota=lambda **kw: {"Quota": {"Value": quota}})
         return SimpleNamespace(
-            describe_instance_types=lambda **kw: {"InstanceTypes": [instance()]},
+            describe_instance_types=lambda **kw: {"InstanceTypes": [instance(instance_type, gpu)]},
             get_paginator=lambda name: SimpleNamespace(
                 paginate=lambda **kw: iter(
                     [
@@ -82,14 +91,12 @@ def test_build_capacity_preflight_uses_frozen_identity_and_blocks_overlap(quota,
         "AWS_SECRET_ACCESS_KEY": "fixture",
         "AWS_SESSION_TOKEN": "fixture",
     }
-    config = {"region": "ca-central-1", "build_instance_type": "g6.2xlarge"}
+    config = {"region": "ca-central-1", "build_instance_type": instance_type}
     if passes:
-        assert (
-            builder().capacity_preflight(SimpleNamespace(client=client), env, config)[
-                "applied_g_vcpu_quota"
-            ]
-            == 8
-        )
+        report = builder().capacity_preflight(SimpleNamespace(client=client), env, config)
+        assert report["applied_g_vcpu_quota"] == 8
+        assert report["instance_type"] == instance_type
+        assert report["gpu"]["Name"] == gpu
     else:
         with pytest.raises(ValueError):
             builder().capacity_preflight(SimpleNamespace(client=client), env, config)

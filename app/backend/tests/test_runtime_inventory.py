@@ -33,7 +33,7 @@ def fixture_runtime():
     }
 
 
-def collect(monkeypatch, tmp_path, runtime):
+def collect(monkeypatch, tmp_path, runtime, gpu="NVIDIA L4, 595.58.03, 23034 MiB\n"):
     monkeypatch.setattr(
         inventory,
         "source_inventory",
@@ -55,9 +55,7 @@ def collect(monkeypatch, tmp_path, runtime):
         inventory.subprocess,
         "run",
         lambda argv, **_: SimpleNamespace(
-            stdout="NVIDIA L4, 595.58.03, 23034 MiB\n"
-            if argv[0] == "nvidia-smi"
-            else json.dumps(runtime)
+            stdout=gpu if argv[0] == "nvidia-smi" else json.dumps(runtime)
         ),
     )
     return inventory.collect(tmp_path, tmp_path, tmp_path / "python")
@@ -67,6 +65,26 @@ def test_complete_profile_is_only_ready_to_commission_not_native_acceptance(monk
     result = collect(monkeypatch, tmp_path, fixture_runtime())
     assert result["ready_for_commissioning"]
     assert result["native_verified"] is False
+
+
+@pytest.mark.parametrize("name", ["NVIDIA A10G", "NVIDIA L4", "NVIDIA L40S"])
+def test_full_rtx_candidate_still_requires_native_commissioning(monkeypatch, tmp_path, name):
+    result = collect(monkeypatch, tmp_path, fixture_runtime(), f"{name}, 595.58.03, 22888 MiB\n")
+    assert result["ready_for_commissioning"]
+    assert result["native_verified"] is False
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        "NVIDIA A10G, 595.58.03, 16384 MiB\n",
+        "NVIDIA A10G, 550.54.14, 22888 MiB\n",
+        "NVIDIA A100, 595.58.03, 81920 MiB\n",
+        "NVIDIA A10G, 595.58.03, 22888 MiB\nNVIDIA A10G, 595.58.03, 22888 MiB\n",
+    ],
+)
+def test_candidate_gpu_must_keep_memory_driver_and_single_device_gates(monkeypatch, tmp_path, gpu):
+    assert not collect(monkeypatch, tmp_path, fixture_runtime(), gpu)["ready_for_commissioning"]
 
 
 @pytest.mark.parametrize("change", ["python", "lab", "physx", "os", "launcher", "pip", "artifact"])

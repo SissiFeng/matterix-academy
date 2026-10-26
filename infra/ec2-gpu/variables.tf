@@ -23,7 +23,7 @@ variable "instance_type" {
   type    = string
   default = "g6.4xlarge"
   validation {
-    condition     = contains(["g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"], var.instance_type)
+    condition     = contains(["g5.2xlarge", "g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"], var.instance_type)
     error_message = "Choose one of the evaluated single-GPU candidates."
   }
 }

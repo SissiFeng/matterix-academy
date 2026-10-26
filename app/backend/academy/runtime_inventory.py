@@ -244,7 +244,7 @@ def collect(engine, assets, python):
         parts = [part.strip() for part in devices[0].split(",")] if len(devices) == 1 else []
         result["checks"]["gpu_present"] = (
             len(parts) == 3
-            and parts[0] in {"NVIDIA L4", "NVIDIA L40S"}
+            and parts[0] in {"NVIDIA A10G", "NVIDIA L4", "NVIDIA L40S"}
             and int(parts[2].split()[0]) >= 22000
         )
         result["checks"]["driver_version"] = (

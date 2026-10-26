@@ -19,7 +19,7 @@ Synthetic tests do not satisfy this target.
 | Isaac Sim | `6.0.1.0`, explicitly required by the Lab wheel's isaacsim extra |
 | PyTorch / torchvision | `2.11.0+cu128` / `0.26.0+cu128` |
 | NVIDIA Linux driver | `595.58.03`, candidate from version-specific requirements |
-| GPU | Single L4 24 GB (g6.4xlarge preferred) or L40S 48 GB; native fit remains unmeasured |
+| GPU | Single A10G or L4 24 GB, or L40S 48 GB; current 8-vCPU candidates are g5.2xlarge and g6.2xlarge; native fit still requires measured probes |
 | Academy release / AMI | Academy 0.2.0 local release, exact commit/hash in `ops/ec2-gpu/academy-release.json`; AMI requires an authorized build |
 
 The Lab wheel SHA256 is

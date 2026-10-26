@@ -101,8 +101,9 @@ authorization does not imply a successful image or native browser acceptance.
 Copy `build.pkrvars.json.example` to the protected directory. Fill the authorized
 account, exact base AMI, existing VPC/subnet, operator IPv4 `/32`, and input directory.
 Use `archive_sha256` and `manifest_sha256` from `release.json`. Set both confirmation
-flags true only once separately authorized. For the current 8-vCPU Canadian trial,
-also set `"build_instance_type": "g6.2xlarge"`; see [capacity trial](GPU-CAPACITY-TRIAL.md).
+flags true only once authorized. For the current 8-vCPU Canadian G5 fallback,
+set `"build_instance_type": "g5.2xlarge"`; `g6.2xlarge` remains eligible. See
+[capacity trial](GPU-CAPACITY-TRIAL.md). Neither selection bypasses native probes.
 Run the build against the same reviewed commit packaged in the protected `release.json`:
 
 ```sh
@@ -113,7 +114,7 @@ uv run python scripts/ec2-gpu-build.py build --config /protected/approved-build.
 
 The `build` command invokes Packer to create the explicitly selected single GPU instance
 and 300 GiB encrypted gp3 disk, then retains an AMI/snapshot. The default g6.4xlarge
-requires 16 vCPU; the current trial explicitly selects g6.2xlarge (8 vCPU).
+requires 16 vCPU; the current trial explicitly selects g5.2xlarge or g6.2xlarge (8 vCPU).
 This is a paid operation; source preparation does not run it.
 The build wrapper checks the exact frozen credentials against the official regional
 STS endpoint, rejects the wrong account, and passes only those verified credentials

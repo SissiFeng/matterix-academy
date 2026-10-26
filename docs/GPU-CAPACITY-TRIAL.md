@@ -9,20 +9,23 @@ type API and price catalog; US East's G/VT quota is still zero.
 Continuation checked on 2026-10-26: STS again verified development account
 `247893369214`; the applied Canadian quota is still 8 vCPU and no active GPU
 instances were present before the new guarded build attempt. The user resumed
-real DT delivery. Current reviewed Academy main `718b937` has been repackaged;
-build completion and browser acceptance still require their own evidence. The
+real DT delivery. Build completion and browser acceptance still require their own evidence. The
 2026-10-23 attempts failed for insufficient capacity in all three reviewed AZs.
 
-For this bounded trial, select `build_instance_type: "g6.2xlarge"` in the protected
-Packer JSON. The normal default remains `g6.4xlarge`. This revises the earlier
-preference to measure the 64-GiB host first: a full L4, 8 vCPU and 32 GiB can now be
-tested within the applied quota. The 32-GiB model meets NVIDIA's minimum RAM spec;
-its startup and complete-workflow capacity remain unmeasured until executed.
-No additional approval flag is needed for this already-authorized trial.
+The user authorized a G5 fallback on 2026-10-26. Select
+`build_instance_type: "g5.2xlarge"` in the protected Packer JSON to try one full
+A10G, 8 vCPU and 32 GiB RAM; EC2 reports 22,888 MiB VRAM (advertised 24 GB).
+The regional offering is listed in `ca-central-1a` and `1b`, which does not guarantee
+available launch capacity. `g6.2xlarge` remains an eligible L4 alternative with the
+same CPU/RAM/VRAM minimums. The normal default remains `g6.4xlarge` (16 vCPU/64 GiB).
+Both 8-vCPU candidates fit the applied quota; native fit must still be measured.
+G4 remains excluded pending version and memory compatibility review. Existing
+paid-build/license flags remain required; no additional authorization is needed
+for this bounded fallback.
 
 The guarded build reads the selected EC2 type using the exact frozen credentials
 verified by STS. It requires x86_64, at least 8 vCPU and 32 GiB physical RAM, and
-one full L4/L40S with at least 22,000 MiB VRAM. It checks the **applied** quota and
+one full A10G/L4/L40S with at least 22,000 MiB VRAM. It checks the **applied** quota and
 refuses to overlap another pending/running/stopping G/VT instance. Keep build and
 acceptance sequential; these checks are not an atomic account-wide reservation.
 
@@ -66,7 +69,12 @@ reset/release and the second changed Studio design remain separate
 [commissioning gates](STUDIO-NATIVE-ACCEPTANCE.md). Keep at most one GPU active
 and stop between sessions; do not retain an idle acceptance host while awaiting login.
 
-The following cost snapshot is dated: the official price feed was published
+Official Canadian Linux On-Demand prices read on 2026-10-26 are USD 1.34573/hour
+for `g5.2xlarge` and USD 1.08547/hour for `g6.2xlarge`. A two-hour G5 attempt is
+about USD 2.69 compute, plus IPv4, storage and any retained artifacts. Adding G5
+as a candidate changes neither the native gates nor the unqualified worker state.
+
+The earlier cost snapshot is dated: the official price feed was published
 2026-10-22 and read 2026-10-23. Canadian Linux On-Demand `g6.2xlarge` was
 USD 1.08547/hour versus USD 1.46920/hour for
 `g6.4xlarge`. A two-hour compute trial is about USD 2.17, plus IPv4 and storage.
@@ -78,5 +86,6 @@ Sources:
 
 - [NVIDIA Isaac Sim 6.0 requirements](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/installation/requirements.html)
 - [AWS G6 hardware specifications](https://aws.amazon.com/ec2/instance-types/g6/)
+- [AWS G5 hardware specifications](https://aws.amazon.com/ec2/instance-types/g5/)
 - [AWS regional instance support](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-regions.html)
 - [AWS Canadian Linux On-Demand price feed](https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/Canada%20%28Central%29/Linux/index.json)
