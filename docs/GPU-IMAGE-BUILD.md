@@ -59,6 +59,16 @@ Native launchers disable Kit's process-terminating fast shutdown so probe caller
 can save results and propagate failures. Graceful Kit teardown has a 60-second
 watchdog; a timeout exits unsuccessfully and cannot qualify the image. Scene
 failures retain a negative report and traceback before teardown.
+Dedicated native child commands exit only after `main` has returned or raised,
+preserving its success/failure status and flushing logs. This prevents lingering
+extension threads from blocking Python exit after result persistence and graceful
+Kit teardown. The worker service and ordinary library calls never use this exit.
+
+For the pinned Lab 3 runtime, headless is an application setting, not the deprecated
+`--headless` CLI switch. That switch disables explicitly selected visualizers;
+Academy must retain the Kit visualizer for frame pumping and camera updates while
+the host window stays disabled. Camera rendering remains enabled. Native scene,
+nonblack frame, Studio workflow and reset probes must all pass on the GPU.
 
 Use a protected directory **outside all Academy, engine and asset checkouts**.
 The source export never copies credentials, hooks, untracked files or external

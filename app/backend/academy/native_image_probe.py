@@ -184,4 +184,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from .native_kit import run_native_cli
+
+    run_native_cli(main)

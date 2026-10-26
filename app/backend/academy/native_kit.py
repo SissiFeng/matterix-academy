@@ -64,12 +64,15 @@ def launch_native_app(*, headless, protected_roots=()):
     parser = argparse.ArgumentParser()
     AppLauncher.add_app_launcher_args(parser)
     flags = ["--enable_cameras", "--device", "cuda:0", "--viz", "kit", "--livestream", "0"]
-    if headless:
-        flags += ["--headless"]
     flags += ["--kit_args=--portable --portable-root " + str(root)]
+    args = parser.parse_args(flags)
+    # Lab 3's deprecated --headless CLI disables every visualizer, including the
+    # explicitly requested Kit renderer. Programmatic headless keeps Kit's frame
+    # pumping and camera updates while disabling the host application window.
+    args.headless = headless
     # Kit's default fast shutdown terminates Python with status 0 inside close().
     # Academy must return to its caller to persist probe results and propagate errors.
-    app = AppLauncher(parser.parse_args(flags), fast_shutdown=False).app
+    app = AppLauncher(args, fast_shutdown=False).app
     try:
         import carb.tokens
 
@@ -92,3 +95,29 @@ def close_native_app(app):
         app.close()
     finally:
         faulthandler.cancel_dump_traceback_later()
+
+
+def run_native_cli(main):
+    """Exit a dedicated native child only after its main has saved final evidence.
+
+    Kit can leave non-daemon extension threads alive after graceful app.close().
+    Avoid an unbounded interpreter shutdown after the result and teardown finish;
+    preserve the real command status instead of Kit's unconditional fast exit 0.
+    Never use this inside a worker service or an imported library call.
+    """
+    status = 0
+    try:
+        main()
+    except SystemExit as exc:
+        if isinstance(exc.code, int):
+            status = exc.code
+        elif exc.code is not None:
+            print(exc.code, file=sys.stderr)
+            status = 1
+    except BaseException as exc:
+        traceback.print_exc()
+        status = 130 if isinstance(exc, KeyboardInterrupt) else 1
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    os._exit(status)
