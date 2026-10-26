@@ -119,6 +119,10 @@ test("commissioning export preserves attempted submission across reload and labe
     })
     .click();
   await expect.poll(() => posts).toBe(1);
+  // Wait for the fixture's persistence assertion and accepted response before reloading.
+  await expect(
+    panel.getByText("Waiting for a qualified worker", { exact: true }),
+  ).toBeVisible();
   await page.reload();
   await expect(
     panel.getByText("Waiting for a qualified worker", { exact: true }),
