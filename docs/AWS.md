@@ -67,6 +67,27 @@ Terraform bootstraps application Lambda code and owns resources, configuration a
 
 ## AC environment
 
+### Find Academy in the AWS console
+
+Open CloudFront in account **SDL0-DEV1 / 247893369214**. CloudFront distributions
+are global; changing the console's regional selection does not select another
+account. Search for distribution **E3UW98EHZSA0FU**, domain
+**d2m3yolcjdy6d2.cloudfront.net**, or its configured name
+**matterix-academy-dev**. The student interface is branded **Lab Onboarding**;
+AWS resource names retain **Matterix Academy**. The
+[distribution console](https://console.aws.amazon.com/cloudfront/v4/home#/distributions/E3UW98EHZSA0FU)
+and [student site](https://d2m3yolcjdy6d2.cloudfront.net/) point to this deployment.
+The console link uses the currently signed-in AWS account; it does not switch
+accounts for you.
+
+Terraform sets the distribution's `Name` tag and comment to the same
+`matterix-academy-dev` identifier used by AC's blueprint. AWS uses the
+[`Name` tag for the distribution name](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-creating-console.html).
+Publishing application code does not apply this infrastructure metadata;
+review and apply the saved Terraform plan, then verify the name and tags in the
+console. Keep the existing distribution ID, origins and state key. If the plan
+proposes replacement or unrelated changes, resolve those before applying it.
+
 The account was selected by the user and verified against both Chrome and STS. Authenticate with `aws sso login --profile pas-sdl0-dev`, then use `AWS_PROFILE=pas-sdl0-dev-terraform` for Terraform 1.5.7. This existing profile uses AWS CLI `credential_process` to obtain the refreshed SSO session; direct SSO cache reading by this older Terraform backend failed even though AWS CLI authentication succeeded. No credentials are copied into the repository. `infra/ac-dev.backend.hcl` records the discovered existing state resources and an Academy-only state key; `infra/ac-dev.tfvars.example` pins the expected account and keeps remote execution disabled. Copy the example to ignored `infra/ac-dev.tfvars`, initialize with `-backend-config=ac-dev.backend.hcl`, and plan using `-var-file=ac-dev.tfvars`. Do not alter the shared bucket or lock-table configuration as part of an application deployment.
 
 `remote_execution_enabled=true` requires the native acceptance evidence and operator enrollment described in [WORKER-CONTROL.md](WORKER-CONTROL.md). The account currently has only 10 total Lambda concurrent executions, so AC dev disables reservations (`reserve_lambda_concurrency=false`) and uses a 5 requests/second learner throttle, burst 10. Functions share this capacity with existing account workloads. This is a development environment; raise the quota and qualify capacity before classroom use.

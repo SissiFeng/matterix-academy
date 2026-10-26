@@ -273,8 +273,10 @@ resource "aws_cloudfront_response_headers_policy" "web" {
 }
 resource "aws_cloudfront_distribution" "web" {
   enabled             = true
+  comment             = local.name
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
+  tags                = { Name = local.name }
   origin {
     domain_name              = aws_s3_bucket.web.bucket_regional_domain_name
     origin_id                = "web"

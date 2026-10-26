@@ -36,7 +36,35 @@ The application inputs and their wiring were checked at
 The specific example URL
 `AccelerationConsortium/cell_counting_images_aws/blob/dev/platform/vars/dev.tfvars`
 returned HTTP 404 through the authenticated GitHub API. That can mean missing
-access or a missing repository; its contents were not verified.
+access or a missing repository. The user subsequently supplied the SDL6 tfvars
+contents directly on 2026-10-26. This verifies the supplied configuration, not
+the inaccessible repository's current commit or SDL6's live deployment.
+
+That file configures `sdl6-cell-count` in `dev`: one GPU, `g4dn.xlarge`, On-Demand,
+2048 task CPU units, 14336 MiB task memory and RF-DETR/SAM2 inference. It requests
+one ECS task with scaling up to four, private S3 storage, shared Aurora, built-in
+authentication, SES, WAF and the `vibecount.online` domain. Its ACM certificate ARN
+names account `687159379570`; this identifies the account written in the file,
+not the current console session or a verified live SDL6 distribution.
+
+Academy's verified development deployment is in account `247893369214`
+(SDL0-DEV1), with CloudFront distribution `E3UW98EHZSA0FU` at
+`d2m3yolcjdy6d2.cloudfront.net`. Its dedicated native trial uses `g4dn.2xlarge`
+with 8 vCPU and 32 GiB host memory for pinned Ubuntu, Isaac and internal Matterix.
+The supplied application's smaller inference host and ECS task settings do not
+meet that host profile. Both use a T4 GPU, whose suitability for Academy still
+depends on the native image and browser acceptance gates.
+
+Academy follows AC's CloudFront identification convention: `comment = local.name`
+and a `Name = local.name` tag, where `local.name` is `matterix-academy-dev` in this
+environment. The existing `Application`, `Environment` and `ManagedBy` tags
+already match AC's convention. See the pinned
+[CloudFront naming](https://github.com/AccelerationConsortium/infrastructure-modules/blob/9a6f82de8763745de16e6e86050f4721b90886bb/modules/generic/cloudfront/main.tf#L1-L8)
+and [Name tag](https://github.com/AccelerationConsortium/infrastructure-modules/blob/9a6f82de8763745de16e6e86050f4721b90886bb/modules/generic/cloudfront/main.tf#L171-L176).
+This metadata alignment preserves the existing distribution and application.
+Do not copy SDL6's `enable_cognito = false`, database, email, certificate or
+domain settings into Academy: its API relies on Cognito JWT identity, and those
+resources belong to the supplied application's configuration.
 
 The accessible [core dev configuration](https://github.com/AccelerationConsortium/core-infrastructure/blob/521f4c0462e750f1e47886abe88f0228a704c166/platform/vars/dev.tfvars)
 and [fullstack template dev configuration](https://github.com/AccelerationConsortium/platform-templates/blob/085e6aa59b57bd33e5a728f984b1db7036c620f3/unified-react-backend-app/platform/vars/dev.tfvars)
