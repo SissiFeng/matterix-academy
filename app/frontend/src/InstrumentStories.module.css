@@ -33,15 +33,6 @@
   margin-bottom: 30px;
 }
 
-.eyebrow {
-  margin: 0 0 13px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
 .header h1,
 .header h2 {
   margin: 0;
@@ -55,14 +46,6 @@
 .header h1 span,
 .header h2 span {
   color: var(--brand-text);
-}
-
-.introduction {
-  max-width: 290px;
-  margin: 0 0 5px;
-  color: var(--ink-2);
-  font-size: 14px;
-  line-height: 1.65;
 }
 
 .instrumentChoices {
@@ -106,19 +89,11 @@
 
 .instrumentName {
   display: block;
-  margin-bottom: 5px;
+  margin: 0;
   font-family: "Manrope", sans-serif;
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.025em;
-}
-
-.instrumentDescription {
-  display: block;
-  max-width: 230px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.5;
 }
 
 .choiceIndicator {
@@ -268,14 +243,6 @@
 .chapterCount span:last-child {
   color: var(--muted);
   font-size: 12px;
-}
-
-.chapterLabel {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
 }
 
 .caption h3 {
@@ -472,13 +439,6 @@
   font-weight: 650;
 }
 
-.workflowChoices small {
-  color: var(--muted);
-  font-family: "DM Sans", sans-serif;
-  font-size: 9px;
-  font-weight: 400;
-}
-
 .workflowChoices p {
   margin: 8px 0 0;
   color: var(--ink-2);
@@ -497,23 +457,9 @@
 .designActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 22px;
+  flex-wrap: wrap;
+  gap: 12px 20px;
   margin-top: 21px;
-}
-
-.designActions > p {
-  max-width: 270px;
-  margin: 0;
-  color: var(--ink-2);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.designActions > div {
-  display: flex;
-  align-items: center;
-  gap: 16px;
 }
 
 .primaryButton {
@@ -594,27 +540,13 @@
     margin-bottom: 18px;
   }
 
-  .visualTopline > span:last-child {
-    display: none;
-  }
-
   .miniInstrument {
     width: 100px;
     flex-basis: 100px;
   }
 
-  .instrumentDescription {
-    font-size: 10px;
-  }
-
   .designActions {
     align-items: flex-start;
-  }
-
-  .designActions > div {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 3px 14px;
   }
 }
 
@@ -624,11 +556,6 @@
     flex-direction: column;
     gap: 18px;
     margin-bottom: 24px;
-  }
-
-  .introduction {
-    max-width: 430px;
-    font-size: 13px;
   }
 
   .instrumentChoices {
@@ -654,11 +581,6 @@
     font-size: 14px;
   }
 
-  .instrumentDescription {
-    max-width: 200px;
-    font-size: 10px;
-  }
-
   .choiceIndicator {
     position: absolute;
     top: 7px;
@@ -677,10 +599,6 @@
 
   .visualTopline {
     padding: 0 13px;
-  }
-
-  .visualTopline > span:last-child {
-    display: inline;
   }
 
   .storyText {
@@ -788,16 +706,7 @@
   }
 
   .designActions {
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .designActions > p {
-    max-width: 100%;
-  }
-
-  .designActions > div {
-    justify-content: flex-start;
+    gap: 8px 18px;
   }
 
   .boundary {

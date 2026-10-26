@@ -20,6 +20,7 @@ import {
   SkipForward,
   Trash2,
   TriangleAlert,
+  Unplug,
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
 import type { Action, Experiment, Session } from "./types";
@@ -65,12 +66,14 @@ export default function WorkflowStudio({
   onChange,
   onBack,
   onError,
+  onConnect,
   registerLeaveGuard,
 }: {
   session: Session;
   onChange: (session: Session) => void;
   onBack: () => void;
   onError: (message: string) => void;
+  onConnect: () => void;
   registerLeaveGuard: (guard: (() => boolean) | null) => void;
 }) {
   const [draft, setDraft] = useState<Experiment>(() =>
@@ -339,13 +342,10 @@ export default function WorkflowStudio({
       </div>
       <header className={s.heading}>
         <div>
-          <p className={s.eyebrow}>
-            {INSTRUMENT_NAMES[instrument]} / CREATE & EXPLORE
-          </p>
+          <p className={s.eyebrow}>{INSTRUMENT_NAMES[instrument]}</p>
           <h1>
             Workflow studio<span>.</span>
           </h1>
-          <p>Make a plan. Move some liquid. See where your idea takes you.</p>
         </div>
         <div className={s.headerActions}>
           <span className={s.saved} role="status">
@@ -374,6 +374,13 @@ export default function WorkflowStudio({
             }}
           >
             <Monitor size={16} /> Native Matterix
+          </button>
+          <button
+            className={s.secondary}
+            disabled={busy || dirty}
+            onClick={onConnect}
+          >
+            <Unplug size={16} /> Connect an instrument
           </button>
         </div>
       </header>
@@ -435,10 +442,7 @@ export default function WorkflowStudio({
           tabIndex={-1}
         >
           <div className={s.sectionHeading}>
-            <div>
-              <span className={s.sectionNumber}>01</span>
-              <h2>Build your workflow</h2>
-            </div>
+            <h2>Workflow</h2>
             <span>{draft.actions.length} / 64 blocks</span>
           </div>
           <div className={s.starterRow}>
@@ -465,10 +469,6 @@ export default function WorkflowStudio({
               Load starter
             </button>
           </div>
-          <p className={s.subtle}>
-            Add a block, then change its volume or destination. Use the arrows
-            to change the order.
-          </p>
           <div
             className={s.palette}
             role="group"
@@ -633,11 +633,6 @@ export default function WorkflowStudio({
               </button>
             </div>
           )}
-          {!empty && (
-            <p className={s.planEnd}>
-              <span /> End of workflow
-            </p>
-          )}
         </section>
         <aside className={s.preview}>
           <section
@@ -668,12 +663,12 @@ export default function WorkflowStudio({
               {session.status === "draft"
                 ? empty
                   ? "Add at least one block to run your idea."
-                  : "Your design is ready to explore. Changes save when you run."
+                  : "Changes save when you run."
                 : session.status === "completed"
-                  ? "Sequence completed. Explore the model observations below."
+                  ? "Sequence completed."
                   : session.status === "faulted"
-                    ? "The model paused at a useful learning moment. Review the hint below."
-                    : `Next: ${activeStep ? ACTION_LABELS[activeStep.kind] : "Finish"}. ${session.status === "running" && !auto ? "Continue when you are ready." : "You can inspect one step at a time."}`}
+                    ? "Review the step below, then reset and edit."
+                    : `Next: ${activeStep ? ACTION_LABELS[activeStep.kind] : "Finish"}.`}
             </p>
             {session.status === "running" && auto ? (
               <button
@@ -748,15 +743,11 @@ export default function WorkflowStudio({
             aria-label={`${INSTRUMENT_NAMES[instrument]} teaching deck`}
           >
             <div className={s.sectionHeading}>
-              <div>
-                <span className={s.sectionNumber}>02</span>
-                <h2>Your teaching deck</h2>
-              </div>
-              <span>{instrument === "flex" ? "FLEX" : "OT-2"}</span>
+              <h2>Deck</h2>
+              <span>SCHEMATIC</span>
             </div>
             <div className={s.deckCaption}>
               <span>BACK OF INSTRUMENT</span>
-              <span>TOP VIEW · SCHEMATIC</span>
             </div>
             <div className={s.deck} data-testid="studio-deck">
               {slots(instrument).map((slot) => {
@@ -828,8 +819,8 @@ export default function WorkflowStudio({
                 </select>
               </label>
               <p>
-                Select a piece, then a deck slot. Occupied slots swap. Waste
-                stays at {draft.layout.waste}.
+                Choose a slot to place the selected labware. Occupied slots
+                swap.
               </p>
             </div>
             <details className={s.setup}>
@@ -910,10 +901,7 @@ export default function WorkflowStudio({
       </div>
       <section className={s.observations} aria-label="Model observations">
         <div className={s.sectionHeading}>
-          <div>
-            <span className={s.sectionNumber}>03</span>
-            <h2>Observe. Change. Try again.</h2>
-          </div>
+          <h2>Observations</h2>
           <span>SYNTHETIC RESULTS</span>
         </div>
         {fault && (

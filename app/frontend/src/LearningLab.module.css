@@ -59,23 +59,13 @@
   font-size: clamp(24px, 2.4vw, 35px);
   line-height: 1.5;
   letter-spacing: -1px;
-  margin: 16px 0;
-}
-.lessonCard h2 em {
-  font-style: normal;
-  color: var(--brand-text);
+  margin: 0 0 16px;
 }
 .lessonCard p {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.9;
   margin-bottom: 20px;
-}
-.lessonCard > div > small {
-  display: block;
-  margin-top: 13px;
-  font-size: 11px;
-  color: var(--muted);
 }
 .lessonIndex {
   align-self: center;
@@ -189,10 +179,6 @@
 .phaseNav {
   padding-top: 5px;
 }
-.phaseNav > .eyebrow {
-  font-size: 9px;
-  margin-bottom: 20px;
-}
 .phaseNav > button {
   display: flex;
   width: 100%;
@@ -237,17 +223,6 @@
   background: var(--brand);
   color: var(--on-brand);
   border-color: var(--brand);
-}
-.pathNote {
-  margin: 22px 8px;
-  border-top: 1px solid var(--lesson-line);
-  padding-top: 25px;
-  color: var(--muted);
-}
-.pathNote p {
-  margin-top: 11px;
-  font-size: 12px;
-  line-height: 2;
 }
 .phaseNav > a {
   display: inline-block;
@@ -764,8 +739,6 @@
     gap: 5px;
     padding: 0;
   }
-  .phaseNav > .eyebrow,
-  .pathNote,
   .phaseNav > a {
     display: none;
   }

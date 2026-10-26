@@ -9,12 +9,7 @@ export function DiscoveryInvitation({
   return (
     <section className={s.invitation} aria-label="Discover the experiment loop">
       <div>
-        <span className={s.eyebrow}>BEYOND THE PIPETTE</span>
-        <h2>Learn to design the experiment.</h2>
-        <p>
-          Start with a question. Prepare samples, measure what matters, and
-          decide what to try next.
-        </p>
+        <h2>Design an experiment.</h2>
         <button className={s.primary} onClick={() => onNavigate("discovery")}>
           Open discovery studio <ArrowRight size={17} />
         </button>
@@ -31,7 +26,6 @@ export function DiscoveryInvitation({
           <BookOpen size={20} />
           <span>
             <strong>Workflow marketplace</strong>
-            <small>Six research papers. Six ways to think about a lab.</small>
           </span>
           <ArrowRight size={17} />
         </button>
@@ -39,7 +33,6 @@ export function DiscoveryInvitation({
           <GitBranch size={20} />
           <span>
             <strong>Inside the Flex connector</strong>
-            <small>Follow an action from software to the device API.</small>
           </span>
           <ArrowRight size={17} />
         </button>

@@ -1,6 +1,12 @@
 # Status
 
-Single source for current project status. Updated 2026-10-23. Dated evidence lives in [VALIDATION.md](VALIDATION.md) and [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md); this page only summarizes it. When this page and an older document disagree, this page wins and the older document should be corrected.
+Single source for current project status. Student trial source updated 2026-10-26
+in [PR #10](https://github.com/SissiFeng/matterix-academy/pull/10); the
+[live release record](https://d2m3yolcjdy6d2.cloudfront.net/version.json) identifies
+the actual AWS application commit. Infrastructure observations below remain dated
+2026-10-23 unless their linked evidence says otherwise. Dated evidence lives in
+[VALIDATION.md](VALIDATION.md) and [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md).
+See the [student trial guide](STUDENT-TRIAL.md) for all feature entry points.
 
 Legend: **Verified** = observed in a real environment. **Implemented** = code and automated tests exist; no real-environment evidence. **Blocked** = waiting on something outside this repository.
 
@@ -14,6 +20,20 @@ Legend: **Verified** = observed in a real environment. **Implemented** = code an
 | Workflow judgment course | Verified locally | English synthetic-only review, repair, trial, scripted reconciliation and conclusion; see [course contract](WORKFLOW-JUDGMENT-COURSE.md). 539 backend tests and 45 browser journeys passed; see [validation](VALIDATION.md) |
 | Flex and OT-2 introductions + visual Workflow Studio | Verified locally | Public chaptered animations, editable blocks and instrument-specific decks; free designs use model checks without a prescribed lesson target. See [studio contract](INSTRUMENT-STUDIO.md) |
 | Page-level code splitting | Implemented | Main bundle ~374 kB including public instrument illustrations; studio remains lazy loaded |
+
+## Sim–Real connector development
+
+| Area | State | Notes |
+|---|---|---|
+| Connect an instrument page | Implemented and tested locally | English Mac setup with chip selection, pairing, fresh probe, exact-plan preflight, refresh and unknown-outcome recovery; included in the normal application release |
+| Machine control plane and companion | Implemented locally | Scoped credentials, atomic device locks, local operator confirmation, immutable receipts and no automatic replay; fixtures are software evidence |
+| Flex / OT-2 protocol compiler | Verified in Opentrons 9.0 software simulator | Both execute pickup, aspiration, dispense and drop with actual labware definitions; no native Matterix or physical validation |
+| Mac desktop bundle | Local candidate | Includes Python; signing/notarization and actual installation acceptance remain pending |
+| AC GitHub → private S3 | Mechanism implemented | Candidate intake and reviewed immutable publication; no approved artifacts, credentials or S3 writes from this change |
+| Physical workflow enablement | **Blocked** | Requires approved connector/installer, actual SiLA/calibration and robot commissioning, and same-plan native DT qualification. OT-2 also lacks required runtime identity and native asset support |
+
+See [connector setup and acceptance](connectors/SETUP.md). Physical execution is
+disabled by default and no robot was operated during this implementation.
 
 ## AWS (account 247893369214, ca-central-1)
 

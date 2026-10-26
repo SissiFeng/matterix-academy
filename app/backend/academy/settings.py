@@ -19,6 +19,7 @@ class Settings:
     gateway_url: str = ""
     gateway_token: str = ""
     remote_enabled: bool = False
+    connector_real_enabled: bool = False
     self_signup_email_domains: tuple[str, ...] = ()
 
     def __post_init__(self):
@@ -64,6 +65,8 @@ class Settings:
             gateway_url=os.getenv("ACADEMY_GATEWAY_URL", ""),
             gateway_token=os.getenv("ACADEMY_GATEWAY_TOKEN", ""),
             remote_enabled=os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true",
+            connector_real_enabled=os.getenv("ACADEMY_CONNECTOR_REAL_ENABLED", "false").lower()
+            == "true",
             self_signup_email_domains=tuple(
                 json.loads(os.getenv("ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS", "[]"))
             ),

@@ -196,12 +196,8 @@ export default function SimulationLab() {
     <div className={s.page}>
       <header className={s.heading}>
         <div>
-          <span className={s.eyebrow}>SIMULATION LAB / OT FLEX</span>
           <h1>Four sources. One mixture.</h1>
-          <p>
-            Watch a saved workflow prepare a 40 µL sample, then inspect what the
-            simulator observed.
-          </p>
+          <p>Opentrons Flex · 40 µL mixture</p>
         </div>
         <div className={s.launch}>
           {hasEnded && run.cleanup?.reset_verified ? (
@@ -344,10 +340,7 @@ export default function SimulationLab() {
       </div>
       <section className={s.observations}>
         <div className={s.sectionTitle}>
-          <div>
-            <span className={s.eyebrow}>OBSERVED IN ISAAC</span>
-            <h2>Inside this run</h2>
-          </div>
+          <h2>Native observations</h2>
           <span>
             {state
               ? `Revision ${state.revision} · tick ${state.simulation_tick}`

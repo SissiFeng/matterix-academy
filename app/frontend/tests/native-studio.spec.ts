@@ -110,7 +110,7 @@ test("unqualified studio offers teaching without claiming native support", async
     .getByRole("button", { name: "Native Matterix", exact: true })
     .click();
   await expect(
-    panel.getByRole("heading", { name: "Take this design into Matterix." }),
+    panel.getByRole("heading", { name: "Matterix simulation" }),
   ).toBeInViewport();
   await page.screenshot({
     path: "/tmp/academy-native-studio-unavailable-mobile.png",
@@ -266,7 +266,7 @@ test("native UI fixture submits the saved revision once, restores its viewport, 
     panel.getByText(/Native motion and semantic liquid accounting/),
   ).toBeVisible();
   await expect(
-    panel.getByText(/They do not validate fluid physics or chemistry/),
+    panel.getByText(/not validated fluid physics or chemistry/),
   ).toBeVisible();
   run = { ...run, version: 4, cleanup: { reset_verified: true } };
   session = {

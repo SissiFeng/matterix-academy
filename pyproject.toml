@@ -10,6 +10,7 @@ dependencies = [
 
 [project.optional-dependencies]
 native-worker = ["aiortc==1.14.0", "aioice==0.10.2", "websockets>=15,<17", "numpy>=2,<3"]
+companion = ["grpcio==1.81.1"]
 
 [dependency-groups]
 dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "moto[dynamodb]>=5,<6"]

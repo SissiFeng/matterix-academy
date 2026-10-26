@@ -232,13 +232,8 @@ export function WorkflowMarketplace({
   return (
     <div className={s.page}>
       <header className={s.hero}>
-        <span className={s.eyebrow}>THE RESEARCH SHELF</span>
         <h1>Workflow marketplace</h1>
-        <p>Borrow a method. Combine an idea. Find a new question.</p>
-        <small>
-          A curated collection of published research, translated into
-          experimental building blocks.
-        </small>
+        <p>Published methods to adapt into your own experimental design.</p>
       </header>
       <div className={s.searchBar}>
         <label>
@@ -474,7 +469,6 @@ function GantryExplorer({
     <section className={s.section}>
       <div className={s.sectionHeading}>
         <div>
-          <span className={s.eyebrow}>MOTION IS A DESIGN RESOURCE</span>
           <h2>What else could the gantry help you do?</h2>
         </div>
       </div>
@@ -736,19 +730,13 @@ export function DiscoveryStudio({
       )}
       <fieldset className={s.studioBody} disabled={navigationPending || busy}>
         <header className={s.hero}>
-          <span className={s.eyebrow}>DESIGN BEFORE AUTOMATION</span>
           <h1>Discovery studio</h1>
-          <p>The pipette prepares a sample. You design what we learn.</p>
-          <small>
-            Use Prepare → Test → Optimize as a map for experimental thinking,
-            with controls and sample history connecting every stage.
-          </small>
         </header>
         <DiscoveryLoop />
         <section className={s.section}>
           <div className={s.sectionHeading}>
             <div>
-              <span className={s.eyebrow}>YOUR EXPERIMENT / DESIGN ONLY</span>
+              <span className={s.eyebrow}>DESIGN ONLY</span>
               <h2>Compose a preparation route</h2>
             </div>
             <span>{brief.methods.length} methods selected</span>
@@ -863,7 +851,6 @@ export function DiscoveryStudio({
         />
         <section className={s.briefSection}>
           <div>
-            <span className={s.eyebrow}>CLOSE THE LOOP ON PAPER FIRST</span>
             <h2>Write your experiment brief</h2>
             <p>
               A useful plan says what will change, what will be measured, and

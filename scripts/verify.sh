@@ -8,7 +8,9 @@ fi
 uv run ruff check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
 uv run ruff format --check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
 uv run python scripts/matterix-sync.py check-policy
-uv run --extra native-worker pytest -q
+uv run ruff check scripts/connector-release.py scripts/connector-qualify.py scripts/connector-resolve.py scripts/package-companion.py
+uv run ruff format --check scripts/connector-release.py scripts/connector-qualify.py scripts/connector-resolve.py scripts/package-companion.py
+uv run --extra native-worker --extra companion pytest -q
 npm --prefix app/frontend run build
 npm --prefix app/frontend run format:check
 node --check app/frontend/commissioning.mjs

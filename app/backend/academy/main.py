@@ -8,6 +8,10 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ._version import __version__
 from .auth import identify, local_signer
+from .connections import ConnectionService
+from .connector_api import router as connector_router
+from .connector_catalog import approved_release
+from .connector_catalog import router as catalog_router
 from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
 from .learning import present, readiness
@@ -40,6 +44,11 @@ def create_app(settings: Settings | None = None, store=None):
     )
     app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
     app.state.onboarding = OnboardingService(app.state.store)
+    app.state.connections = ConnectionService(
+        app.state.store, enabled=settings.connector_real_enabled, approved_release=approved_release
+    )
+    app.include_router(connector_router)
+    app.include_router(catalog_router)
     app.state.media = MediaService(app.state.runs)
     if settings.runtime == "local":
         app.add_middleware(

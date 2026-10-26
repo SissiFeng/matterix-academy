@@ -159,14 +159,10 @@ export function CapabilityMap({ onBuild }: { onBuild: () => void }) {
   return (
     <section className={s.developer}>
       <header className={s.heading}>
-        <span className={s.eyebrow}>
-          DEVELOPER VIEW / FROM NATIVE CAPABILITY TO PUBLIC CONTRACT
-        </span>
         <h2>API ↔ SiLA mapping</h2>
         <p>
-          Pick a capability and compare its native inputs, adapter logic and
-          client-facing meaning. The examples come from the pinned Flex
-          connector.
+          Compare native inputs, adapter logic and SiLA contracts from the
+          pinned Flex connector.
         </p>
       </header>
       <div className={s.direction}>
@@ -327,15 +323,7 @@ export function DevelopmentPath({ onMapping }: { onMapping: () => void }) {
   return (
     <section className={s.developer}>
       <header className={s.heading}>
-        <span className={s.eyebrow}>
-          DEVELOPER VIEW / BUILD ONE CAPABILITY END TO END
-        </span>
         <h2>Build a connector</h2>
-        <p>
-          Work from the native interface to a clear contract, then through
-          implementation and evidence. Each step produces something another
-          developer can inspect.
-        </p>
       </header>
       <NativeInterface />
       <nav className={s.sequence} aria-label="Connector development steps">
@@ -353,7 +341,6 @@ export function DevelopmentPath({ onMapping }: { onMapping: () => void }) {
       </nav>
       <div className={s.stage} aria-live="polite">
         <div className={s.stageIntro}>
-          <span className={s.eyebrow}>STEP {stage + 1} OF 6</span>
           <h3>{step.question}</h3>
           <div className={s.artifact}>
             <Code2 size={25} />
