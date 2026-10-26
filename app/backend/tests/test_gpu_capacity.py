@@ -211,6 +211,50 @@ def test_measured_capacity_keeps_native_qualification_false(tmp_path):
 
 
 @pytest.mark.parametrize(
+    "name,total,passes",
+    [
+        ("Tesla T4", 15360, True),
+        ("NVIDIA T4", 15360, True),
+        ("Tesla T4", 15359, False),
+        ("NVIDIA A10G", 22888, True),
+        ("NVIDIA A10G", 15360, False),
+        ("NVIDIA L4", 21999, False),
+        ("NVIDIA L40S", 46068, True),
+        ("NVIDIA A100", 40000, False),
+    ],
+)
+def test_measured_capacity_enforces_each_reviewed_gpu_memory_floor(tmp_path, name, total, passes):
+    evidence(tmp_path)
+    (tmp_path / "gpu-memory.csv").write_text(
+        f"2026/10/26 14:01:00.000, {name}, {total}, 1000\n"
+        f"2026/10/26 14:01:01.000, {name}, {total}, 12000\n"
+    )
+    report = capacity_report(tmp_path, 0, 42, cpu_count=8, mem_total_kib=33000000)
+    assert report["capacity_probe_passed"] is passes
+    assert not report["workflow_verified"] and not report["worker_qualified"]
+
+
+@pytest.mark.parametrize(
+    "second",
+    [
+        "NVIDIA A10G, 22888, 12000",
+        "NVIDIA L4, 22889, 12000",
+        "NVIDIA L4, 22888, 22889",
+        "NVIDIA L4, 22888, -1",
+        "NVIDIA L4, N/A, 1000",
+        "malformed",
+    ],
+)
+def test_measured_capacity_rejects_inconsistent_or_invalid_gpu_samples(tmp_path, second):
+    evidence(tmp_path)
+    (tmp_path / "gpu-memory.csv").write_text(
+        f"2026/10/26 14:01:00.000, NVIDIA L4, 22888, 1000\n2026/10/26 14:01:01.000, {second}\n"
+    )
+    report = capacity_report(tmp_path, 0, 42, cpu_count=8, mem_total_kib=33000000)
+    assert not report["capacity_probe_passed"]
+
+
+@pytest.mark.parametrize(
     "failure", ["timeout", "oom", "gpu", "timing", "journal", "sampler", "ram", "cpu"]
 )
 def test_probe_failure_preserves_evidence_and_never_passes(tmp_path, failure):
