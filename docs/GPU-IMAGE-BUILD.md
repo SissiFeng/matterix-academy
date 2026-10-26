@@ -38,8 +38,13 @@ not install it or accept its licenses. The Packer build requires explicit licens
 acceptance. Keep that driver fixed until compatibility is retested.
 
 The base Ubuntu AMI must be a reviewed, region-specific 24.04 x86_64 image with
-SSM enabled and without an incompatible loaded display driver. Never use a latest
-image lookup. OS prerequisites are listed in `image/ubuntu-packages.txt`; actual
+SSM enabled. Before any private payload upload, `prepare-gpu.sh` installs the
+Nouveau blacklist and updates initramfs; if Nouveau is loaded it reboots. Packer
+allows that disconnect, waits 30 seconds and retries the next shell connection for
+up to ten minutes. Provisioning rejects a still-loaded Nouveau module before
+extracting payloads and again before installing the pinned NVIDIA driver. It never
+tries to unload a live driver. A failed initramfs update aborts before reboot.
+Never use a latest image lookup. OS prerequisites are listed in `image/ubuntu-packages.txt`; actual
 kernel, installed dpkg versions and SSM version must be retained with the resulting
 image. OS repositories are not a bit-for-bit snapshot: review any rebuild's OS
 delta rather than claiming identical image bytes. Every build emits fresh inventories.

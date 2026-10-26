@@ -126,7 +126,16 @@ source "amazon-ebs" "internal_flex" {
 }
 build {
   sources = ["source.amazon-ebs.internal_flex"]
-  provisioner "shell" { inline = ["mkdir -p /tmp/academy-image-input && chmod 700 /tmp/academy-image-input"] }
+  provisioner "shell" {
+    script            = "${path.root}/prepare-gpu.sh"
+    execute_command   = "chmod +x {{ .Path }}; sudo bash '{{ .Path }}'"
+    expect_disconnect = true
+    pause_after       = "30s"
+  }
+  provisioner "shell" {
+    start_retry_timeout = "10m"
+    inline              = ["mkdir -p /tmp/academy-image-input && chmod 700 /tmp/academy-image-input"]
+  }
   provisioner "file" {
     source      = "${var.input_dir}/academy.tar.gz"
     destination = "/tmp/academy-image-input/academy.tar.gz"
