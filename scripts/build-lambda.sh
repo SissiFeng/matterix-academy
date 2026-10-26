@@ -16,7 +16,8 @@ uv pip install --python-version 3.12 --python-platform x86_64-manylinux2014 --on
 python3 - <<'PY'
 from pathlib import Path
 import shutil, zipfile
-shutil.copytree('app/backend/academy', 'build/lambda/academy', ignore=shutil.ignore_patterns('__pycache__'), dirs_exist_ok=True)
+for package in ('academy', 'labtwin'):
+    shutil.copytree(f'app/backend/{package}', f'build/lambda/{package}', ignore=shutil.ignore_patterns('__pycache__'), dirs_exist_ok=True)
 with zipfile.ZipFile('build/lambda.zip','w',zipfile.ZIP_DEFLATED) as archive:
     for file in sorted(Path('build/lambda').rglob('*')):
         if file.is_file() and '__pycache__' not in file.parts:
