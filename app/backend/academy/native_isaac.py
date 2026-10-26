@@ -42,7 +42,7 @@ def run(folder):
     plan = request["experiment"]
     root = Path(config["matterix_root"]).resolve()
     activate(root)
-    from .native_kit import launch_native_app
+    from .native_kit import close_native_app, launch_native_app
 
     app = launch_native_app(
         headless=config["headless"],
@@ -393,7 +393,7 @@ def run(folder):
                 time.sleep(0.05)
         frame.close()
         env.close()
-        app.close()
+        close_native_app(app)
 
 
 def main():

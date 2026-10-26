@@ -111,11 +111,19 @@ def fake_runtime(monkeypatch, root, *, token_escape=False):
             for name in ("headless", "enable_cameras"):
                 parser.add_argument("--" + name, action="store_true")
 
-        def __init__(self, args):
+        def __init__(self, args, **config):
             assert root.is_dir() and root.stat().st_mode & 0o777 == 0o700
             # Match the exact pinned Lab implementation's whitespace splitting.
             assert args.kit_args.split() == ["--portable", "--portable-root", str(root)]
             observed.append(vars(args))
+            app.fast_shutdown = config.get("fast_shutdown", True)
+
+            def close():
+                app.closed = True
+                if app.fast_shutdown:
+                    raise SystemExit(0)
+
+            app.close = close
             self.app = app
 
     package = ModuleType("isaaclab")
@@ -147,6 +155,7 @@ def test_shared_launcher_preserves_render_flags_and_proves_private_kit_paths(
     app, observed = fake_runtime(monkeypatch, root)
     assert native_kit.launch_native_app(headless=headless) is app
     assert not app.closed
+    assert app.fast_shutdown is False
     args = observed[0]
     assert args["headless"] is headless
     assert args["enable_cameras"] is True
@@ -155,6 +164,8 @@ def test_shared_launcher_preserves_render_flags_and_proves_private_kit_paths(
     assert set(paths) == {"cache", "data", "logs", "omni_cache", "omni_data", "omni_logs"}
     for path in paths.values():
         assert Path(path).is_relative_to(root) and Path(path).is_dir()
+    native_kit.close_native_app(app)
+    assert app.closed  # The caller remains alive to save acceptance evidence.
 
 
 def test_kit_token_escape_closes_app_and_cannot_create_outside_directory(cache, monkeypatch):
@@ -175,3 +186,93 @@ def test_token_symlink_inside_cache_cannot_redirect_writes(cache, tmp_path):
     with pytest.raises(RuntimeError, match="escaped"):
         native_kit.verify_kit_paths(root, tokens)
     assert list(outside.iterdir()) == []
+
+
+def test_shutdown_preserves_active_failure_and_bounds_cleanup(cache, monkeypatch, capsys):
+    app, _ = fake_runtime(monkeypatch, cache / "academy-kit")
+    native_kit.launch_native_app(headless=True)
+    watchdog = []
+    monkeypatch.setattr(
+        native_kit.faulthandler,
+        "dump_traceback_later",
+        lambda delay, **kw: watchdog.append((delay, kw["exit"])),
+    )
+    monkeypatch.setattr(
+        native_kit.faulthandler, "cancel_dump_traceback_later", lambda: watchdog.append("cancelled")
+    )
+    with pytest.raises(RuntimeError, match="native scene failed"):
+        try:
+            raise RuntimeError("native scene failed")
+        finally:
+            native_kit.close_native_app(app)
+    assert app.closed
+    assert watchdog == [(60, True), "cancelled"]
+    assert "native scene failed" in capsys.readouterr().err
+
+
+def test_scene_failure_is_recorded_and_raised_after_graceful_close(cache, monkeypatch, tmp_path):
+    from academy import native_image_probe, native_isaac
+
+    app, _ = fake_runtime(monkeypatch, cache / "academy-kit")
+    monkeypatch.setattr(native_isaac, "activate", lambda _: None)
+    monkeypatch.setitem(sys.modules, "gymnasium", ModuleType("gymnasium"))
+    monkeypatch.setitem(sys.modules, "numpy", ModuleType("numpy"))
+    monkeypatch.setitem(sys.modules, "matterix_tasks", ModuleType("matterix_tasks"))
+    tasks = ModuleType("isaaclab_tasks.utils")
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("native scene configuration failed")
+
+    tasks.parse_env_cfg = fail
+    monkeypatch.setitem(sys.modules, "isaaclab_tasks.utils", tasks)
+    config, output = tmp_path / "config.json", tmp_path / "result.json"
+    config.write_text(
+        json.dumps(
+            {"matterix_root": str(tmp_path / "engine"), "assets_data_dir": str(tmp_path / "assets")}
+        )
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["probe", "--confirm-native-probe", "--config", str(config), "--output", str(output)],
+    )
+    with pytest.raises(RuntimeError, match="native scene configuration failed"):
+        native_image_probe.main()
+    assert app.closed
+    report = json.loads(output.read_text())
+    assert report["scene_render_ready"] is False
+    assert not report["workflow_verified"] and not report["worker_qualified"]
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_studio_cli_persists_result_after_native_close(cache, monkeypatch, tmp_path, failed):
+    from academy import native_studio_isaac
+
+    app, _ = fake_runtime(monkeypatch, cache / "academy-kit")
+
+    def native_run(folder, *, probe):
+        assert probe
+        launched = native_kit.launch_native_app(headless=True)
+        try:
+            if failed:
+                raise RuntimeError("fixture native startup failure")
+            (folder / "studio-probe.json").write_text(json.dumps({"passed": True}))
+        finally:
+            native_kit.close_native_app(launched)
+
+    monkeypatch.setattr(native_studio_isaac, "run", native_run)
+    config, output = tmp_path / "config.json", tmp_path / "result.json"
+    config.write_text(json.dumps({"engine_version": "e" * 40, "asset_version": "a" * 40}))
+    monkeypatch.setattr(
+        sys, "argv", ["studio", "--probe", "--config", str(config), "--output", str(output)]
+    )
+    if failed:
+        with pytest.raises(SystemExit, match="did not pass"):
+            native_studio_isaac.main()
+    else:
+        native_studio_isaac.main()
+    assert app.closed
+    report = json.loads(output.read_text())
+    assert report["passed"] is (not failed)
+    if failed:
+        assert report["error"] == "fixture native startup failure"

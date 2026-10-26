@@ -46,6 +46,20 @@ def test_full_rtx_candidates_meet_the_reviewed_commissioning_minimum(instance_ty
 
 
 @pytest.mark.parametrize("instance_type,gpu", CANDIDATES)
+@pytest.mark.parametrize("physical_memory_mib", [32767, 32768])
+def test_os_reservation_allowance_does_not_lower_ec2_physical_memory_minimum(
+    instance_type, gpu, physical_memory_mib
+):
+    row = instance(instance_type, gpu)
+    row["MemoryInfo"]["SizeInMiB"] = physical_memory_mib
+    if physical_memory_mib == 32768:
+        builder().validate_instance(row)
+    else:
+        with pytest.raises(ValueError, match="Build requires"):
+            builder().validate_instance(row)
+
+
+@pytest.mark.parametrize("instance_type,gpu", CANDIDATES)
 @pytest.mark.parametrize(
     "bad", ["ram", "cpu", "fractional", "partition", "vram", "gpu", "arch", "type"]
 )
@@ -210,6 +224,41 @@ def test_measured_capacity_keeps_native_qualification_false(tmp_path):
     assert json.loads((tmp_path / "capacity.json").read_text()) == report
 
 
+def test_measured_g4_os_reservation_does_not_reject_32_gib_host(tmp_path):
+    # Replay the measured 2026-10-26 g4dn.2xlarge totals in synthetic log fixtures.
+    # MemTotal excludes 1.025 GiB reserved from EC2's verified physical 32 GiB.
+    builder().validate_instance(instance("g4dn.2xlarge", "T4"))
+    evidence(tmp_path)
+    (tmp_path / "probe-time.txt").write_text("Maximum resident set size (kbytes): 15671928\n")
+    (tmp_path / "gpu-memory.csv").write_text(
+        "2026/10/26 18:07:51.000, Tesla T4, 15360, 1000\n"
+        "2026/10/26 18:07:52.000, Tesla T4, 15360, 2581\n"
+    )
+    report = capacity_report(tmp_path, 0, 831, cpu_count=8, mem_total_kib=32479404)
+    assert report["capacity_probe_passed"]
+    assert report["os_visible_mem_total_kib"] == 32479404
+    assert report["minimum_os_visible_mem_total_kib"] == 30 * 1024 * 1024
+    assert report["os_visible_memory_sufficient"]
+    assert report["peak_process_rss_kib"] == 15671928
+    assert report["gpu_memory_total_mib"] == 15360
+    assert report["peak_gpu_memory_used_mib"] == 2581
+    assert not report["workflow_verified"] and not report["worker_qualified"]
+    assert json.loads((tmp_path / "capacity.json").read_text()) == report
+
+
+@pytest.mark.parametrize(
+    "mem_total_kib,passes",
+    [(0, False), (16 * 1024 * 1024, False), (31457279, False), (31457280, True)],
+)
+def test_os_visible_memory_reservation_allowance_is_bounded(tmp_path, mem_total_kib, passes):
+    evidence(tmp_path)
+    report = capacity_report(tmp_path, 0, 42, cpu_count=8, mem_total_kib=mem_total_kib)
+    assert report["capacity_probe_passed"] is passes
+    assert report["os_visible_memory_sufficient"] is passes
+    assert report["os_visible_mem_total_kib"] == mem_total_kib
+    assert not report["workflow_verified"] and not report["worker_qualified"]
+
+
 @pytest.mark.parametrize(
     "name,total,passes",
     [
@@ -271,9 +320,11 @@ def test_probe_failure_preserves_evidence_and_never_passes(tmp_path, failure):
         124 if failure == "timeout" else 0,
         1800,
         cpu_count=4 if failure == "cpu" else 8,
-        mem_total_kib=16000000 if failure == "ram" else 33000000,
+        mem_total_kib=16000000 if failure == "ram" else 32479404,
     )
     assert not report["capacity_probe_passed"]
+    assert report["os_visible_memory_sufficient"] is (failure != "ram")
+    assert not report["workflow_verified"] and not report["worker_qualified"]
     assert (tmp_path / "capacity.json").is_file()
     if failure == "timeout":
         assert report["timeout_or_kill"]
