@@ -813,3 +813,65 @@ def test_pair_run_records_are_system_scoped(lab):
     lab.pump()
     record = lab.store.get(PAIR_RUNS, run["run_id"])
     assert record["requested_by"].startswith("local-")
+
+
+def test_ot2_home_readback_never_compares_firmware_mm_with_joint_metres(lab):
+    ot2 = workflows.profile_template("opentrons_ot2")
+    ot2["device_id"] = "ot2-a"
+    ot2["real"]["server_uuid"] = "ot2-uuid"
+    instruments = InstrumentService(lab.store)
+    instruments.register("ot2-a", "OT-2 A", ot2)
+    token, _ = instruments.issue_gateway("ot2-a", "ot2-a-mac")
+    worker = lab.store.get(WORKERS, "sim-1")
+    lab.store.put(
+        WORKERS,
+        "sim-1",
+        revised(worker, pair_models=["opentrons_flex", "opentrons_ot2"]),
+        worker["version"],
+    )
+
+    def firmware(kind, payload):
+        if kind == "inspect":
+            return {"server_uuid": "ot2-uuid", "is_simulating": False}
+        facts = {f"axis.{a}": Fact(0.0, Evidence.HARDWARE, "mm", "ot2.machine") for a in "XYZA"}
+        if kind == "snapshot":
+            return plain(Observation("ot2-firmware", facts, "r", "t"))
+        if kind == "execute":
+            return plain(Outcome(Status.SUCCEEDED, Observation("ot2-firmware", facts, "r", "t")))
+        return {"ok": True}
+
+    def native(kind, payload):
+        facts = {
+            f"joint.{i}": Fact(0.0, Evidence.SIMULATED, "m", "matterix.joint") for i in range(4)
+        }
+        if kind == "snapshot":
+            return plain(Observation("matterix", facts, "r", "t"))
+        if kind == "execute":
+            return plain(Outcome(Status.SUCCEEDED, Observation("matterix", facts, "r", "t")))
+        return {"ready": True}
+
+    gateway = FakeAgent(lab.machine, "/internal/gateway", token, {"profile": ot2}, firmware)
+    gateway.register()
+    lab.simulator.model = native
+    lab.api.put(
+        "/api/instruments/ot2-a/validation",
+        json={"expected_version": 1, "tolerances": {"axis.X": 0.5}},
+    )
+    reply = lab.api.post(
+        "/api/pair-runs",
+        json={"run_id": "ot2-paired-01", "instrument_id": "ot2-a", "mode": "paired"},
+    )
+    run = reply.json()
+    run = lab.api.post(
+        f"/api/pair-runs/{run['run_id']}/approve",
+        json={"expected_version": run["version"], "confirmation": confirm()},
+    ).json()
+    for _ in range(30):
+        gateway.poll()
+        lab.simulator.poll()
+    run = read(lab, "ot2-paired-01")
+    assert run["status"] == "completed", run["reason"]
+    assert [s["operation"]["action"] for s in run["steps"]] == ["home", "read_position"]
+    assert {c["status"] for s in run["steps"] for c in s["comparisons"]} == {"unavailable"}
+    rows = lab.api.get("/api/instruments/ot2-a/dataset").json()
+    assert rows["summary"]["residuals"] == []
