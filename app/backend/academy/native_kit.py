@@ -1,11 +1,13 @@
 """Keep Kit's mutable runtime files outside the independent, read-only code trees."""
 
 import argparse
+import faulthandler
 import json
 import os
 import stat
 import sys
 import tempfile
+import traceback
 from pathlib import Path
 
 
@@ -65,13 +67,28 @@ def launch_native_app(*, headless, protected_roots=()):
     if headless:
         flags += ["--headless"]
     flags += ["--kit_args=--portable --portable-root " + str(root)]
-    app = AppLauncher(parser.parse_args(flags)).app
+    # Kit's default fast shutdown terminates Python with status 0 inside close().
+    # Academy must return to its caller to persist probe results and propagate errors.
+    app = AppLauncher(parser.parse_args(flags), fast_shutdown=False).app
     try:
         import carb.tokens
 
         paths = verify_kit_paths(root, carb.tokens.get_tokens_interface())
         print("ACADEMY_KIT_PATHS=" + json.dumps(paths, sort_keys=True), flush=True)
     except BaseException:
-        app.close()
+        close_native_app(app)
         raise
     return app
+
+
+def close_native_app(app):
+    """Keep errors visible and bound graceful Kit teardown, including C-level hangs."""
+    if sys.exception() is not None:
+        traceback.print_exc()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    faulthandler.dump_traceback_later(60, exit=True, file=sys.__stderr__)
+    try:
+        app.close()
+    finally:
+        faulthandler.cancel_dump_traceback_later()

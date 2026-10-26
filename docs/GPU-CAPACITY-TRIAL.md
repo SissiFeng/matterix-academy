@@ -61,8 +61,14 @@ one 30-minute timeout plus a 30-second termination grace. Finalization retains:
 - `studio-probe.json`: saved-plan hash, completed native workflow, frame and reset
   checks, plus the path to its run artifacts under `/var/lib/academy-native/`.
 - `capacity.json`: elapsed time, GNU time peak process RSS, sampled peak GPU memory,
-  CPU count, OS-visible RAM and kernel OOM evidence. Linux reserves part of physical
-  RAM, so this host check allows 31 GiB visible after EC2 verifies 32 GiB physical.
+  CPU count, OS-visible RAM, its minimum/check result and kernel OOM evidence.
+  EC2 preflight still requires at least 32 GiB physical RAM. Linux `MemTotal`
+  excludes reserved memory; the 2026-10-26 G4 trial exposed 32,479,404 KiB
+  (30.9748 GiB), below the former 31 GiB floor. The host policy now requires at
+  least 30 GiB OS-visible RAM, allowing up to 2 GiB reserved on the minimum-size
+  host. This is an explicit allowance for the reviewed image, not an AWS capacity
+  guarantee. Preserve the raw value; peak process RSS is not free-memory or
+  whole-system headroom evidence. The native scene and Studio gates still apply.
 - `probe-time.txt`, `gpu-memory.csv`, `probe-kernel.log` and measurement timestamps.
 
 The reports and measurement logs live in `/etc/academy-native/evidence/`; retain

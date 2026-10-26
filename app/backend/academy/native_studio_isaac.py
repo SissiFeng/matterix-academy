@@ -267,7 +267,7 @@ def run(folder, *, probe=False):
     config.verify()
     validate_assets(plan, config)
     activate(Path(config.matterix_root))
-    from .native_kit import launch_native_app
+    from .native_kit import close_native_app, launch_native_app
 
     app = launch_native_app(
         headless=config.headless,
@@ -642,7 +642,7 @@ def run(folder, *, probe=False):
                 frame_path.unlink(missing_ok=True)
         if env is not None:
             env.close()
-        app.close()
+        close_native_app(app)
 
 
 def main():

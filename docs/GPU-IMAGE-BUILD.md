@@ -55,6 +55,11 @@ delta rather than claiming identical image bytes. Every build emits fresh invent
 
 ## Prepare inputs locally (no AWS)
 
+Native launchers disable Kit's process-terminating fast shutdown so probe callers
+can save results and propagate failures. Graceful Kit teardown has a 60-second
+watchdog; a timeout exits unsuccessfully and cannot qualify the image. Scene
+failures retain a negative report and traceback before teardown.
+
 Use a protected directory **outside all Academy, engine and asset checkouts**.
 The source export never copies credentials, hooks, untracked files or external
 submodule content; the engine's historical data submodule is deliberately replaced

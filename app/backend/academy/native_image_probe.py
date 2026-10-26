@@ -53,6 +53,11 @@ def capacity_report(evidence, status, elapsed_seconds, *, cpu_count=None, mem_to
     ]
     journal_status = int((evidence / "kernel-read-status.txt").read_text())
     sampler_complete = (evidence / "gpu-sampler-complete.txt").read_text().strip() == "1"
+    # EC2 preflight still requires >=32 GiB physical RAM. MemTotal excludes
+    # reservations; the measured 32 GiB T4 host exposes 32,479,404 KiB (<31 GiB).
+    # Allow up to 2 GiB reserved at that minimum, without treating RSS as free RAM.
+    minimum_os_memory_kib = 30 * 1024 * 1024
+    os_memory_sufficient = mem_total_kib >= minimum_os_memory_kib
     result = {
         "schema": "academy.gpu-capacity/1",
         "started_at": (evidence / "probe-started-at.txt").read_text().strip(),
@@ -61,6 +66,8 @@ def capacity_report(evidence, status, elapsed_seconds, *, cpu_count=None, mem_to
         "timeout_or_kill": status in {124, 137},
         "logical_cpus": cpu_count,
         "os_visible_mem_total_kib": mem_total_kib,
+        "minimum_os_visible_mem_total_kib": minimum_os_memory_kib,
+        "os_visible_memory_sufficient": os_memory_sufficient,
         "peak_process_rss_kib": rss,
         "gpu_samples": len(samples),
         "gpu_models": sorted({x["name"] for x in samples}),
@@ -70,11 +77,10 @@ def capacity_report(evidence, status, elapsed_seconds, *, cpu_count=None, mem_to
         "gpu_memory_total_mib": min((x["total_mib"] for x in samples), default=None),
         "kernel_log_readable": journal_status == 0,
         "kernel_oom_events": oom[:20],
-        # EC2 preflight separately enforces physical RAM >=32 GiB; Linux reserves some RAM.
         "capacity_probe_passed": bool(
             status == 0
             and cpu_count >= 8
-            and mem_total_kib >= 31 * 1024 * 1024
+            and os_memory_sufficient
             and rss
             and samples
             and sampler_complete
@@ -103,7 +109,7 @@ def main():
     from .native_isaac import activate
 
     activate(Path(cfg["matterix_root"]))
-    from .native_kit import launch_native_app
+    from .native_kit import close_native_app, launch_native_app
 
     app = launch_native_app(
         headless=True, protected_roots=(cfg["matterix_root"], cfg["assets_data_dir"])
@@ -157,10 +163,24 @@ def main():
             "worker_qualified": False,
         }
         args.output.write_text(json.dumps(result, indent=2) + "\n")
+    except Exception as exc:
+        args.output.write_text(
+            json.dumps(
+                dict(
+                    scene_render_ready=False,
+                    workflow_verified=False,
+                    worker_qualified=False,
+                    error=str(exc),
+                ),
+                indent=2,
+            )
+            + "\n"
+        )
+        raise
     finally:
         if env is not None:
             env.close()
-        app.close()
+        close_native_app(app)
 
 
 if __name__ == "__main__":
