@@ -20,6 +20,7 @@ Authority boundaries:
 from __future__ import annotations
 
 import copy
+import logging
 import time
 from typing import Literal
 
@@ -36,6 +37,7 @@ from .models import StrictModel
 from .runs import WORKERS
 from .store import Conflict
 
+LOG = logging.getLogger(__name__)
 PAIR_RUNS = "system#pair-runs"
 PAIRS = "system#pairs"
 MODES = ("sim_only", "real_only", "sim_first", "paired")
@@ -322,10 +324,7 @@ class PairRunService:
             )
             self.store.put(PAIR_RUNS, run_id, cancelled, run["version"])
             return self.public(cancelled)
-        if uses_real(run["mode"]) and run.get("approval"):
-            self._enqueue(run, "real", "stop", None, f"{run_id}.stop.real")
-        if uses_sim(run["mode"]) and run.get("sim_target"):
-            self._enqueue(run, "sim", "stop", None, f"{run_id}.stop.sim")
+        # Record the request first; delivery to an offline worker must not prevent it.
         stopped = revised(
             run,
             stop_requested=True,
@@ -333,6 +332,15 @@ class PairRunService:
             events=self._event(run, "stop requested"),
         )
         self.store.put(PAIR_RUNS, run_id, stopped, run["version"])
+        for side_name, used in (
+            ("real", uses_real(run["mode"]) and run.get("approval")),
+            ("sim", run.get("sim_target")),
+        ):
+            if used:
+                try:
+                    self._enqueue(run, side_name, "stop", None, f"{run_id}.stop.{side_name}")
+                except (Offline, Held):
+                    pass  # Nothing more can be sent; the run closes when the worker returns.
         return self.public(stopped)
 
     # ------------------------------------------------------------------ transitions
@@ -360,6 +368,36 @@ class PairRunService:
             holder=f"run:{run['run_id']}" if side_name == "sim" else None,
         )
 
+    def _authorize_physical(self, run):
+        """Every physical command re-checks the switch and renews this run's lease.
+
+        Returns a reason when the run may no longer move hardware.
+        """
+        if not self.real_enabled:
+            return "Physical execution was disabled in this deployment"
+        if not run.get("approval"):
+            return "Physical execution requires an operator approval"
+        holder = f"run:{run['run_id']}"
+        if self.instruments.lease_holder(run["instrument_id"]) != holder:
+            return "The instrument lease expired or belongs to another control source"
+        try:
+            self.instruments.acquire(run["instrument_id"], holder, seconds=LEASE_S, kind="run")
+        except (HTTPException, Conflict):
+            return "The instrument lease could not be renewed"
+        return ""
+
+    def _configuration_now(self, run):
+        """Configuration revision from the instrument as it is now (not as it was at creation)."""
+        instrument = self.instruments.get(run["instrument_id"])
+        return fingerprint(
+            {
+                "qualified": instrument["qualified_profile_sha256"],
+                "calibration": instrument.get("calibration_revision"),
+                "checks": instrument.get("validation_checks") or {},
+                "tolerances": instrument.get("tolerances") or {},
+            }
+        )
+
     def _choose_sim(self, run):
         for worker in self.store.partition(WORKERS, limit=100):
             if (
@@ -384,6 +422,7 @@ class PairRunService:
     def _start(self, run):
         """Bind workers and issue the first command; failures before any dispatch fail cleanly."""
         changes = {"status": "running", "updated_at": self.clock()}
+        worker_id = None
         if uses_sim(run["mode"]):
             worker_id = self._choose_sim(run)
             if worker_id is None:
@@ -392,7 +431,12 @@ class PairRunService:
                 )
             changes["sim_target"] = worker_id
         started = revised(run, **changes, events=self._event(run, "started"))
-        self.store.put(PAIR_RUNS, run["run_id"], started, run["version"])
+        try:
+            self.store.put(PAIR_RUNS, run["run_id"], started, run["version"])
+        except Conflict:
+            if worker_id:
+                self.broker.release(sim_target(worker_id), f"run:{run['run_id']}")
+            raise
         return self.advance(run["run_id"])
 
     def _fail(self, run, status, reason, *, hold=False):
@@ -462,9 +506,11 @@ class PairRunService:
         waiting = {k: v for k, v in run["waiting"].items() if k != command["command_id"]}
         updated = revised(run, waiting=waiting, updated_at=self.clock())
         hold = self._record(updated, purpose, command)
-        self.store.put(PAIR_RUNS, run_id, updated, run["version"])
         if hold:
+            # Hold before the run records the failure: a crash in between can never
+            # leave a failed physical step on an unheld instrument.
             self.broker.hold(device_target(run["instrument_id"]), hold)
+        self.store.put(PAIR_RUNS, run_id, updated, run["version"])
         self.advance(run_id)
 
     def _set_status(self, run, status, reason):
@@ -485,7 +531,11 @@ class PairRunService:
             run["finished"][side_name] = state == "returned" and not error
             return ""
         if state != "returned" or error:
-            if side_name == "real" and state == "not-dispatched":
+            if side_name == "real" and kind == "inspect" and state == "returned":
+                self._set_status(
+                    run, "failed", f"Connector inspection failed; nothing was dispatched: {error}"
+                )
+            elif side_name == "real" and state == "not-dispatched":
                 self._set_status(
                     run, "failed", f"Device '{kind}' was never delivered: no physical effect"
                 )
@@ -507,6 +557,9 @@ class PairRunService:
             return ""
         if kind == "begin":
             run[f"{side_name}_ready"] = True
+            return ""
+        if kind == "snapshot" and purpose.get("tag") == "presnap":
+            run["steps"][step]["pre_real"] = value
             return ""
         if kind == "snapshot":
             run["initial"][side_name] = value
@@ -598,32 +651,73 @@ class PairRunService:
                 continue
         raise Conflict
 
+    def _command_id(self, run, side_name, kind, step, tag=None):
+        return f"{run['run_id']}.{side_name}.{tag or kind}.{step}"
+
     def _issue(self, run, purposes, **changes):
-        """Queue commands (deterministic IDs), then persist them as awaited with ``changes``."""
+        """Persist the intent (awaited commands and their payloads) first, then queue them.
+
+        A queued command is therefore always awaited by its run. Queueing uses
+        deterministic IDs, so the reaper can repeat an interrupted queueing
+        without ever creating a second command for the same step.
+        """
         waiting = dict(run["waiting"])
-        for side_name, kind, step, payload in purposes:
-            command_id = f"{run['run_id']}.{side_name}.{kind}.{step}"
+        new = []
+        for purpose in purposes:
+            side_name, kind, step, payload = purpose[:4]
+            tag = purpose[4] if len(purpose) > 4 else None
+            if side_name == "real" and kind not in {"stop", "finish", "inspect"}:
+                blocked = self._authorize_physical(run)
+                if blocked:
+                    return self._fail(run, "failed", blocked, hold=bool(run.get("real_begun")))
+            command_id = self._command_id(run, side_name, kind, step, tag)
             if command_id in waiting:
                 continue
-            try:
-                self._enqueue(run, side_name, kind, payload, command_id)
-            except (Offline, Held) as exc:
-                if kind == "finish":
-                    run["finished"][side_name] = False
-                    continue
-                touched = side_name == "real" and bool(run.get("real_begun"))
-                return self._fail(
-                    run,
-                    "failed",
-                    f"{side_name} worker unavailable before '{kind}': {exc}",
-                    hold=touched,
-                )
-            waiting[command_id] = {"side": side_name, "kind": kind, "step": step}
+            waiting[command_id] = {
+                "side": side_name,
+                "kind": kind,
+                "step": step,
+                "tag": tag,
+                "payload": payload,
+            }
+            new.append(command_id)
         changed = revised(run, waiting=waiting, updated_at=self.clock(), **changes)
         self.store.put(PAIR_RUNS, run["run_id"], changed, run["version"])
+        for command_id in new:
+            entry = waiting[command_id]
+            try:
+                self._enqueue(changed, entry["side"], entry["kind"], entry["payload"], command_id)
+            except (Offline, Held) as exc:
+                return self._unqueued(changed["run_id"], command_id, exc)
         if not waiting:
             return self._advance(changed)
         return changed
+
+    def _unqueued(self, run_id, command_id, exc):
+        """A command that was never queued: drop it from the run and fail or skip cleanly."""
+        for _ in range(5):
+            run = self.raw(run_id)
+            entry = run["waiting"].get(command_id)
+            if entry is None or self.broker.command(command_id) is not None:
+                return run
+            waiting = {k: v for k, v in run["waiting"].items() if k != command_id}
+            changed = revised(run, waiting=waiting, updated_at=self.clock())
+            if entry["kind"] == "finish":
+                changed["finished"][entry["side"]] = False
+            try:
+                self.store.put(PAIR_RUNS, run_id, changed, run["version"])
+            except Conflict:
+                continue
+            if entry["kind"] == "finish":
+                return self._advance(changed) if not waiting else changed
+            touched = entry["side"] == "real" and bool(changed.get("real_begun"))
+            return self._fail(
+                changed,
+                "failed",
+                f"{entry['side']} worker unavailable before '{entry['kind']}': {exc}",
+                hold=touched,
+            )
+        raise Conflict
 
     def _advance(self, run):
         if run["waiting"]:
@@ -661,6 +755,9 @@ class PairRunService:
         if uses_real(mode) and not run.get("inspected"):
             return self._issue(run, [("real", "inspect", 0, None)])
         if uses_real(mode) and not run.get("real_begun"):
+            blocked = self._authorize_physical(run)
+            if blocked:
+                return self._fail(run, "failed", blocked)
             return self._issue(run, [("real", "begin", 0, run["plan"])], real_begun=True)
         if uses_real(mode) and run["initial"]["real"] is None:
             return self._issue(run, [("real", "snapshot", 0, "initial")])
@@ -705,14 +802,15 @@ class PairRunService:
             if step["real"] is None:
                 purposes.append(("real", "execute", index, op))
             return self._issue(run, purposes)
-        # sim_first: the twin predicts first; the real step needs its single-use receipt.
+        # sim_first: the twin predicts from the last real state; immediately before
+        # dispatch a fresh physical snapshot must still equal that state, and the
+        # instrument configuration must be unchanged. The receipt is single use.
         if step["sim"] is None:
             return self._issue(run, [("sim", "execute", index, op)])
-        previous = (
-            run["initial"]["real"]
-            if index == 0
-            else (run["steps"][index - 1]["real"] or {}).get("observation")
-        )
+        if step.get("pre_real") is None:
+            return self._issue(
+                run, [("real", "snapshot", index, f"pre-{op['operation_id']}", "presnap")]
+            )
         receipt = step.get("receipt")
         try:
             if not receipt or receipt.get("consumed"):
@@ -720,8 +818,8 @@ class PairRunService:
             verify_receipt(
                 receipt,
                 operation=op,
-                state=state_revision(previous),
-                configuration=run["configuration_revision"],
+                state=state_revision(step["pre_real"]),
+                configuration=self._configuration_now(run),
                 now=self.clock(),
             )
         except ValidationRejected as exc:
@@ -730,6 +828,30 @@ class PairRunService:
         # Consumption is committed in the same run write that awaits the real step.
         step["receipt"] = {**receipt, "consumed": True}
         return self._issue(run, [("real", "execute", index, op)])
+
+    # ------------------------------------------------------------------ recovery
+
+    def repair(self, run_id, *, grace_s=15):
+        """Drive a run whose transition was interrupted (crash, lost notification, conflict)."""
+        run = self.store.get(PAIR_RUNS, run_id)
+        if run is None or (run["status"] in TERMINAL and run.get("released")):
+            return run
+        for command_id, entry in list(run["waiting"].items()):
+            command = self.broker.command(command_id)
+            if command is None:
+                if self.clock() - run["updated_at"] >= grace_s:
+                    try:
+                        self._enqueue(
+                            run, entry["side"], entry["kind"], entry["payload"], command_id
+                        )
+                    except (Offline, Held) as exc:
+                        self._unqueued(run_id, command_id, exc)
+            elif command["state"] in {"returned", "not-dispatched", "unknown"}:
+                self.on_settled(command)
+        run = self.raw(run_id)
+        if not run["waiting"] and run["status"] != "awaiting_approval":
+            return self.advance(run_id)
+        return run
 
     # ------------------------------------------------------------------ external predictions
 
@@ -822,6 +944,8 @@ class PairRunService:
             raise HTTPException(
                 409, "The instrument lease expired or belongs to another control source"
             )
+        if self.broker.status(device_target(run["instrument_id"]))["fault"]:
+            raise HTTPException(409, "The instrument is held for reconciliation")
         step = run["steps"][0]
         receipt = step.get("receipt")
         try:
@@ -862,6 +986,12 @@ class PairRunService:
             if {k: v for k, v in step["real"].items() if k != "reported_by"} != side(parsed):
                 raise Conflict
             return self.public(run)
+        if parsed.status.value != "succeeded":
+            # An orchestrator-reported failure is still a physical uncertainty.
+            self.broker.hold(
+                device_target(run["instrument_id"]),
+                f"External orchestrator reported a {parsed.status.value} physical step. Reconcile before reuse.",
+            )
         step["real"] = real
         bare = {
             "status": step["sim"]["status"],
@@ -944,8 +1074,26 @@ class PairRunService:
         return [{k: v for k, v in row.items() if k != "version"} for row in rows]
 
     def reap(self):
-        """Expire commands, then let affected runs observe the settled outcome."""
-        return self.broker.reap()
+        """Expire commands, then repair every unfinished run and release leaked reservations."""
+        expired = self.broker.reap()
+        repaired = 0
+        for run in self.store.partition(PAIR_RUNS, limit=500):
+            if run["status"] == "awaiting_approval" or (
+                run["status"] in TERMINAL and run.get("released")
+            ):
+                continue
+            try:
+                self.repair(run["run_id"])
+                repaired += 1
+            except Exception:  # noqa: BLE001 - one run must not stop the sweep
+                LOG.exception("Could not repair run %s", run["run_id"])
+        for target in self.store.partition("system#targets", "sim:", limit=200):
+            holder = target.get("reservation") or ""
+            if holder.startswith("run:"):
+                run = self.store.get(PAIR_RUNS, holder[4:])
+                if run is None or (run["status"] in TERMINAL and run.get("released")):
+                    self.broker.release(target["target"], holder)
+        return {"expired": expired, "repaired": repaired}
 
 
 def make_broker(store, clock=time.time):

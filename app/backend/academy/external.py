@@ -109,7 +109,8 @@ def install(app, *, store, pairing, runtime):
             record = store.get(ORCHESTRATORS, claims["client_id"])
             if (
                 not record
-                or record.get("revoked")
+                or record.get("revoked", True)
+                or record.get("credential_expires", 0) <= pairing.clock()
                 or str(record["credential_version"]) != claims.get("credential_version")
             ):
                 raise HTTPException(403, "Orchestrator credential is inactive")

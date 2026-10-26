@@ -113,6 +113,10 @@ class InstrumentService:
         return record
 
     def configure_validation(self, instrument_id, *, expected_version, checks, tolerances):
+        if self.lease_holder(instrument_id):
+            raise HTTPException(
+                409, "Change validation only while no run or lease controls the instrument"
+            )
         record = self.get(instrument_id)
         if record["version"] != expected_version:
             raise Conflict
@@ -172,16 +176,17 @@ class InstrumentService:
             "revoked": False,
             "worker_class": "device",
         }
+        if active:
+            # Hold before revoking, so a crash in between can never leave an unheld swap.
+            CommandBroker(self.store, clock=self.clock).hold(
+                device_target(instrument_id),
+                "Gateway credential replaced. Stop the old gateway and reconcile before a new run.",
+            )
         writes = [Write(GATEWAYS, gateway_id, record, None)]
         writes += [
             Write(GATEWAYS, g["gateway_id"], revised(g, revoked=True), g["version"]) for g in active
         ]
         self.store.transact(writes)
-        if active:
-            CommandBroker(self.store, clock=self.clock).hold(
-                device_target(instrument_id),
-                "Gateway credential replaced. Stop the old gateway and reconcile before a new run.",
-            )
         return token, record
 
     def gateway(self, gateway_id):

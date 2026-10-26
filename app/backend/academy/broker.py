@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import logging
 import secrets
 import time
 import uuid
@@ -36,6 +37,7 @@ from labtwin.wire import fingerprint
 
 from .store import Conflict, Write
 
+LOG = logging.getLogger(__name__)
 TARGETS = "system#targets"
 COMMANDS = "system#commands"
 PENDING = "system#pending"
@@ -49,6 +51,7 @@ UNKNOWN_GRACE_S = 5
 RESULT_KEYS = {"id", "value", "error"}
 KINDS = {"inspect", "begin", "snapshot", "execute", "finish", "stop", "reconcile"}
 ALWAYS_ALLOWED = {"stop", "inspect", "finish", "reconcile"}
+TERMINAL_STATES = {"returned", "not-dispatched", "unknown"}
 
 
 class BrokerError(ValueError):
@@ -160,30 +163,38 @@ class CommandBroker:
     # ------------------------------------------------------------------ holds
 
     def hold(self, target, reason):
-        for _ in range(5):
+        """Hold (or re-arm an existing hold). The first reason is kept; any new
+        uncertainty invalidates earlier inspections, so reconciliation needs a
+        fresh inspection after the most recent event."""
+        for _ in range(8):
             record = self._target_or_new(target)
-            if record["fault"] == reason and not record["inspected"]:
-                return
+            changed = {
+                **record,
+                "fault": record["fault"] or reason,
+                "inspected": False,
+                "held_at": self.clock(),
+            }
             try:
-                self.store.transact(
-                    [self._put_target(record, {**record, "fault": reason, "inspected": False})]
-                )
+                self.store.transact([self._put_target(record, changed)])
                 return
             except Conflict:
                 continue
         raise Conflict
 
     def _hold_once(self, target, reason):
-        record = self._target_or_new(target)
-        if not record["fault"]:
-            self.hold(target, reason)
+        self.hold(target, reason)
 
     def clear_hold(self, target):
-        """Clear after an accepted reconciliation; requires inspection and no pending commands."""
+        """Clear after an accepted reconciliation: no pending commands and an
+        inspection that succeeded after the most recent hold event."""
         record = self.target(target)
         if record is None:
             return
-        if self.pending(target) or not record["inspected"]:
+        if (
+            self.pending(target)
+            or not record["inspected"]
+            or record.get("inspected_at", 0) < record.get("held_at", 0)
+        ):
             raise Held("Wait for pending commands and inspect the target before reconciling")
         self.store.transact([self._put_target(record, {**record, "fault": ""})])
 
@@ -289,51 +300,86 @@ class CommandBroker:
     def _pending_key(target, order, command_id):
         return f"{target}#{order:012d}#{command_id}"
 
-    def _terminal(self, command, state, result=None):
-        """Commit a terminal command state and drop it from the pending index."""
-        changed = revised(command, state=state, result=result, settled_at=self.clock())
-        self.store.transact(
-            [
-                Write(COMMANDS, command["command_id"], changed, command["version"]),
-                Write(
-                    PENDING,
-                    self._pending_key(command["target"], command["order"], command["command_id"]),
-                    None,
-                    1,
-                ),
-            ]
-        )
-        return changed
+    def _terminal(self, command, state, result=None, *, only_from=None):
+        """Commit a terminal command state and drop it from the pending index.
+
+        Returns the committed command, or ``None`` when a concurrent transition
+        already settled it (or moved it out of ``only_from``). Never regresses.
+        """
+        for _ in range(5):
+            if command["state"] in TERMINAL_STATES or (
+                only_from and command["state"] not in only_from
+            ):
+                return None
+            changed = revised(command, state=state, result=result, settled_at=self.clock())
+            try:
+                self.store.transact(
+                    [
+                        Write(COMMANDS, command["command_id"], changed, command["version"]),
+                        Write(
+                            PENDING,
+                            self._pending_key(
+                                command["target"], command["order"], command["command_id"]
+                            ),
+                            None,
+                            1,
+                        ),
+                    ]
+                )
+                return changed
+            except Conflict:
+                command = self.command(command["command_id"])
+                if command is None:
+                    return None
+        raise Conflict
 
     def _notify(self, commands):
+        """Each settled command is delivered to the coordinator independently."""
         for command in commands:
-            self.on_settled(command)
+            if command is None:
+                continue
+            try:
+                self.on_settled(command)
+            except Exception:  # noqa: BLE001 - one run's failure must not hide another's outcome
+                LOG.exception(
+                    "Settlement handler failed for %s; the reaper retries", command["command_id"]
+                )
 
     def reap(self):
         """Expire commands by control-plane time. Queued ⇒ not-dispatched; delivered ⇒ unknown + hold."""
-        settled = []
+        count = 0
         now = self.clock()
         for row in self.store.partition(TARGETS, limit=500):
             for command in self.pending(row["target"]):
-                if command["state"] == "queued" and command["deadline"] <= now:
-                    settled.append(self._terminal(command, "not-dispatched"))
-                elif (
-                    command["state"] in {"delivered", "acked"}
-                    and command["deadline"] + UNKNOWN_GRACE_S <= now
-                ):
-                    settled.append(self._terminal(command, "unknown"))
-                    self._hold_once(
-                        row["target"],
-                        f"No result for '{command['kind']}' before its deadline: outcome unknown. "
-                        "Verify the worker/device and reconcile before a new run.",
-                    )
-        self._notify(settled)
-        return len(settled)
+                settled = None
+                try:
+                    if command["state"] == "queued" and command["deadline"] <= now:
+                        settled = self._terminal(command, "not-dispatched", only_from={"queued"})
+                    elif (
+                        command["state"] in {"delivered", "acked"}
+                        and command["deadline"] + UNKNOWN_GRACE_S <= now
+                    ):
+                        # Hold first: a crash after this leaves a held target, never an unheld unknown.
+                        self.hold(
+                            row["target"],
+                            f"No result for '{command['kind']}' before its deadline: outcome unknown. "
+                            "Verify the worker/device and reconcile before a new run.",
+                        )
+                        settled = self._terminal(
+                            command, "unknown", only_from={"delivered", "acked"}
+                        )
+                except Conflict:
+                    continue
+                if settled is not None:
+                    count += 1
+                    self._notify([settled])
+        return count
 
     # ------------------------------------------------------------------ worker side
 
     def register(self, target, *, credential, instance, results=()):
-        """Open a session. The same process (``instance``) resumes; a new process fences the old one."""
+        """Open a session. The same process (``instance``) with the same credential
+        resumes; anything else is a new worker that fences the old one."""
         if not isinstance(instance, str) or not 8 <= len(instance) <= 128:
             raise BrokerError("Invalid worker instance identity")
         if not isinstance(results, (list, tuple)) or len(results) > 32:
@@ -341,9 +387,22 @@ class CommandBroker:
         settled = []
         for _ in range(5):
             record = self._target_or_new(target)
-            resumed = bool(record["session_digest"]) and instance == record["instance"]
+            resumed = (
+                bool(record["session_digest"])
+                and instance == record["instance"]
+                and credential == record["credential"]
+            )
             if self.online(record) and not resumed:
                 raise ConflictError("A worker session is already online for this target")
+            fenced = list(self.pending(target)) if record["session_digest"] and not resumed else []
+            if any(c["state"] in {"delivered", "acked"} for c in fenced):
+                # Hold before fencing so no retry or crash can leave an unheld unknown.
+                self.hold(
+                    target,
+                    "Previous worker process disconnected with commands in flight. "
+                    "Verify they ended before reconciliation.",
+                )
+                record = self._target_or_new(target)
             session = secrets.token_urlsafe(32)
             changed = {
                 **record,
@@ -354,37 +413,30 @@ class CommandBroker:
                 "seen_at": self.clock(),
                 "inspected": record["inspected"] if resumed else False,
             }
-            fenced = []
-            if record["session_digest"] and not resumed:
-                for command in self.pending(target):
-                    fenced.append(command)
             try:
                 self.store.transact([self._put_target(record, changed)])
             except Conflict:
                 continue
-            uncertain = False
             for command in fenced:
                 if command["state"] == "queued":
-                    settled.append(self._terminal(command, "not-dispatched"))
+                    settled.append(self._terminal(command, "not-dispatched", only_from={"queued"}))
                 else:
-                    uncertain = True
-                    settled.append(self._terminal(command, "unknown"))
-            if uncertain:
-                self.hold(
-                    target,
-                    "Previous worker process disconnected with commands in flight. "
-                    "Verify they ended before reconciliation.",
-                )
+                    settled.append(
+                        self._terminal(command, "unknown", only_from={"delivered", "acked"})
+                    )
             if resumed:
                 for command in self.pending(target):
                     if command["state"] == "delivered":
                         # Eligible for redelivery to the resumed session's first poll.
-                        self.store.put(
-                            COMMANDS,
-                            command["command_id"],
-                            revised(command, delivered_seq=0),
-                            command["version"],
-                        )
+                        try:
+                            self.store.put(
+                                COMMANDS,
+                                command["command_id"],
+                                revised(command, delivered_seq=0),
+                                command["version"],
+                            )
+                        except Conflict:
+                            pass
             confirmed, absorbed = self._absorb(target, (), results)
             settled.extend(absorbed)
             self._notify(settled)
@@ -478,41 +530,64 @@ class CommandBroker:
         )
 
     def _settle(self, target, command, data, identity):
-        changed = revised(
-            command,
-            state="returned",
-            result={"value": data["value"], "error": data["error"]},
-            result_fingerprint=identity,
-            settled_at=self.clock(),
-        )
-        record = self.target(target)
-        writes = [
-            Write(COMMANDS, command["command_id"], changed, command["version"]),
-            Write(
-                PENDING,
-                self._pending_key(target, command["order"], command["command_id"]),
-                None,
-                1,
-            ),
-        ]
+        device = target.startswith("device:")
         fault = ""
         if command["kind"] == "inspect" and not data["error"]:
             fault = self.inspect_check(target, data["value"])
-            if not fault:
-                writes.append(self._put_target(record, {**record, "inspected": True}))
-        self.store.transact(writes)
-        if fault:
-            self.hold(target, fault)
-        elif (
-            data["error"]
-            and command["kind"] not in {"inspect", "stop"}
-            and target.startswith("device:")
-        ):
-            self.hold(
-                target,
-                "Device command failed; verify the physical outcome and reconcile before a new run.",
+        elif data["error"] and command["kind"] not in {"inspect", "stop"} and device:
+            fault = (
+                "Device command failed; verify the physical outcome and reconcile before a new run."
             )
-        return changed
+        elif (
+            device
+            and command["kind"] == "execute"
+            and not (isinstance(data["value"], dict) and data["value"].get("status") == "succeeded")
+        ):
+            status = data["value"].get("status") if isinstance(data["value"], dict) else "malformed"
+            fault = f"Physical step {status}; verify the instrument and reconcile before a new run."
+        if fault:
+            # Hold before the result becomes visible: a crash in between leaves the
+            # command delivered (the reaper then marks it unknown), never an unheld failure.
+            self.hold(target, fault)
+        for _ in range(5):
+            changed = revised(
+                command,
+                state="returned",
+                result={"value": data["value"], "error": data["error"]},
+                result_fingerprint=identity,
+                settled_at=self.clock(),
+            )
+            writes = [
+                Write(COMMANDS, command["command_id"], changed, command["version"]),
+                Write(
+                    PENDING,
+                    self._pending_key(target, command["order"], command["command_id"]),
+                    None,
+                    1,
+                ),
+            ]
+            if command["kind"] == "inspect":
+                record = self.target(target)
+                verified = not data["error"] and not fault
+                writes.append(
+                    self._put_target(
+                        record,
+                        {
+                            **record,
+                            "inspected": verified,
+                            "inspected_at": self.clock() if verified else 0,
+                        },
+                    )
+                )
+            try:
+                self.store.transact(writes)
+                return changed
+            except Conflict:
+                current = self.command(command["command_id"])
+                if current is None or current["state"] not in {"delivered", "acked"}:
+                    return None
+                command = current
+        raise Conflict
 
     def exchange(self, target, session, *, seq, acks=(), results=(), wait=0.0, credential=None):
         """One poll: absorb acknowledgements/results, then return at most one command."""
@@ -565,7 +640,7 @@ class CommandBroker:
                 redelivery = True
             elif command["state"] == "queued":
                 if remaining <= MIN_DELIVERY_TTL_S:
-                    expired.append(self._terminal(command, "not-dispatched"))
+                    expired.append(self._terminal(command, "not-dispatched", only_from={"queued"}))
                     continue
                 redelivery = False
             else:
