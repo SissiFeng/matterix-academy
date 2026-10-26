@@ -76,6 +76,35 @@ def enforce_publisher_relay(peer):
         connection.get_component_candidates = types.MethodType(gather, connection)
 
 
+def publisher_grant(folder, manifest, client_id=None):
+    grant = read_json(folder / "publisher.json")
+    expected = {
+        "native_session_id": manifest["binding"]["native_session_id"],
+        "run_id": manifest["request"]["run_id"],
+        "plan_hash": manifest["request"]["plan_hash"],
+    }
+    if any(grant.get(key) != value for key, value in expected.items()):
+        raise ValueError("Publisher identity mismatch")
+    if client_id is not None and grant.get("viewer_client_id") != client_id:
+        return None
+    return grant
+
+
+async def wait_for_viewer_grant(folder, manifest, client_id, allowed):
+    # A viewer can send its offer before the next worker heartbeat. Keep that
+    # exact offer pending while the worker obtains and binds fresh TURN access.
+    deadline = time.monotonic() + 20
+    while alive_lease(folder) and not (folder / "stop-media.json").exists():
+        if allowed(client_id):
+            grant = publisher_grant(folder, manifest, client_id)
+            if grant is not None:
+                return grant
+        if time.monotonic() >= deadline:
+            break
+        await asyncio.sleep(0.1)
+    raise ValueError("Fresh authorized publisher grant was not available")
+
+
 async def publish(folder):
     import av
     import numpy as np
@@ -123,15 +152,7 @@ async def publish(folder):
 
             raise MediaStreamError
 
-    grant = read_json(folder / "publisher.json")
-    if (
-        grant["native_session_id"] != binding["native_session_id"]
-        or grant["run_id"] != manifest["request"]["run_id"]
-    ):
-        raise ValueError("Publisher identity mismatch")
-    config = RTCConfiguration(
-        iceServers=[RTCIceServer(**server) for server in grant["ice_servers"]]
-    )
+    grant = publisher_grant(folder, manifest)
     async with websockets.connect(
         grant["signaling_url"], max_size=32768, ping_interval=20
     ) as socket:
@@ -171,16 +192,8 @@ async def publish(folder):
                     kind = message.get("messageType")
                     if not client_id:
                         continue
-                    # The cloud grant can precede the next worker allowlist copy.
-                    # Bound the wait without accepting an unauthorized SDP.
-                    deadline = time.monotonic() + 8
-                    while (
-                        kind == "SDP_OFFER"
-                        and not allowed(client_id)
-                        and alive_lease(folder)
-                        and time.monotonic() < deadline
-                    ):
-                        await asyncio.sleep(0.1)
+                    if kind == "SDP_OFFER":
+                        grant = await wait_for_viewer_grant(folder, manifest, client_id, allowed)
                     if not allowed(client_id):
                         continue
                     payload = json.loads(base64.b64decode(message["messagePayload"], validate=True))
@@ -195,7 +208,13 @@ async def publish(folder):
                             or "a=rtcp-mux" not in sdp
                         ):
                             continue
-                        pending_peer = RTCPeerConnection(configuration=config)
+                        # A refresh creates a new browser ID and therefore a new
+                        # grant. Never reuse the credentials from process startup.
+                        pending_peer = RTCPeerConnection(
+                            configuration=RTCConfiguration(
+                                iceServers=[RTCIceServer(**s) for s in grant["ice_servers"]]
+                            )
+                        )
                         pending_peer.addTrack(ViewportTrack())
                         enforce_publisher_relay(pending_peer)
                         await pending_peer.setRemoteDescription(
