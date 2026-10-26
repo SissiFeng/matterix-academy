@@ -6,6 +6,7 @@ import importlib.util
 import json
 import re
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -139,6 +140,59 @@ def test_runtime_lock_closes_internal_and_sim_dependencies():
     assert PROFILE["isaaclab_wheel_sha256"] in lock
     for block in re.split(r"\n(?=[a-zA-Z0-9_-]+==)", lock)[1:]:
         assert "--hash=sha256:" in block
+
+
+def test_native_entrypoint_imports_use_only_runtime_locked_packages():
+    """The agent venv must not hide a missing dependency in the isolated Isaac venv."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            r"""
+import importlib.abc
+import importlib.metadata
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1])
+normalize = lambda name: name.lower().replace('_', '-').replace('.', '-')
+locked = {
+    normalize(name)
+    for name in re.findall(
+        r'^([a-zA-Z0-9_-]+)==',
+        (root / 'ops/ec2-gpu/runtime-linux-x86_64.lock').read_text(), re.M,
+    )
+}
+distributions = importlib.metadata.packages_distributions()
+
+class RuntimeLockOnly(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        package = fullname.partition('.')[0]
+        if package == 'academy' or package in sys.stdlib_module_names:
+            return None
+        owners = {normalize(name) for name in distributions.get(package, [])}
+        if owners and not owners.intersection(locked):
+            raise ModuleNotFoundError(
+                f'{fullname} is unavailable in the isolated native runtime: {sorted(owners)}'
+            )
+        return None
+
+sys.meta_path.insert(0, RuntimeLockOnly())
+sys.path.insert(0, str(root / 'app/backend'))
+from academy import native_image_probe, native_studio_isaac
+from academy.native_runner import NativeConfig
+assert callable(native_image_probe.main)
+assert callable(native_studio_isaac.run)
+assert callable(NativeConfig.model_validate)
+""",
+            str(ROOT),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_image_build_is_explicit_and_service_remains_uncredentialed():

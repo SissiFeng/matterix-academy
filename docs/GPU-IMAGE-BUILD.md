@@ -15,7 +15,7 @@ with the complete Isaac Sim 6.0.1.0 dependency graph: `isaacsim-core` requires
 therefore **torch 2.11.0+cu128 / torchvision 0.26.0+cu128**. Lab remains
 `3.0.0b2.post1` and Sim remains `6.0.1.0`. Do not use `--no-deps` to force the old
 inconsistent pair into the image. The locked installer uses `--no-deps` only after
-resolving the entire 245-package closure, with every version and artifact hash fixed.
+resolving the entire 247-package closure, with every version and artifact hash fixed.
 
 Two independent Python 3.12 environments prevent conflicting Pydantic requirements:
 
@@ -26,6 +26,10 @@ Two independent Python 3.12 environments prevent conflicting Pydantic requiremen
 
 The runtime lock targets CPython 3.12 / Linux x86_64 / glibc >=2.35, and includes
 Matterix's psutil, toml, protobuf<5, tensorboard and scikit-learn requirements.
+It also pins HTTPX 0.28.1 and its HTTP Core dependency: native Studio loads the
+Academy configuration/worker imports inside this environment, independently of
+the agent environment. The offline import regression rejects packages absent
+from the native lock; it does not substitute for GPU execution.
 Ubuntu 24.04 meets the libc requirement. `flatdict` is source-only; its archive
 hash and setuptools/wheel/packaging build tools are pinned. Runtime installation
 uses those tools without a separate floating build environment. Upstream package
