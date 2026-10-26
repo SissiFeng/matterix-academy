@@ -82,8 +82,10 @@ jobs:
       DISTRIBUTION_ID: ${{ vars.DISTRIBUTION_ID }}
       LAMBDA_FUNCTION: ${{ vars.LAMBDA_FUNCTION }}
       WORKER_LAMBDA_FUNCTIONS: ${{ vars.WORKER_LAMBDA_FUNCTIONS }}
+      SIM2REAL_LAMBDA_FUNCTIONS: ${{ vars.SIM2REAL_LAMBDA_FUNCTIONS || '[]' }}
       APP_URL: ${{ vars.APP_URL }}
       NATIVE_EXECUTION_EXPECTED: ${{ vars.NATIVE_EXECUTION_EXPECTED || 'false' }}
+      REAL_EXECUTION_EXPECTED: ${{ vars.REAL_EXECUTION_EXPECTED || 'false' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Skip a superseded commit

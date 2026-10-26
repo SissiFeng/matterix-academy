@@ -44,10 +44,13 @@ resource "aws_lambda_function" "worker" {
   reserved_concurrent_executions = var.reserve_lambda_concurrency ? each.value.concurrency : -1
   environment {
     variables = {
-      ACADEMY_RUNTIME        = "aws"
-      ACADEMY_TABLE          = aws_dynamodb_table.records.name
-      ACADEMY_REMOTE_ENABLED = tostring(var.remote_execution_enabled)
-      ACADEMY_MEDIA_PREFIX   = local.media_prefix
+      ACADEMY_RUNTIME         = "aws"
+      ACADEMY_TABLE           = aws_dynamodb_table.records.name
+      ACADEMY_REMOTE_ENABLED  = tostring(var.remote_execution_enabled)
+      ACADEMY_MEDIA_PREFIX    = local.media_prefix
+      ACADEMY_PAIRING_ENABLED = tostring(var.pairing_enabled)
+      ACADEMY_REAL_ENABLED    = tostring(var.real_execution_enabled)
+      ACADEMY_POLL_WAIT_S     = "8"
     }
   }
   depends_on = [aws_iam_role_policy.worker, aws_cloudwatch_log_group.worker]

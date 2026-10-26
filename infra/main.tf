@@ -160,7 +160,9 @@ resource "aws_lambda_function" "api" {
       ACADEMY_REMOTE_ENABLED            = tostring(var.remote_execution_enabled)
       ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
       ACADEMY_MEDIA_PREFIX              = local.media_prefix
-
+      ACADEMY_PAIRING_ENABLED           = tostring(var.pairing_enabled)
+      ACADEMY_REAL_ENABLED              = tostring(var.real_execution_enabled)
+      ACADEMY_OPERATOR_GROUP            = var.operator_group
     }
   }
   depends_on = [aws_iam_role_policy.api, aws_cloudwatch_log_group.api]

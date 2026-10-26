@@ -82,16 +82,23 @@ def publish():
     workers = json.loads(os.environ["WORKER_LAMBDA_FUNCTIONS"])
     if not isinstance(workers, list):
         raise ValueError("WORKER_LAMBDA_FUNCTIONS must be a JSON array")
-    names = [os.environ["LAMBDA_FUNCTION"], *workers]
+    # Sim-to-real authorizers are optional until their Terraform is applied.
+    extra = json.loads(os.environ.get("SIM2REAL_LAMBDA_FUNCTIONS") or "[]")
+    if not isinstance(extra, list):
+        raise ValueError("SIM2REAL_LAMBDA_FUNCTIONS must be a JSON array")
+    names = [os.environ["LAMBDA_FUNCTION"], *workers, *extra]
     if (
-        len(names) != 4
+        len(names) != 4 + len(extra)
         or not all(
             isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9_-]+", name) for name in names
         )
-        or len(set(names)) != 4
+        or len(set(names)) != len(names)
     ):
         raise ValueError("Exactly four distinct Lambda names are required")
     native = expected_native_gate()
+    real = os.environ.get("REAL_EXECUTION_EXPECTED", "false")
+    if real not in {"true", "false"}:
+        raise ValueError("REAL_EXECUTION_EXPECTED must be 'true' or 'false'")
     expected_account = os.environ["AWS_ACCOUNT_ID"]
     if not re.fullmatch(r"[0-9]{12}", expected_account):
         raise ValueError("A pinned AWS account is required")
@@ -108,9 +115,15 @@ def publish():
     # Terraform owns the gate; a release only proceeds when it matches the declared state.
     for name in names:
         current = lambda_client.get_function_configuration(FunctionName=name)
-        if current["Environment"]["Variables"].get("ACADEMY_REMOTE_ENABLED") != native:
+        variables = current["Environment"]["Variables"]
+        if variables.get("ACADEMY_REMOTE_ENABLED") != native:
             raise ValueError(
                 "Native execution gate differs from NATIVE_EXECUTION_EXPECTED; "
+                "reconcile Terraform and the deployment environment first"
+            )
+        if variables.get("ACADEMY_REAL_ENABLED", "false") != real:
+            raise ValueError(
+                "Physical execution gate differs from REAL_EXECUTION_EXPECTED; "
                 "reconcile Terraform and the deployment environment first"
             )
     for name in names:
