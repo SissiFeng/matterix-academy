@@ -1,6 +1,10 @@
 """Checksum-verified, bounded tar/ZIP staging. Staging never executes installers."""
 
+import bz2
+import contextlib
+import gzip
 import hashlib
+import lzma
 import os
 import re
 import shutil
@@ -14,6 +18,7 @@ from pathlib import Path, PurePosixPath
 from .config import private_directory
 
 MAX_ZIP_DIRECTORY_BYTES = 16 * 1024 * 1024
+MAX_TAR_METADATA_BYTES = 16 * 1024 * 1024
 
 
 def _check_zip_directory(snapshot, max_files):
@@ -157,8 +162,57 @@ def _extract_zip(snapshot, staging, max_bytes, max_files, max_ratio):
                 _copy_member(archive.open(member), target, member.file_size)
 
 
+class _TarMetadataReader:
+    """Cap cumulative header/extension reads before tarfile allocates PAX/GNU data."""
+
+    def __init__(self, stream, budget):
+        self.stream, self.remaining = stream, budget
+
+    def read(self, size=-1):
+        if self.remaining is not None and (size < 0 or size > self.remaining):
+            raise ValueError("Artifact TAR metadata limit exceeded")
+        data = self.stream.read(size)
+        if self.remaining is not None:
+            self.remaining -= len(data)
+        return data
+
+    def seek(self, *args):
+        return self.stream.seek(*args)
+
+    def tell(self):
+        return self.stream.tell()
+
+
 def _extract_tar(snapshot, staging, max_bytes, max_files):
-    with tarfile.open(fileobj=snapshot, mode="r:*") as archive:
+    # Payload and metadata have separate budgets; allow standard 512-byte entry
+    # framing and 10 KiB writer padding. Large PAX/GNU extensions are unsupported.
+    metadata_budget = min(max_bytes, MAX_TAR_METADATA_BYTES) + 1024 * max_files + 10240
+    container_budget = max_bytes + metadata_budget
+    magic = snapshot.read(6)
+    snapshot.seek(0)
+    with contextlib.ExitStack() as stack:
+        if magic.startswith(b"\x1f\x8b"):
+            source = stack.enter_context(gzip.GzipFile(fileobj=snapshot))
+        elif magic.startswith(b"BZh"):
+            source = stack.enter_context(bz2.BZ2File(snapshot))
+        elif magic == b"\xfd7zXZ\x00":
+            source = stack.enter_context(lzma.LZMAFile(snapshot))
+        else:
+            source = snapshot
+        decoded = stack.enter_context(tempfile.TemporaryFile(dir=staging.parent))
+        remaining = container_budget
+        while chunk := source.read(min(1024 * 1024, remaining + 1)):
+            remaining -= len(chunk)
+            if remaining < 0:
+                raise ValueError("Artifact TAR decompressed container limit exceeded")
+            decoded.write(chunk)
+        decoded.seek(0)
+        _extract_tar_members(decoded, staging, max_bytes, max_files, metadata_budget)
+
+
+def _extract_tar_members(snapshot, staging, max_bytes, max_files, metadata_budget):
+    bounded = _TarMetadataReader(snapshot, metadata_budget)
+    with tarfile.open(fileobj=bounded, mode="r:") as archive:
         members, seen, nodes, expanded = [], set(), set(), 0
         for member in archive:
             path = _member_path(member.name, seen)
@@ -174,6 +228,9 @@ def _extract_tar(snapshot, staging, max_bytes, max_files):
             if expanded > max_bytes:
                 raise ValueError("Artifact expanded limits exceeded")
             members.append((member, path))
+        # Metadata has been scanned; extraction now enforces the checked payload
+        # sizes through _copy_member, without rereading any extension records.
+        bounded.remaining = None
         for member, path in members:
             target = staging.joinpath(*path.parts)
             if member.isdir():

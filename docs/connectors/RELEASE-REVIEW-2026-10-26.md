@@ -12,6 +12,7 @@ connector setup page and the shared UI simplification. Review fixes cover:
 - Explicit revoked-credential rotation, TLS certificate validation, and probe
   freshness checks that reject future timestamps.
 - Bounded ZIP metadata parsing and archive path counts including implicit parents.
+  TAR decompression and PAX/GNU metadata reads have separate bounded budgets.
   Failed unjournaled installation staging can be retried; journaled unknown
   attempts cannot be replayed.
 - Private artifact publication rejects both modern CloudFront service principals
