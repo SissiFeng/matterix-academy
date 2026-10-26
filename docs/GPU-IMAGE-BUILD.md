@@ -164,6 +164,14 @@ at the network layer. Missing SSM, source drift, dependency conflicts, missing
 assets, wrong GPU/driver, black renderer or unreadable service files abort the build.
 Code is read-only to the worker; state/cache remain private and writable. The service
 is disabled, no token exists, and the worker remains unqualified in every image.
+All three native launch paths use Kit's explicit
+[`--portable-root`](https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/guide/configuring.html#portable-mode) under
+`/var/cache/academy-native/academy-kit`; `HOME` alone cannot override the installed
+Kit portable configuration. Before importing Isaac, the launcher checks the private
+cache's ownership, path and actual writability. After startup it verifies Kit's
+cache/data/log tokens remain inside that directory and emits `ACADEMY_KIT_PATHS`.
+Finalization also uses the worker cache as its working directory, rather than the
+builder's private home. No installed runtime or source directory becomes writable.
 
 Retain `/etc/academy-native/evidence/` inventories and Packer's `packer-manifest.json`.
 The AMI tags include `AcademyManifestSHA256` and `AcademyReleaseSHA256`. Feed the

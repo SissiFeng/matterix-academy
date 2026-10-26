@@ -103,24 +103,11 @@ def main():
     from .native_isaac import activate
 
     activate(Path(cfg["matterix_root"]))
-    from isaaclab.app import AppLauncher
+    from .native_kit import launch_native_app
 
-    launch_parser = argparse.ArgumentParser()
-    AppLauncher.add_app_launcher_args(launch_parser)
-    app = AppLauncher(
-        launch_parser.parse_args(
-            [
-                "--enable_cameras",
-                "--device",
-                "cuda:0",
-                "--viz",
-                "kit",
-                "--livestream",
-                "0",
-                "--headless",
-            ]
-        )
-    ).app
+    app = launch_native_app(
+        headless=True, protected_roots=(cfg["matterix_root"], cfg["assets_data_dir"])
+    )
     env = None
     try:
         activate(Path(cfg["matterix_root"]))
