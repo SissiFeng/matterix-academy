@@ -53,6 +53,14 @@ same credential before attempting pairing; it does not generate another secret.
 Credentials stay under `~/.local/share/academy-companion`, mode 0700, with files
 mode 0600. The optional global `--state-dir` must precede the subcommand.
 
+After an installation is revoked, explicitly pair a new installation with
+`pair --config /absolute/private/local-config.json --rotate-credentials`.
+The companion first confirms that the old credentials are rejected, refuses
+rotation while commands or receipts remain unresolved, and archives the old
+private credential file before replacing it. A timeout during the identity check
+does not permit rotation. For a lost pairing response, use ordinary `pair`
+without this flag so the original credential is reconciled.
+
 Pairing does not qualify hardware. `probe` reads `/health`, `/pipettes`, `/unitelabs/runtime`,
 `/calibration/status`, `/calibration/pipette_offset`,
 `/calibration/tip_length` and `/labwareOffsets` using `Opentrons-Version: 3`. It also

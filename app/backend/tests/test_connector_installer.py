@@ -302,6 +302,75 @@ def test_approved_zip_installs_only_reviewed_committed_hooks_with_durable_phases
     assert len(fixture.calls) == count
 
 
+@pytest.mark.parametrize("step", ["_snapshot", "stage_archive", "_policy", "_observe"])
+def test_preflight_failure_cleans_staging_and_allows_same_operation_retry(
+    installation, monkeypatch, step
+):
+    owner = subject if step == "stage_archive" else installation.installation
+    original = getattr(owner, step)
+
+    def fail_after_preflight(*args, **kwargs):
+        original(*args, **kwargs)
+        raise OSError("Interrupted local preflight")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(owner, step, fail_after_preflight)
+        with pytest.raises(OSError, match="local preflight"):
+            installation.install()
+    directory = installation.root / "state" / str(installation.request.operation_id)
+    assert not directory.exists()
+    assert installation.installation.journal.get(installation.request.operation_id) is None
+    assert installation.mutations == []
+    assert installation.install()["status"] == "completed"
+    assert installation.mutations == ["deploy-attempted", "service-switch-attempted"]
+
+
+def test_declined_preflight_can_be_retried_with_fresh_local_approval(installation):
+    assert installation.install(approve=lambda summary: False)["status"] == "declined"
+    directory = installation.root / "state" / str(installation.request.operation_id)
+    assert not directory.exists()
+    assert installation.installation.journal.get(installation.request.operation_id) is None
+    assert installation.mutations == []
+    assert installation.install()["status"] == "completed"
+    assert len(installation.approvals) == 1
+
+
+def test_unjournaled_staging_after_process_exit_is_rebuilt_before_retry(installation):
+    directory = installation.root / "state" / str(installation.request.operation_id)
+    directory.mkdir(mode=0o700)
+    (directory / "partial-preflight").write_text("incomplete local staging")
+    assert installation.install()["status"] == "completed"
+    assert not (directory / "partial-preflight").exists()
+    assert (directory / "source/deploy.sh").read_bytes() == installation.files["deploy.sh"]
+
+
+def test_committed_journal_survives_begin_response_loss_and_prevents_replay(
+    installation, monkeypatch
+):
+    journal = installation.installation.journal
+    begin = journal.begin
+
+    def lose_begin_response(*args, **kwargs):
+        begin(*args, **kwargs)
+        raise OSError("Lost local journal response")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(journal, "begin", lose_begin_response)
+        with pytest.raises(OSError, match="journal response"):
+            installation.install()
+    directory = installation.root / "state" / str(installation.request.operation_id)
+    saved = journal.get(installation.request.operation_id)
+    assert saved["phase"] == "prepared"
+    assert saved["receipt"] is None
+    assert (directory / "ssh-policy.json").exists()
+    calls = len(installation.calls)
+    with pytest.raises(RuntimeError, match="unknown; no automatic replay"):
+        installation.install()
+    assert journal.get(installation.request.operation_id) == saved
+    assert len(installation.calls) == calls
+    assert installation.mutations == []
+
+
 @pytest.mark.parametrize(
     "field,value",
     [

@@ -30,6 +30,37 @@ def operator_approval(command) -> bool:
     return input(f"Type '{phrase}' to allow this one run, or Enter to decline: ").strip() == phrase
 
 
+def new_credentials(config: LocalConfig) -> Credentials:
+    return Credentials(
+        installation_id=uuid4(), secret=secrets.token_urlsafe(32), academy_url=config.academy_url
+    )
+
+
+def rotate_credentials(path: Path, old: Credentials, config: LocalConfig, journal: Journal):
+    """Explicit replacement after rejection, retaining the old reconciliation secret."""
+    if journal.unfinished() or journal.unresolved() or journal.outbox():
+        raise RuntimeError("Reconcile pending commands and receipts before rotating credentials")
+    archived = path.with_name(f"credentials-{old.installation_id}.json")
+    if archived.exists():
+        if Credentials.model_validate_json(read_private(archived)) != old:
+            raise ValueError("Archived installation credentials differ from current credentials")
+    else:
+        write_private(archived, old.model_dump(mode="json"))
+    replacement = new_credentials(config)
+    staged = path.with_name(f"credentials-{replacement.installation_id}.pending.json")
+    write_private(staged, replacement.model_dump(mode="json"))
+    # Make the archive durable before atomically replacing the active file. A
+    # crash never discards the secret needed to reconcile the prior installation.
+    fd = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+        os.replace(staged, path)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    return replacement
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "setup":
@@ -57,6 +88,11 @@ def main(argv=None):
         if name == "pair":
             cmd.add_argument(
                 "--code-file", type=Path, help="Optional private mode 0600 pairing code file"
+            )
+            cmd.add_argument(
+                "--rotate-credentials",
+                action="store_true",
+                help="After revocation, archive rejected credentials and pair a new installation",
             )
         if name == "run":
             cmd.add_argument("--once", action="store_true", help="Claim at most one new command")
@@ -93,11 +129,7 @@ def main(argv=None):
         if args.action == "pair" and not credential_path.exists():
             write_private(
                 credential_path,
-                {
-                    "installation_id": str(uuid4()),
-                    "secret": secrets.token_urlsafe(32),
-                    "academy_url": config.academy_url,
-                },
+                new_credentials(config).model_dump(mode="json"),
             )
         credentials = Credentials.model_validate_json(read_private(credential_path))
         client = AcademyClient(config, credentials)
@@ -112,11 +144,19 @@ def main(argv=None):
                 # A lost pair response is reconciled with the same persisted secret first.
                 try:
                     client.request("GET", "/companion/me")
+                    if args.rotate_credentials:
+                        raise RuntimeError(
+                            "Revoke the existing installation before rotating credentials"
+                        )
                     print("This installation is already paired.")
                     return 0
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code not in {401, 403, 404}:
                         raise
+                if args.rotate_credentials:
+                    credentials = rotate_credentials(credential_path, credentials, config, journal)
+                    client.close()
+                    client = AcademyClient(config, credentials)
                 code = (
                     read_private(args.code_file).decode().strip()
                     if args.code_file

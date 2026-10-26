@@ -82,11 +82,14 @@ upstream workflow status must be re-read before promotion.
 uv run python scripts/connector-release.py inspect --output build/intake-NEW.json
 ```
 
-The GitHub workflow `connector-sync.yml` is disabled until
-`CONNECTOR_SYNC_ENABLED=true`. When configured, its six-hour intake records
-source commits, builds, tests and artifact metadata. **It does not auto-install
-new main or automatically promote a candidate.** A manual publication selects
-an exact reviewed manifest from `ops/connectors/releases/<manifest_id>.json`.
+The GitHub workflow `connector-sync.yml` runs scheduled intake only when
+`CONNECTOR_SYNC_ENABLED=true`. Its six-hour intake records source commits,
+builds, tests and artifact metadata. Manual intake remains available with an
+empty manifest ID. **It does not auto-install new main or automatically promote
+a candidate.** A manual publication selects an exact reviewed manifest from
+`ops/connectors/releases/<manifest_id>.json` and verifies that artifact's build
+directly, independently of scheduled intake. The protected publication environment
+and its configured credentials are still required.
 No fabricated approved manifest is included.
 
 Configure the protected `connector-publication` environment with:

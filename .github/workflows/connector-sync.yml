@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   intake:
-    if: github.repository == 'SissiFeng/matterix-academy' && vars.CONNECTOR_SYNC_ENABLED == 'true'
+    if: github.repository == 'SissiFeng/matterix-academy' && ((github.event_name == 'schedule' && vars.CONNECTOR_SYNC_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && inputs.manifest_id == ''))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -38,7 +38,7 @@ jobs:
           version: '0.11.18'
       - name: Inspect current AC commits and build evidence without executing upstream code
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CONNECTOR_ARTIFACT_READ_TOKEN || github.token }}
         run: uv run --frozen python scripts/connector-release.py inspect --output build/connector-intake.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -49,8 +49,7 @@ jobs:
         run: echo 'Intake records candidates only. No robot installation, package promotion or hardware execution occurred.' >> "$GITHUB_STEP_SUMMARY"
 
   mirror:
-    needs: intake
-    if: github.event_name == 'workflow_dispatch' && inputs.manifest_id != ''
+    if: github.repository == 'SissiFeng/matterix-academy' && github.event_name == 'workflow_dispatch' && inputs.manifest_id != ''
     environment: connector-publication
     runs-on: ubuntu-24.04
     timeout-minutes: 20

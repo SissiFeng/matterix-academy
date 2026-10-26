@@ -5,12 +5,79 @@ import os
 import re
 import shutil
 import stat
+import struct
 import tarfile
 import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
 from .config import private_directory
+
+MAX_ZIP_DIRECTORY_BYTES = 16 * 1024 * 1024
+
+
+def _check_zip_directory(snapshot, max_files):
+    """Bound metadata before ZipFile eagerly reads and allocates its directory."""
+    snapshot.seek(0, os.SEEK_END)
+    size = snapshot.tell()
+    snapshot.seek(max(0, size - 65557))  # Fixed EOCD plus the maximum ZIP comment.
+    tail = snapshot.read(65557)
+    index = tail.rfind(b"PK\x05\x06")
+    if index < 0 or len(tail) - index < 22:
+        raise ValueError("Invalid ZIP directory")
+    _, disk, start_disk, disk_count, count, length, offset, comment = struct.unpack_from(
+        "<4s4H2LH", tail, index
+    )
+    end = size - len(tail) + index
+    snapshot.seek(max(0, end - 20))
+    locator = snapshot.read(4) if end >= 20 else b""
+    if len(tail) - index != 22 + comment:
+        raise ValueError("Invalid ZIP directory ending")
+    if (
+        disk
+        or start_disk
+        or disk_count != count
+        or count == 0xFFFF
+        or length == 0xFFFFFFFF
+        or offset == 0xFFFFFFFF
+        or locator == b"PK\x06\x07"
+    ):
+        # Neither format is needed within this installer's byte/entry limits.
+        raise ValueError("Split and ZIP64 archive directories are unsupported")
+    if count > max_files:
+        raise ValueError("Artifact file limit exceeded")
+    if length > MAX_ZIP_DIRECTORY_BYTES:
+        raise ValueError("Artifact ZIP metadata limit exceeded")
+    start = end - length
+    if start < 0 or offset > start:
+        raise ValueError("Invalid ZIP directory bounds")
+    snapshot.seek(start)
+    actual = 0
+    while snapshot.tell() < end:
+        header = snapshot.read(46)
+        if len(header) != 46 or header[:4] != b"PK\x01\x02":
+            raise ValueError("Invalid ZIP directory entry")
+        actual += 1
+        if actual > max_files:
+            raise ValueError("Artifact file limit exceeded")
+        name, extra, comment = struct.unpack_from("<HHH", header, 28)
+        if (
+            struct.unpack_from("<H", header, 34)[0]
+            or snapshot.tell() + name + extra + comment > end
+        ):
+            raise ValueError("Invalid ZIP directory entry bounds")
+        snapshot.seek(name + extra + comment, os.SEEK_CUR)
+    if actual != count:
+        raise ValueError("ZIP directory entry count mismatch")
+    snapshot.seek(0)
+
+
+def _count_nodes(path: PurePosixPath, nodes: set[tuple[str, ...]], max_files: int):
+    # Account for implicit parent directories as well as explicit archive entries.
+    for depth in range(1, len(path.parts) + 1):
+        nodes.add(path.parts[:depth])
+        if len(nodes) > max_files:
+            raise ValueError("Artifact file limit exceeded (including parent directories)")
 
 
 def _member_path(name: str, seen: set[str]) -> PurePosixPath:
@@ -50,13 +117,15 @@ def _copy_member(source, target: Path, declared_size: int):
 
 
 def _extract_zip(snapshot, staging, max_bytes, max_files, max_ratio):
+    _check_zip_directory(snapshot, max_files)
     with zipfile.ZipFile(snapshot) as archive:
         members = archive.infolist()
         if len(members) > max_files:
             raise ValueError("Artifact file limit exceeded")
-        seen, expanded, checked = set(), 0, []
+        seen, nodes, expanded, checked = set(), set(), 0, []
         for member in members:
             path = _member_path(member.orig_filename, seen)
+            _count_nodes(path, nodes, max_files)
             mode = member.external_attr >> 16
             file_type = stat.S_IFMT(mode)
             if (
@@ -90,9 +159,10 @@ def _extract_zip(snapshot, staging, max_bytes, max_files, max_ratio):
 
 def _extract_tar(snapshot, staging, max_bytes, max_files):
     with tarfile.open(fileobj=snapshot, mode="r:*") as archive:
-        members, seen, expanded = [], set(), 0
+        members, seen, nodes, expanded = [], set(), set(), 0
         for member in archive:
             path = _member_path(member.name, seen)
+            _count_nodes(path, nodes, max_files)
             if (
                 len(members) >= max_files
                 or not (member.isfile() or member.isdir())

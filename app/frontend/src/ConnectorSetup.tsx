@@ -32,6 +32,10 @@ const platformName = {
   linux: "Ubuntu / Linux",
   windows: "Windows",
 };
+const architectureName = { arm64: "Apple Silicon", x86_64: "Intel" };
+type Architecture = keyof typeof architectureName;
+const catalogPath = (platform: ConnectorPlatform, architecture: Architecture) =>
+  `/connectors/catalog?platform=${encodeURIComponent(platform)}&architecture=${architecture}`;
 const refKey = (id: string) => `academy-physical-run-v1:${id}`;
 const workflowKey = (id: string) => `academy-connector-workflow-v1:${id}`;
 const isFinal = (run: PhysicalRun | null) =>
@@ -107,6 +111,7 @@ export default function ConnectorSetup({
   const [sessionId, setSessionId] = useState(initialSessionId ?? "");
   const [instrument, setInstrument] = useState<ConnectorInstrument>("flex");
   const [platform, setPlatform] = useState<ConnectorPlatform>("macos");
+  const [architecture, setArchitecture] = useState<Architecture>("arm64");
   const [name, setName] = useState("My Flex");
   const [pairing, setPairing] = useState<{
     code: string;
@@ -185,7 +190,7 @@ export default function ConnectorSetup({
       const id = currentId.current;
       const selected = selection.current || savedWorkflowId(id);
       const [nextCatalog, list, saved] = await Promise.all([
-        api<ConnectorCatalog>("/connectors/catalog"),
+        api<ConnectorCatalog>(catalogPath(platform, architecture)),
         api<{ connections: InstrumentConnection[] }>("/connections"),
         api<Session[]>("/sessions"),
       ]);
@@ -264,7 +269,7 @@ export default function ConnectorSetup({
         }
       }
     },
-    [acceptConnection],
+    [acceptConnection, platform, architecture],
   );
 
   useEffect(() => {
@@ -361,7 +366,7 @@ export default function ConnectorSetup({
       if (!canDownload) return;
       // Presigned links expire while the operator reads the setup page.
       const fresh = await api<ConnectorCatalog>(
-        `/connectors/catalog?platform=${encodeURIComponent(platform)}`,
+        catalogPath(platform, architecture),
       );
       if (!alive.current) return;
       setCatalog(fresh);
@@ -505,10 +510,30 @@ export default function ConnectorSetup({
             `/connections/${connection.id}/runs/${id}`,
           );
           if (alive.current) setRun(next);
-        } catch {
-          setNotice(
-            "The physical request has an unresolved outcome. Keep this run reference and refresh its status. No second run will be submitted automatically.",
-          );
+        } catch (lookupError) {
+          const rejected =
+            e instanceof ApiError &&
+            [400, 401, 403, 404, 409, 422].includes(e.status);
+          if (
+            rejected &&
+            lookupError instanceof ApiError &&
+            lookupError.status === 404
+          ) {
+            // Only a definite rejection plus confirmed absence permits a new
+            // identity. A lost response or server error remains unresolved.
+            if (sessionStorage.getItem(refKey(connection.id)) === id)
+              sessionStorage.removeItem(refKey(connection.id));
+            if (alive.current && currentId.current === connection.id) {
+              setPendingId(null);
+              setNotice(
+                "The request was rejected and no run was created. Review the workflow and fresh checks before trying again.",
+              );
+            }
+          } else {
+            setNotice(
+              "The physical request has an unresolved outcome. Keep this run reference and refresh its status. No second run will be submitted automatically.",
+            );
+          }
         }
         throw e;
       } finally {
@@ -681,6 +706,7 @@ export default function ConnectorSetup({
                     disabled={busy || !!connection || !!currentId.current}
                     onChange={(e) => {
                       setPlatform(e.target.value as ConnectorPlatform);
+                      setCatalog(null);
                       setInstallConsent(false);
                     }}
                   >
@@ -691,6 +717,28 @@ export default function ConnectorSetup({
                     ))}
                   </select>
                 </label>
+                {platform === "macos" && (
+                  <label className={s.field}>
+                    Mac chip
+                    <select
+                      value={architecture}
+                      disabled={busy}
+                      onChange={(e) => {
+                        setArchitecture(e.target.value as Architecture);
+                        setCatalog(null);
+                        setInstallConsent(false);
+                      }}
+                    >
+                      {Object.entries(architectureName).map(
+                        ([value, title]) => (
+                          <option key={value} value={value}>
+                            {title}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+                )}
               </div>
               {!connection && (
                 <button

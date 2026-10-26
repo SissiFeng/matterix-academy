@@ -133,6 +133,57 @@ def test_wrong_account_cannot_publish(tmp_path, monkeypatch):
         module.mirror(manifest, package, "private", "222222222222", Session())
 
 
+@pytest.mark.parametrize(
+    "principal",
+    [
+        "*",
+        {"AWS": "*"},
+        {"Service": "cloudfront.amazonaws.com"},
+        {"AWS": "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity EXAMPLE"},
+        {"AWS": ["arn:aws-cn:iam::cloudfront:user/CloudFront Origin Access Identity EXAMPLE"]},
+    ],
+)
+def test_website_bucket_cannot_receive_connector_artifact(tmp_path, monkeypatch, principal):
+    module = release_module()
+    package = tmp_path / "bundle"
+    package.write_bytes(b"package")
+    manifest = approved(size_bytes=7, artifact_sha256=hashlib.sha256(b"package").hexdigest())
+    monkeypatch.setattr(module, "verify_build", lambda _: None)
+
+    class Session:
+        def client(self, service):
+            return self
+
+        def get_caller_identity(self):
+            return {"Account": "111111111111"}
+
+        def head_bucket(self, **kwargs):
+            assert kwargs["ExpectedBucketOwner"] == "111111111111"
+
+        def get_public_access_block(self, **kwargs):
+            return {
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": True,
+                    "IgnorePublicAcls": True,
+                    "BlockPublicPolicy": True,
+                    "RestrictPublicBuckets": True,
+                }
+            }
+
+        def get_bucket_policy(self, **kwargs):
+            return {
+                "Policy": module.json.dumps(
+                    {"Statement": [{"Effect": "Allow", "Principal": principal}]}
+                )
+            }
+
+        def get_bucket_versioning(self, **kwargs):
+            pytest.fail("Website policy must be rejected before publication")
+
+    with pytest.raises(ValueError, match="website distribution"):
+        module.mirror(manifest, package, "private", "111111111111", Session())
+
+
 def desktop_package(**changes):
     return {
         "platform": "macos",
@@ -155,8 +206,16 @@ def test_desktop_download_uses_exact_private_manifest_and_temporary_url(monkeypa
 
     class S3:
         def head_object(self, **kwargs):
-            assert kwargs == {"Bucket": "private-connectors", "Key": package.object_key}
-            return {"Metadata": {"sha256": package.artifact_sha256}, "ContentLength": 100}
+            assert kwargs == {
+                "Bucket": "private-connectors",
+                "Key": package.object_key,
+                "ChecksumMode": "ENABLED",
+            }
+            return {
+                "Metadata": {"sha256": package.artifact_sha256},
+                "ChecksumSHA256": base64.b64encode(bytes.fromhex(package.artifact_sha256)).decode(),
+                "ContentLength": 100,
+            }
 
         def generate_presigned_url(self, operation, **kwargs):
             assert operation == "get_object" and kwargs["ExpiresIn"] == 300

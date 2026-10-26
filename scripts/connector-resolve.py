@@ -3,12 +3,15 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from uuid import UUID
 
-from academy.companion.config import read_private
-from academy.connections import ConnectionService, ConnectorResolution
-from academy.store import DynamoStore, SQLiteStore
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app/backend"))
+
+from academy.companion.config import read_private  # noqa: E402
+from academy.connections import ConnectionService, ConnectorResolution  # noqa: E402
+from academy.store import DynamoStore, SQLiteStore  # noqa: E402
 
 
 def main():

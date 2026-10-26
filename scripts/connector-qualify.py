@@ -104,7 +104,7 @@ def main():
         )
     ) or probe.get("firmware") not in release.get("supported_firmware", []):
         parser.error("Observed installation does not match the currently approved release/firmware")
-    if not probe.get("reachable") or time.time() - probe.get("observed_at", 0) > 300:
+    if not probe.get("reachable") or not 0 <= time.time() - probe.get("observed_at", 0) <= 300:
         parser.error("A fresh read-only probe is required")
     record = {
         "version": args.expected_version + 1,

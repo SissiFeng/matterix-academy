@@ -1,14 +1,17 @@
+import base64
 import importlib.util
 import json
 from pathlib import Path
 
 import pytest
+from academy import connector_catalog
 from academy.connector_catalog import (
     ConnectorArtifact,
     approved_release,
     public_catalog,
     read_catalog,
 )
+from fastapi import HTTPException
 
 
 def artifact(**changes):
@@ -124,3 +127,66 @@ def test_release_verifier_rejects_tampering_and_symlinks(tmp_path):
     link.symlink_to(package)
     with pytest.raises(ValueError, match="non-symlink"):
         module.verify_file(manifest, link)
+
+
+@pytest.mark.parametrize("kind", ["desktop", "connector"])
+@pytest.mark.parametrize("checksum", [None, "wrong", "valid"])
+def test_download_requires_s3_validated_sha256_before_signing(monkeypatch, kind, checksum):
+    approved = artifact(
+        status="approved",
+        rollback_test_passed=True,
+        no_motion_startup_passed=True,
+        qualification_report_sha256="c" * 64,
+        runtime_contract_id="contract-v1",
+        runtime_release_id="release-1",
+        runtime_bundle_sha256="d" * 64,
+    )
+    desktop = {
+        "platform": "macos",
+        "architecture": "x86_64",
+        "version": "0.2.0",
+        "source_commit": "a" * 40,
+        "source_tree_sha256": "a" * 64,
+        "artifact_sha256": "b" * 64,
+        "size_bytes": 100,
+        "filename": "academy-bridge-macos-x86-64.zip",
+        "notarized": True,
+        "tests_passed": True,
+        "status": "approved",
+    }
+    signed = []
+
+    class S3:
+        def head_object(self, **kwargs):
+            assert kwargs["ChecksumMode"] == "ENABLED"
+            assert kwargs["Bucket"] == "reviewed-private-packages"
+            # Matching user metadata and size alone must never authorize download.
+            result = {"Metadata": {"sha256": "b" * 64}, "ContentLength": 100}
+            if checksum is not None:
+                result["ChecksumSHA256"] = base64.b64encode(
+                    bytes.fromhex(("b" if checksum == "valid" else "c") * 64)
+                ).decode("ascii")
+            return result
+
+        def generate_presigned_url(self, *args, **kwargs):
+            signed.append(kwargs)
+            return "https://reviewed-private-packages.example/download"
+
+    monkeypatch.setenv("ACADEMY_CONNECTOR_BUCKET", "reviewed-private-packages")
+    monkeypatch.setattr(connector_catalog.boto3, "client", lambda service: S3())
+    monkeypatch.setattr(connector_catalog, "approved_release", lambda *_: approved)
+
+    def request():
+        if kind == "desktop":
+            return connector_catalog.companion_download(
+                {"companion_packages": [desktop]}, "macos", "x86_64"
+            )
+        return connector_catalog.download("flex", "macos")
+
+    if checksum == "valid":
+        assert request()
+        assert len(signed) == 1
+    else:
+        with pytest.raises((ValueError, HTTPException)):
+            request()
+        assert signed == []

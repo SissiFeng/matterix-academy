@@ -26,11 +26,22 @@ locking. Installer effects are intercepted; no test controls a physical robot.
 
 ## Reproducible evidence
 
-The executing worktree retains `build/connector-final-verify.log`,
-`build/connector-final-lambda.log` and `build/connector-browser-release.log`.
-The task's delivery folder retains copies alongside `opentrons-simulator.json`,
-`ac-source-intake.json`, desktop/mobile screenshots and the separately generated
-Mac package build report.
+These historical results were collected locally. The logs and screenshots are
+not checked into GitHub: `build/` is ignored. The original delivery folder on the
+development Mac is
+`/Users/sissifeng/.codex/artifacts/matterix-academy/connector-setup-2026-10-24/`.
+It contains the validation logs, `opentrons-simulator.json`, `ac-source-intake.json`,
+desktop/mobile screenshots and the separately generated Mac package build report.
+This path is local evidence, not a shared download.
+
+For shared, commit-bound verification, use the checks attached to
+[PR #10](https://github.com/SissiFeng/matterix-academy/pull/10) and the
+[Verify academy runs](https://github.com/SissiFeng/matterix-academy/actions/workflows/ci.yml).
+Each completed job exposes the Lambda build, verification and browser results in
+its logs; failed browser artifacts are retained for seven days. Reproduce locally
+with `bash scripts/build-lambda.sh`, `bash scripts/verify.sh`, and
+`npm --prefix app/frontend run test:e2e`. Cloud deployment is established only by
+the separate deploy job and the live `/version.json` manifest.
 
 The Mac packaging script records its source commit, dirty status, source tree
 hash, dependency inventory and archive SHA-256. It runs the frozen executable's

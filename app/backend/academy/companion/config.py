@@ -233,4 +233,12 @@ class LocalConfig(StrictModel):
         if self.academy_url not in allowed:
             raise ValueError("Academy origin is not locally allowlisted")
         self.robot_url = validate_url(self.robot_url, robot=True)
+        if self.profile.sila_tls:
+            if not self.profile.sila_certificate_sha256 or not self.sila_certificate_file:
+                raise ValueError(
+                    "SiLA TLS requires a certificate fingerprint and private certificate file"
+                )
+            certificate = read_private(Path(self.sila_certificate_file))
+            if hashlib.sha256(certificate).hexdigest() != self.profile.sila_certificate_sha256:
+                raise ValueError("Local SiLA certificate fingerprint mismatch")
         return self

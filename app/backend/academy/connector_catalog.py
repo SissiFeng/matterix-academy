@@ -1,5 +1,6 @@
 """Reviewed connector artifacts; intake candidates never authorize installation."""
 
+import base64
 import json
 import os
 from pathlib import Path
@@ -105,6 +106,15 @@ class CompanionPackage(StrictModel):
         return f"connectors/approved/desktop/{self.source_commit}/{self.artifact_sha256}/{self.filename}"
 
 
+def matches_object(head, artifact):
+    checksum = base64.b64encode(bytes.fromhex(artifact.artifact_sha256)).decode("ascii")
+    return (
+        head.get("ChecksumSHA256") == checksum
+        and head.get("Metadata", {}).get("sha256") == artifact.artifact_sha256
+        and head.get("ContentLength") == artifact.size_bytes
+    )
+
+
 def companion_download(data, platform, architecture):
     packages = [CompanionPackage.model_validate(p) for p in data.get("companion_packages", [])]
     matching = [p for p in packages if p.platform == platform and p.architecture == architecture]
@@ -115,11 +125,8 @@ def companion_download(data, platform, architecture):
         return None
     package = matching[0]
     client = boto3.client("s3")
-    head = client.head_object(Bucket=bucket, Key=package.object_key)
-    if (
-        head.get("Metadata", {}).get("sha256") != package.artifact_sha256
-        or head["ContentLength"] != package.size_bytes
-    ):
+    head = client.head_object(Bucket=bucket, Key=package.object_key, ChecksumMode="ENABLED")
+    if not matches_object(head, package):
         raise ValueError("Desktop package does not match its approved manifest")
     return {
         **package.model_dump(),
@@ -230,13 +237,10 @@ def download(instrument: Literal["ot2", "flex"], platform: Literal["macos", "lin
     )
     client = boto3.client("s3")
     try:
-        head = client.head_object(Bucket=bucket, Key=artifact.object_key)
+        head = client.head_object(Bucket=bucket, Key=artifact.object_key, ChecksumMode="ENABLED")
     except (BotoCoreError, ClientError):
         raise HTTPException(503, "The reviewed connector package is unavailable") from None
-    if (
-        head.get("Metadata", {}).get("sha256") != artifact.artifact_sha256
-        or head["ContentLength"] != artifact.size_bytes
-    ):
+    if not matches_object(head, artifact):
         raise HTTPException(503, "Published artifact does not match the approved manifest")
     return {
         "url": client.generate_presigned_url(

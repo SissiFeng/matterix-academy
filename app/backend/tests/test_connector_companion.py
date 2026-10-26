@@ -325,7 +325,7 @@ def test_staging_checks_hash_bounds_and_never_overwrites(tmp_path):
     assert (parent / "artifact/package/file.txt").read_text() == "verified fixture contents"
     with pytest.raises(ValueError, match="replace"):
         stage_archive(archive, checksum, parent / "artifact")
-    with pytest.raises(ValueError, match="Unsafe"):
+    with pytest.raises(ValueError, match="file limit"):
         stage_archive(archive, checksum, parent / "other", max_files=0)
 
 

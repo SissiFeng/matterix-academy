@@ -16,6 +16,7 @@ import re
 import runpy
 import secrets
 import shlex
+import shutil
 import sqlite3
 import stat
 import subprocess
@@ -722,64 +723,77 @@ class Installer:
                 return json.loads(old["receipt"])
             raise RuntimeError("Previous install outcome is unknown; no automatic replay")
         directory = self.journal.state / str(request.operation_id)
+        # The exclusive installer lock and absent journal row prove this is only
+        # local preflight staging. A recorded attempt is never discarded/replayed.
+        if directory.exists() or directory.is_symlink():
+            shutil.rmtree(directory)
         directory.mkdir(mode=0o700)
-        workspace = directory / "source"
-        self._snapshot(source_repo, recipe, workspace)
-        stage_archive(archive, recipe.artifact_sha256, workspace / "dist_arm")
-        config = json.loads((workspace / "config/flex_config.json").read_text())
-        server = config.get("sila_server", {})
-        if (
-            server.get("uuid"),
-            server.get("port"),
-            server.get("tls"),
-            config.get("use_simulator"),
-            config.get("with_robot_server"),
-        ) != (
-            str(request.profile.sila_server_uuid),
-            request.profile.sila_port,
-            request.profile.sila_tls,
-            False,
-            True,
-        ):
-            raise ValueError("Reviewed install configuration does not match the local live profile")
-        policy, env, trust = self._policy(request, directory, workspace)
-        identity.update(trust)
-        identity["artifact_inventory"] = artifact_inventory(workspace / "dist_arm")
-        manifest = json.loads(_read_owned(workspace / "dist_arm/runtime-manifest.json"))
-        if manifest.get("releaseId") != request.profile.runtime_release_id or not re.fullmatch(
-            r"[A-Za-z0-9._-]+", manifest.get("releaseId", "")
-        ):
-            raise ValueError("Staged runtime release identity differs from the approved profile")
-        config_hash = hashlib.sha256(
-            b"".join(_read_owned(workspace / name) for name in CONFIG_FILES)
-        ).hexdigest()
-        identity["expected_active_release"] = (
-            "/var/lib/unitelabs-opentrons-flex/releases/"
-            + manifest["releaseId"]
-            + "-cfg"
-            + config_hash[:12]
-        )
-        initial = self._observe(request, policy, "stock")
-        identity["initial_pointers"] = self._pointers(initial)
-        if initial.get("credential_exists") and not initial.get("credential_valid"):
-            raise ValueError(
-                "Existing mutation credential is invalid; it will never be overwritten"
+        try:
+            workspace = directory / "source"
+            self._snapshot(source_repo, recipe, workspace)
+            stage_archive(archive, recipe.artifact_sha256, workspace / "dist_arm")
+            config = json.loads((workspace / "config/flex_config.json").read_text())
+            server = config.get("sila_server", {})
+            if (
+                server.get("uuid"),
+                server.get("port"),
+                server.get("tls"),
+                config.get("use_simulator"),
+                config.get("with_robot_server"),
+            ) != (
+                str(request.profile.sila_server_uuid),
+                request.profile.sila_port,
+                request.profile.sila_tls,
+                False,
+                True,
+            ):
+                raise ValueError(
+                    "Reviewed install configuration does not match the local live profile"
+                )
+            policy, env, trust = self._policy(request, directory, workspace)
+            identity.update(trust)
+            identity["artifact_inventory"] = artifact_inventory(workspace / "dist_arm")
+            manifest = json.loads(_read_owned(workspace / "dist_arm/runtime-manifest.json"))
+            if manifest.get("releaseId") != request.profile.runtime_release_id or not re.fullmatch(
+                r"[A-Za-z0-9._-]+", manifest.get("releaseId", "")
+            ):
+                raise ValueError(
+                    "Staged runtime release identity differs from the approved profile"
+                )
+            config_hash = hashlib.sha256(
+                b"".join(_read_owned(workspace / name) for name in CONFIG_FILES)
+            ).hexdigest()
+            identity["expected_active_release"] = (
+                "/var/lib/unitelabs-opentrons-flex/releases/"
+                + manifest["releaseId"]
+                + "-cfg"
+                + config_hash[:12]
             )
-        if not approve(
-            {
-                "action": "install-and-switch-to-connector",
-                "serial": request.profile.serial,
-                "host": request.ssh_host,
-                "recipe_sha256": recipe.sha256,
-                "bootstrap_credential": not initial.get("credential_exists"),
-            }
-        ):
-            return {
-                "status": "declined",
-                "operation_id": str(request.operation_id),
-                "mutation_attempted": False,
-            }
-        self.journal.begin(request.operation_id, identity)
+            initial = self._observe(request, policy, "stock")
+            identity["initial_pointers"] = self._pointers(initial)
+            if initial.get("credential_exists") and not initial.get("credential_valid"):
+                raise ValueError(
+                    "Existing mutation credential is invalid; it will never be overwritten"
+                )
+            if not approve(
+                {
+                    "action": "install-and-switch-to-connector",
+                    "serial": request.profile.serial,
+                    "host": request.ssh_host,
+                    "recipe_sha256": recipe.sha256,
+                    "bootstrap_credential": not initial.get("credential_exists"),
+                }
+            ):
+                return {
+                    "status": "declined",
+                    "operation_id": str(request.operation_id),
+                    "mutation_attempted": False,
+                }
+            self.journal.begin(request.operation_id, identity)
+        finally:
+            # Consult the durable row even if begin() committed and then failed.
+            if self.journal.get(request.operation_id) is None:
+                shutil.rmtree(directory)
         try:
             self._verify_prepared(request, identity, directory)
             fresh = self._observe(request, policy, "stock")

@@ -196,7 +196,12 @@ class ProtocolEngine:
         stop_requested: Callable[[], bool],
         timeout_seconds=1800,
         poll_seconds=1.0,
+        stop_timeout_seconds=30,
+        clock=time.monotonic,
+        sleep=time.sleep,
     ) -> dict:
+        if timeout_seconds <= 0 or not 0 < stop_timeout_seconds <= 30:
+            raise ValueError("Execution and bounded stop deadlines must be positive")
         self.probe()
         self._assert_idle()
         if not approve():
@@ -228,9 +233,9 @@ class ProtocolEngine:
         )
         protocol_id = resource_id(uploaded.get("data", {}).get("id"))
         phase("uploaded", protocol_id=protocol_id)
-        deadline = time.monotonic() + timeout_seconds
+        deadline = clock() + timeout_seconds
         analysis_id = None
-        while time.monotonic() < deadline:
+        while clock() < deadline:
             summaries = self._request("GET", f"/protocols/{protocol_id}/analyses").get("data", [])
             if not isinstance(summaries, list) or not summaries:
                 raise ProtocolError("Uploaded protocol has no analysis")
@@ -245,9 +250,11 @@ class ProtocolEngine:
                 break
             if analysis.get("status") != "pending":
                 raise ProtocolError("Unknown protocol analysis status")
-            time.sleep(poll_seconds)
+            sleep(poll_seconds)
         else:
             raise TimeoutError("Protocol analysis timed out")
+        if clock() >= deadline:
+            raise TimeoutError("Protocol analysis exhausted the execution deadline")
         if stop_requested():
             return {
                 "outcome": "stopped",
@@ -259,6 +266,8 @@ class ProtocolEngine:
             }
         self.probe()
         self._assert_idle()
+        if clock() >= deadline:
+            raise TimeoutError("Preflight exhausted the execution deadline; no run created")
         phase("create_run_attempted", protocol_id=protocol_id)
         run = self._request("POST", "/runs", json={"data": {"protocolId": protocol_id}}).get(
             "data", {}
@@ -268,32 +277,53 @@ class ProtocolEngine:
         bound = self.get_run(run_id, protocol_id)
         if not bound.get("current") or bound.get("status") != "idle":
             raise ProtocolError("Created run is not current and idle")
-        # Authority is checked immediately before actuation, not only before upload.
-        self.profile.assert_current()
-        stopping = stop_requested()
-        phase("stop_attempted" if stopping else "play_attempted")
-        self._request(
-            "POST",
-            f"/runs/{run_id}/actions",
-            json={"data": {"actionType": "stop" if stopping else "play"}},
-        )
-        while time.monotonic() < deadline:
+        # A failed authority check cannot abandon a bound run. Stop once, then
+        # observe only that resource within a separate, bounded stop deadline.
+        stopping = False
+        stop_deadline = None
+        uncertainty = None
+
+        def must_stop():
+            nonlocal uncertainty
+            try:
+                self.profile.assert_current()
+                requested = stop_requested()
+            except Exception:
+                uncertainty = "Execution authority could not be confirmed"
+                return True
+            if clock() >= deadline:
+                uncertainty = "Physical execution deadline expired"
+                return True
+            return requested
+
+        def stop_bound_run():
+            nonlocal stopping, stop_deadline
+            stopping = True
+            stop_deadline = clock() + stop_timeout_seconds
+            phase("stop_attempted")
+            # Never retry a lost stop response or touch any other/global resource.
+            self._request("POST", f"/runs/{run_id}/actions", json={"data": {"actionType": "stop"}})
+
+        if must_stop():
+            stop_bound_run()
+        else:
+            phase("play_attempted")
+            self._request("POST", f"/runs/{run_id}/actions", json={"data": {"actionType": "play"}})
+        while True:
+            if stopping and clock() >= stop_deadline:
+                raise TimeoutError("Bound stop was not confirmed; inspect robot, do not replay")
+            if not stopping and clock() >= deadline:
+                uncertainty = "Physical execution deadline expired"
+                stop_bound_run()
             run = self.get_run(run_id, protocol_id)
             status = run.get("status")
             if status in {"succeeded", "failed", "stopped"}:
                 break
             if not run.get("current"):
                 raise ProtocolError("Physical run lost current ownership")
-            if stop_requested() and not stopping:
-                # Bound current resource only. Never issue a global/home/other-run command.
-                phase("stop_attempted")
-                self._request(
-                    "POST", f"/runs/{run_id}/actions", json={"data": {"actionType": "stop"}}
-                )
-                stopping = True
-            time.sleep(poll_seconds)
-        else:
-            raise TimeoutError("Physical run exceeded local deadline; inspect robot, do not replay")
+            if not stopping and must_stop():
+                stop_bound_run()
+            sleep(poll_seconds)
         commands = self._commands(run_id)
         completed = [
             c.get("commandType")
@@ -316,10 +346,14 @@ class ProtocolEngine:
             if self.get_run(run_id, protocol_id).get("current"):
                 raise ProtocolError("Robot run release was not confirmed")
         return {
-            "outcome": {"succeeded": "completed", "failed": "failed", "stopped": "stopped"}[status],
+            "outcome": "unknown"
+            if uncertainty
+            else {"succeeded": "completed", "failed": "failed", "stopped": "stopped"}[status],
             "protocol_id": protocol_id,
             "robot_run_id": run_id,
             "completed_actions": len(completed),
             "stop_confirmed": True,
-            "detail": "Bound Protocol Engine terminal status and command evidence observed",
+            "detail": f"{uncertainty}; bound terminal status observed. Reconcile before new work."
+            if uncertainty
+            else "Bound Protocol Engine terminal status and command evidence observed",
         }

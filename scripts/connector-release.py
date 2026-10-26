@@ -201,8 +201,11 @@ def mirror(manifest, path, bucket, expected_account, session=None):
         policy = {"Statement": []}
     for statement in policy.get("Statement", []):
         principal = statement.get("Principal")
+        principal_text = json.dumps(principal)
         if statement.get("Effect") == "Allow" and (
-            principal == "*" or "cloudfront.amazonaws.com" in json.dumps(principal)
+            '"*"' in principal_text
+            or "cloudfront.amazonaws.com" in principal_text
+            or ":iam::cloudfront:user/CloudFront Origin Access Identity " in principal_text
         ):
             raise ValueError("Artifact bucket must not allow public or website distribution reads")
     if s3.get_bucket_versioning(Bucket=bucket).get("Status") != "Enabled":

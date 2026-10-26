@@ -638,3 +638,199 @@ test("published download refreshes its temporary URL after a long setup pause", 
     page.getByRole("heading", { name: "Connect your instrument." }),
   ).toBeVisible();
 });
+
+test("Intel Mac selection is used for availability, refresh and the actual download", async ({
+  page,
+}) => {
+  await enter(page);
+  const architectures: string[] = [];
+  await page.route("**/api/connectors/catalog**", async (route) => {
+    const query = new URL(route.request().url()).searchParams;
+    expect(query.get("platform")).toBe("macos");
+    const architecture = query.get("architecture")!;
+    architectures.push(architecture);
+    const source = await (await route.fetch()).json();
+    await route.fulfill({
+      json: {
+        ...source,
+        companion: {
+          status: architecture === "x86_64" ? "available" : "source-only",
+          platforms: ["macos"],
+          version: "0.2.0",
+          reason: "Browser fixture: only an Intel package is published.",
+          download_url:
+            architecture === "x86_64"
+              ? "https://private-packages.example/intel.zip"
+              : null,
+        },
+      },
+    });
+  });
+  await page.route("https://private-packages.example/intel.zip", (route) =>
+    route.fulfill({
+      body: "INTEL DOWNLOAD FIXTURE ONLY",
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": 'attachment; filename="intel.zip"',
+      },
+    }),
+  );
+  await connect(page);
+  await expect(page.getByLabel("Mac chip")).toHaveValue("arm64");
+  await expect(
+    page.getByRole("button", { name: "Download companion", exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel("Mac chip").selectOption("x86_64");
+  const consent = page.getByRole("checkbox", {
+    name: /I am using the computer connected/,
+  });
+  await expect(consent).toBeVisible();
+  await page
+    .getByRole("button", { name: "Refresh connection", exact: true })
+    .click();
+  await consent.check();
+  const downloaded = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Download companion for macOS", exact: true })
+    .click();
+  await downloaded;
+  expect(architectures).toEqual(["arm64", "x86_64", "x86_64", "x86_64"]);
+  await page.getByLabel("Mac chip").selectOption("arm64");
+  await expect(consent).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Download companion", exact: true }),
+  ).toBeDisabled();
+});
+
+for (const scenario of [
+  {
+    name: "definite rejection and confirmed absence",
+    submit: 409,
+    lookup: 404,
+    clear: true,
+  },
+  {
+    name: "server failure and absent run",
+    submit: 503,
+    lookup: 404,
+    clear: false,
+  },
+  {
+    name: "lost response and absent run",
+    submit: 0,
+    lookup: 404,
+    clear: false,
+  },
+  {
+    name: "definite rejection and failed lookup",
+    submit: 409,
+    lookup: 503,
+    clear: false,
+  },
+]) {
+  test(`browser fixture only: ${scenario.name} ${scenario.clear ? "allows an explicit retry" : "preserves the run reference"}`, async ({
+    page,
+  }) => {
+    // Motion authority is a fixture; all physical submissions are intercepted.
+    await enter(page);
+    await page
+      .getByRole("button", { name: "Meet the instruments", exact: true })
+      .click();
+    await page
+      .getByTestId("instrument-stories")
+      .getByRole("button", { name: "Use this workflow", exact: true })
+      .click();
+    await expect(page.getByTestId("workflow-studio")).toBeVisible();
+    const sessionId = page.url().split("/").at(-1)!;
+    const session = await (
+      await page.request.get(`/api/sessions/${sessionId}`)
+    ).json();
+    await page
+      .getByRole("button", { name: "Connect an instrument", exact: true })
+      .click();
+    const id = await create(page);
+    const connection = await (
+      await page.request.get(`/api/connections/${id}`)
+    ).json();
+    await page.route(`**/api/connections/${id}`, (route) =>
+      route.fulfill({
+        json: {
+          ...connection,
+          status: "paired",
+          qualified: true,
+          active_run_id: null,
+        },
+      }),
+    );
+    await page.route(`**/api/connections/${id}/preflight?*`, (route) =>
+      route.fulfill({
+        json: {
+          ready: true,
+          enabled: true,
+          connection_id: id,
+          session_id: sessionId,
+          session_version: session.version,
+          plan_hash: "a".repeat(64),
+          native_run_id: "018f3b56-0f49-4efb-aa21-a44b7e7cccca",
+          issues: [],
+        },
+      }),
+    );
+    const submissions: string[] = [];
+    await page.route(`**/api/connections/${id}/runs`, async (route) => {
+      submissions.push(route.request().postDataJSON().run_id);
+      if (!scenario.submit) return route.abort("failed");
+      await route.fulfill({
+        status: scenario.submit,
+        json: { detail: "Fixture submission rejected" },
+      });
+    });
+    await page.route(`**/api/connections/${id}/runs/*`, (route) =>
+      route.fulfill({
+        status: scenario.lookup,
+        json: { detail: "Fixture lookup response" },
+      }),
+    );
+    await page
+      .getByRole("button", { name: "Refresh connection", exact: true })
+      .click();
+    const consent = page.getByRole("checkbox", {
+      name: /I have reviewed this exact workflow/,
+    });
+    await consent.check();
+    const submit = page.getByRole("button", {
+      name: "Request physical run",
+      exact: true,
+    });
+    await submit.click();
+    await expect(
+      page.getByText(
+        scenario.clear
+          ? /The request was rejected and no run was created/
+          : /The physical request has an unresolved outcome/,
+      ),
+    ).toBeVisible();
+    const reference = () =>
+      page.evaluate(
+        (key) => sessionStorage.getItem(key),
+        `academy-physical-run-v1:${id}`,
+      );
+    expect(await reference()).toBe(scenario.clear ? null : submissions[0]);
+    expect(submissions).toHaveLength(1);
+    await expect(submit).toBeDisabled();
+    if (scenario.clear) {
+      await expect(page.getByLabel("Saved Studio workflow")).toBeEnabled();
+      await expect(consent).not.toBeChecked();
+      await consent.check();
+      await submit.click();
+      await expect.poll(() => submissions.length).toBe(2);
+      expect(submissions[1]).not.toBe(submissions[0]);
+    } else {
+      await page.reload();
+      await expect(page.getByLabel("Saved Studio workflow")).toBeDisabled();
+      await expect(submit).toBeDisabled();
+      expect(await reference()).toBe(submissions[0]);
+      expect(submissions).toHaveLength(1);
+    }
+  });
+}
