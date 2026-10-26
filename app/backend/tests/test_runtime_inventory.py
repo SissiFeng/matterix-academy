@@ -1,6 +1,9 @@
 """Host preflight logic with synthetic process metadata; no real GPU imports."""
 
 import json
+import subprocess
+import sys
+import venv
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -33,7 +36,7 @@ def fixture_runtime():
     }
 
 
-def collect(monkeypatch, tmp_path, runtime):
+def collect(monkeypatch, tmp_path, runtime, gpu="NVIDIA L4, 595.58.03, 23034 MiB\n"):
     monkeypatch.setattr(
         inventory,
         "source_inventory",
@@ -55,9 +58,7 @@ def collect(monkeypatch, tmp_path, runtime):
         inventory.subprocess,
         "run",
         lambda argv, **_: SimpleNamespace(
-            stdout="NVIDIA L4, 595.58.03, 23034 MiB\n"
-            if argv[0] == "nvidia-smi"
-            else json.dumps(runtime)
+            stdout=gpu if argv[0] == "nvidia-smi" else json.dumps(runtime)
         ),
     )
     return inventory.collect(tmp_path, tmp_path, tmp_path / "python")
@@ -67,6 +68,38 @@ def test_complete_profile_is_only_ready_to_commission_not_native_acceptance(monk
     result = collect(monkeypatch, tmp_path, fixture_runtime())
     assert result["ready_for_commissioning"]
     assert result["native_verified"] is False
+
+
+@pytest.mark.parametrize("name", ["NVIDIA A10G", "NVIDIA L4", "NVIDIA L40S"])
+def test_full_rtx_candidate_still_requires_native_commissioning(monkeypatch, tmp_path, name):
+    result = collect(monkeypatch, tmp_path, fixture_runtime(), f"{name}, 595.58.03, 22888 MiB\n")
+    assert result["ready_for_commissioning"]
+    assert result["native_verified"] is False
+
+
+@pytest.mark.parametrize("name", ["Tesla T4", "NVIDIA T4"])
+def test_t4_candidate_accepts_reserved_device_memory_but_requires_native_probes(
+    monkeypatch, tmp_path, name
+):
+    result = collect(monkeypatch, tmp_path, fixture_runtime(), f"{name}, 595.58.03, 15360 MiB\n")
+    assert result["ready_for_commissioning"]
+    assert result["native_verified"] is False
+
+
+@pytest.mark.parametrize(
+    "gpu",
+    [
+        "NVIDIA A10G, 595.58.03, 16384 MiB\n",
+        "Tesla T4, 595.58.03, 15359 MiB\n",
+        "NVIDIA T4, 595.58.03, 8192 MiB\n",
+        "NVIDIA L4, 595.58.03, 15360 MiB\n",
+        "NVIDIA A10G, 550.54.14, 22888 MiB\n",
+        "NVIDIA A100, 595.58.03, 81920 MiB\n",
+        "NVIDIA A10G, 595.58.03, 22888 MiB\nNVIDIA A10G, 595.58.03, 22888 MiB\n",
+    ],
+)
+def test_candidate_gpu_must_keep_memory_driver_and_single_device_gates(monkeypatch, tmp_path, gpu):
+    assert not collect(monkeypatch, tmp_path, fixture_runtime(), gpu)["ready_for_commissioning"]
 
 
 @pytest.mark.parametrize("change", ["python", "lab", "physx", "os", "launcher", "pip", "artifact"])
@@ -89,3 +122,84 @@ def test_wrong_generation_or_failed_environment_checks_block_commissioning(
     else:
         runtime["pip_check"] = False
     assert not collect(monkeypatch, tmp_path, runtime)["ready_for_commissioning"]
+
+
+def test_inventory_cli_preserves_symlinked_virtual_environment(monkeypatch, tmp_path):
+    selected = tmp_path / "selected-runtime"
+    venv.EnvBuilder(with_pip=False, symlinks=True).create(selected)
+    python = selected / "bin/python"
+    assert python.is_symlink()
+    observed = []
+
+    def execute_selected_interpreter(engine, assets, executable):
+        result = subprocess.run(
+            [str(executable), "-I", "-c", "import sys; print(sys.prefix)"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        observed.append(result.stdout.strip())
+        return {"ready_for_commissioning": observed[-1] == str(selected)}
+
+    monkeypatch.setattr(inventory, "collect", execute_selected_interpreter)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "runtime_inventory",
+            "--engine-root",
+            str(tmp_path),
+            "--assets-root",
+            str(tmp_path),
+            "--isaac-python",
+            str(python),
+            "--output",
+            str(tmp_path / "inventory.json"),
+        ],
+    )
+    with pytest.raises(SystemExit) as result:
+        inventory.main()
+    assert result.value.code == 0
+    assert observed == [str(selected)]
+
+
+@pytest.mark.parametrize("timeout", [False, True])
+def test_runtime_failure_retains_bounded_redacted_stderr(monkeypatch, tmp_path, timeout):
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "fixture-private-environment-value")
+    stderr = (
+        "x" * 6000
+        + "\nAWS_SECRET_ACCESS_KEY=fixture-private-environment-value\n"
+        + "Authorization: Bearer fixture-bearer-value\n"
+        + "token=fixture-token-value\n"
+        + "https://fixture.invalid/path?X-Amz-Signature=fixture-signature\n"
+        + "ModuleNotFoundError: No module named 'isaaclab'\n"
+    )
+    monkeypatch.setattr(
+        inventory,
+        "source_inventory",
+        lambda *_: {"profile": inventory.PROFILE, "checks": {}, "issues": []},
+    )
+
+    def fail_runtime(argv, **kwargs):
+        if argv[0] == "nvidia-smi":
+            return SimpleNamespace(stdout="Tesla T4, 595.58.03, 15360 MiB\n")
+        if timeout:
+            raise subprocess.TimeoutExpired(argv, 60, stderr=stderr.encode())
+        raise subprocess.CalledProcessError(1, argv, stderr=stderr)
+
+    monkeypatch.setattr(inventory.subprocess, "run", fail_runtime)
+    report = inventory.collect(tmp_path, tmp_path, tmp_path / "python")
+    assert not report["ready_for_commissioning"]
+    diagnostic = report["runtime_error"]
+    assert diagnostic["type"] == ("TimeoutExpired" if timeout else "CalledProcessError")
+    assert "ModuleNotFoundError: No module named 'isaaclab'" in diagnostic["stderr_tail"]
+    assert len(diagnostic["stderr_tail"]) <= 4096
+    assert not any(
+        secret in json.dumps(diagnostic)
+        for secret in (
+            "fixture-private-environment-value",
+            "fixture-bearer-value",
+            "fixture-token-value",
+            "fixture-signature",
+        )
+    )

@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { Session } from "../src/types";
 import type { SimulationRun } from "../src/simulationTypes";
 import { makeStudioExperiment } from "../src/studioContent";
+import { readFile } from "node:fs/promises";
 
 async function savedStudio(page: Page, instrument: "flex" | "ot2" = "flex") {
   await page.goto("/");
@@ -57,6 +58,104 @@ function preflight(session: Session, ready = true) {
       : [{ code: "active_run", message: "Verified native reset is required." }],
   };
 }
+
+test("commissioning export preserves attempted submission across reload and labels missing video incomplete", async ({
+  page,
+}) => {
+  // Synthetic UI contract only: no GPU, real account or rendered video evidence.
+  let session = await savedStudio(page);
+  let run: ReturnType<typeof fixtureRun> | null = null;
+  let posts = 0;
+  let reportUnavailable = false;
+  const grantId = "11111111-1111-4111-8111-111111111111";
+  await page.route(`**/api/sessions/${session.id}`, (route) =>
+    route.fulfill({ json: session }),
+  );
+  await page.route(`**/api/sessions/${session.id}/native-preflight`, (route) =>
+    route.fulfill({
+      json: { ...preflight(session, !run), commissioning: true },
+    }),
+  );
+  await page.route(`**/api/sessions/${session.id}/remote-run`, (route) =>
+    route.fulfill({ json: run }),
+  );
+  await page.route("**/api/commissioning/report", (route) =>
+    reportUnavailable
+      ? route.fulfill({ status: 503, json: { detail: "Fixture outage" } })
+      : route.fulfill({
+          json: {
+            grant_id: grantId,
+            expires: 9999999999,
+            worker_qualified: false,
+            runs: run ? [{ run, browser: null }] : [],
+          },
+        }),
+  );
+  await page.route("**/api/runs", async (route) => {
+    posts++;
+    const saved = await page.evaluate(
+      (id) =>
+        JSON.parse(sessionStorage.getItem(`academy.studio-evidence.${id}`)!),
+      grantId,
+    );
+    expect(saved.submissions).toHaveLength(1); // Persisted before the POST reached the server.
+    const request = route.request().postDataJSON();
+    expect(saved.submissions[0].run_id).toBe(request.run_id);
+    run = fixtureRun(session, request.run_id);
+    session = {
+      ...session,
+      version: session.version + 1,
+      remote_active_run: run.run_id,
+    };
+    await route.fulfill({ status: 201, json: run });
+  });
+  await page.goto(`/#/lab/${session.id}`);
+  await page.reload();
+  const panel = page.getByTestId("native-studio-run");
+  await panel
+    .getByRole("button", {
+      name: "Run saved workflow in Matterix",
+      exact: true,
+    })
+    .click();
+  await expect.poll(() => posts).toBe(1);
+  // Wait for the fixture's persistence assertion and accepted response before reloading.
+  await expect(
+    panel.getByText("Waiting for a qualified worker", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    panel.getByText("Waiting for a qualified worker", { exact: true }),
+  ).toBeVisible();
+  await panel.getByText("Acceptance evidence", { exact: true }).click();
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "Download acceptance evidence", exact: true })
+    .click();
+  const download = await downloading;
+  const report = JSON.parse(await readFile((await download.path())!, "utf8"));
+  expect(report.status).toBe("incomplete");
+  expect(report.submission_posts).toBe(1);
+  expect(report.refresh_verified).toBe(false);
+  expect(report.browser_runs[0].frames_decoded).toBe(0);
+  expect(report.browser_runs[0].relay_verified).toBe(false);
+  expect(report.server_report.runs[0].run.run_id).toBe(run!.run_id);
+  expect(posts).toBe(1);
+  await expect(
+    panel
+      .getByRole("status")
+      .filter({ hasText: "Downloaded incomplete evidence" }),
+  ).toBeVisible();
+  reportUnavailable = true;
+  await panel
+    .getByRole("button", { name: "Download acceptance evidence", exact: true })
+    .click();
+  await expect(
+    panel.getByRole("status").filter({ hasText: "could not be downloaded" }),
+  ).toBeVisible();
+  expect(posts).toBe(1);
+  await panel.screenshot({ path: "/tmp/academy-commissioning-evidence.png" });
+});
 
 test("unqualified studio offers teaching without claiming native support", async ({
   page,
@@ -116,6 +215,9 @@ test("unqualified studio offers teaching without claiming native support", async
     path: "/tmp/academy-native-studio-unavailable-mobile.png",
   });
   expect(posts).toBe(0);
+  await expect(
+    panel.getByText("Acceptance evidence", { exact: true }),
+  ).toHaveCount(0);
 });
 
 test("native UI fixture submits the saved revision once, restores its viewport, waits for reset and permits a second manual run", async ({

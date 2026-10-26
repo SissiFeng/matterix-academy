@@ -25,7 +25,7 @@ def main():
             "  skip_region_validation = true\n",
         )
         (root / "gpu.pkr.hcl").write_text(text)
-        for name in ("provision.sh", "finalize.sh"):
+        for name in ("prepare-gpu.sh", "provision.sh", "finalize.sh"):
             (root / name).write_text("#!/bin/bash\nexit 1\n")
         inputs = root / "input"
         inputs.mkdir()

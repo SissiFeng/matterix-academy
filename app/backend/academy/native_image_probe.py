@@ -20,14 +20,32 @@ def capacity_report(evidence, status, elapsed_seconds, *, cpu_count=None, mem_to
     timing = (evidence / "probe-time.txt").read_text()
     peak = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", timing)
     rss = int(peak[1]) if peak else None
+    # Match the installed-device floors in runtime_inventory, not EC2's physical
+    # capacity: the full T4 exposes 15 GiB after device reservations.
+    minimum_vram = {
+        "Tesla T4": 15360,
+        "NVIDIA T4": 15360,
+        "NVIDIA A10G": 22000,
+        "NVIDIA L4": 22000,
+        "NVIDIA L40S": 22000,
+    }
     samples = []
+    samples_valid = True
     for row in csv.reader((evidence / "gpu-memory.csv").read_text().splitlines()):
         if len(row) != 4:
+            samples_valid = False
             continue
         try:
-            samples.append({"total_mib": int(row[2].strip()), "used_mib": int(row[3].strip())})
+            name = row[1].strip()
+            total, used = int(row[2].strip()), int(row[3].strip())
+            samples_valid &= (
+                name in minimum_vram and total >= minimum_vram[name] and 0 <= used <= total
+            )
+            samples.append({"name": name, "total_mib": total, "used_mib": used})
         except ValueError:
+            samples_valid = False
             continue
+    samples_valid &= len({(x["name"], x["total_mib"]) for x in samples}) == 1
     oom = [
         line
         for line in (evidence / "probe-kernel.log").read_text().splitlines()
@@ -45,6 +63,8 @@ def capacity_report(evidence, status, elapsed_seconds, *, cpu_count=None, mem_to
         "os_visible_mem_total_kib": mem_total_kib,
         "peak_process_rss_kib": rss,
         "gpu_samples": len(samples),
+        "gpu_models": sorted({x["name"] for x in samples}),
+        "gpu_samples_valid": bool(samples_valid),
         "gpu_sampler_completed_probe": sampler_complete,
         "peak_gpu_memory_used_mib": max((x["used_mib"] for x in samples), default=None),
         "gpu_memory_total_mib": min((x["total_mib"] for x in samples), default=None),
@@ -58,7 +78,7 @@ def capacity_report(evidence, status, elapsed_seconds, *, cpu_count=None, mem_to
             and rss
             and samples
             and sampler_complete
-            and min(x["total_mib"] for x in samples) >= 22000
+            and samples_valid
             and not oom
             and journal_status == 0
         ),

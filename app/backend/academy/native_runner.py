@@ -121,13 +121,40 @@ class NativeFlexRunner(GatewayRunner):
             return
         run = local["run"]
         lease = self.client.post(run, "viewers")
+        publisher_path = self.folder(local) / "publisher.json"
+        viewer_id = lease["viewers"][0]["client_id"] if lease["viewers"] else None
+        if (
+            viewer_id
+            and publisher_path.exists()
+            and read_json(publisher_path).get("viewer_client_id") != viewer_id
+        ):
+            # TURN credentials expire independently of the live signaling socket.
+            # Publish a fresh grant before authorizing a newly connected browser.
+            self.refresh_publisher(local, lease)
         write_json(self.folder(local) / "lease.json", lease)
+        return lease
+
+    def refresh_publisher(self, local, lease):
+        grant = self.client.post(local["run"], "publisher")
+        expected = {
+            "run_id": local["run"]["run_id"],
+            "native_session_id": local["binding"]["native_session_id"],
+            "plan_hash": local["run"]["plan_hash"],
+        }
+        if any(grant.get(key) != value for key, value in expected.items()):
+            raise GatewayUnavailable("Publisher grant does not match the bound native run")
+        write_json(
+            self.folder(local) / "publisher.json",
+            grant
+            | {
+                "viewer_client_id": (lease["viewers"][0]["client_id"] if lease["viewers"] else None)
+            },
+        )
 
     def provision(self, local):
         folder = self.folder(local)
-        self.renew(local)
-        grant = self.client.post(local["run"], "publisher")
-        write_json(folder / "publisher.json", grant)
+        lease = self.renew(local)
+        self.refresh_publisher(local, lease)
         manifest = {
             "config": self.config.model_dump(),
             "binding": local["binding"],

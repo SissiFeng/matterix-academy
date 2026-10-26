@@ -31,8 +31,8 @@ variable "build_instance_type" {
   type    = string
   default = "g6.4xlarge"
   validation {
-    condition     = contains(["g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"], var.build_instance_type)
-    error_message = "Use an evaluated full L4/L40S single-GPU candidate. g6.2xlarge is a measured capacity trial."
+    condition     = contains(["g4dn.2xlarge", "g5.2xlarge", "g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"], var.build_instance_type)
+    error_message = "Use a full T4/A10G/L4/L40S single-GPU commissioning candidate; native probes and qualification remain required."
   }
 }
 variable "expected_account_id" {
@@ -126,7 +126,16 @@ source "amazon-ebs" "internal_flex" {
 }
 build {
   sources = ["source.amazon-ebs.internal_flex"]
-  provisioner "shell" { inline = ["mkdir -p /tmp/academy-image-input && chmod 700 /tmp/academy-image-input"] }
+  provisioner "shell" {
+    script            = "${path.root}/prepare-gpu.sh"
+    execute_command   = "chmod +x {{ .Path }}; sudo bash '{{ .Path }}'"
+    expect_disconnect = true
+    pause_after       = "30s"
+  }
+  provisioner "shell" {
+    start_retry_timeout = "10m"
+    inline              = ["mkdir -p /tmp/academy-image-input && chmod 700 /tmp/academy-image-input"]
+  }
   provisioner "file" {
     source      = "${var.input_dir}/academy.tar.gz"
     destination = "/tmp/academy-image-input/academy.tar.gz"

@@ -5,6 +5,10 @@ umask 077
 [[ "$EUID" == 0 && "$(uname -m)" == x86_64 ]]
 source /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == 24.04 ]]
+if lsmod | awk '{print $1}' | grep -qx nouveau; then
+  printf '%s\n' 'Nouveau is still loaded after GPU preparation; refusing payload extraction and driver installation.' >&2
+  exit 1
+fi
 input=/tmp/academy-image-input
 [[ -f "$input/release.json" && -f "$input/sources.json" && -f "$input/driver.json" ]]
 # Verify every external payload before extraction or execution. No credential input is accepted.
@@ -40,10 +44,8 @@ apt-get update
 mapfile -t packages < <(sed '/^#/d;/^[[:space:]]*$/d' /opt/academy-agent/ops/ec2-gpu/image/ubuntu-packages.txt)
 apt-get install -y --no-install-recommends "${packages[@]}" "linux-headers-$(uname -r)"
 # Requires an operator-supplied NVIDIA installer and independently reviewed SHA256.
-printf 'blacklist nouveau\noptions nouveau modeset=0\n' > /etc/modprobe.d/academy-nouveau.conf
-update-initramfs -u
 if lsmod | awk '{print $1}' | grep -qx nouveau; then
-  printf '%s\n' 'Nouveau is loaded; use a clean reviewed base image without a loaded display driver.' >&2
+  printf '%s\n' 'Nouveau is still loaded; refusing NVIDIA driver installation.' >&2
   exit 1
 fi
 sh "$input/nvidia-driver.run" --silent --dkms --no-questions --ui=none --kernel-module-type=open

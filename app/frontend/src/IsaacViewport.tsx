@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Monitor, RefreshCw } from "lucide-react";
 import { api, ApiError, json } from "./api";
 import { terminalRuns, type SimulationRun } from "./simulationTypes";
+import { measureVideo, type VideoReceipt } from "./commissioningEvidence";
 import s from "./SimulationLab.module.css";
 
 type Grant = {
@@ -20,8 +21,16 @@ export type ViewportRun = Pick<
   "run_id" | "session_id" | "plan_hash" | "status"
 >;
 
-export default function IsaacViewport({ run }: { run: ViewportRun | null }) {
+export default function IsaacViewport({
+  run,
+  onEvidence,
+}: {
+  run: ViewportRun | null;
+  onEvidence?: (receipt: VideoReceipt) => void;
+}) {
   const video = useRef<HTMLVideoElement>(null);
+  const evidence = useRef(onEvidence);
+  evidence.current = onEvidence;
   const [status, setStatus] = useState("Waiting for a run");
   const [connected, setConnected] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -54,6 +63,8 @@ export default function IsaacViewport({ run }: { run: ViewportRun | null }) {
     let lastFrames = -1;
     let hasFrame = false;
     let stillSince = Date.now();
+    let frameBaseline = 0;
+    let measuring = false;
     const close = () => {
       window.clearTimeout(renewTimer);
       window.clearTimeout(retryTimer);
@@ -134,6 +145,8 @@ export default function IsaacViewport({ run }: { run: ViewportRun | null }) {
       };
       peer.ontrack = (event) => {
         if (!alive || !video.current) return;
+        frameBaseline =
+          video.current.getVideoPlaybackQuality().totalVideoFrames;
         video.current.srcObject = new MediaStream([event.track]);
         void video.current
           .play()
@@ -203,6 +216,38 @@ export default function IsaacViewport({ run }: { run: ViewportRun | null }) {
           setStatus("Video stalled · state may still be updating");
         }
         lastFrames = frames;
+        // Optional operator evidence: this observes the existing stream only.
+        // A reconnect may reset the element counter; never count its old frames.
+        if (frames < frameBaseline) frameBaseline = frames;
+        if (evidence.current && peer && video.current && !measuring) {
+          const currentPeer = peer;
+          const currentVideo = video.current;
+          measuring = true;
+          void measureVideo(currentPeer, currentVideo, frameBaseline)
+            .then((sample) => {
+              if (
+                alive &&
+                sample &&
+                peer === currentPeer &&
+                video.current === currentVideo
+              )
+                evidence.current?.({
+                  ...sample,
+                  run_id: runId,
+                  session_id: sessionId,
+                  plan_hash: planHash,
+                  native_session_id: grant.native_session_id,
+                  client_id: clientId,
+                  observed_at: Date.now(),
+                });
+            })
+            .catch(() => {
+              /* Missing statistics never imply successful evidence. */
+            })
+            .finally(() => {
+              measuring = false;
+            });
+        }
       }, 1000);
     };
     void connect();

@@ -11,23 +11,34 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_TYPES = {"g6.2xlarge", "g6.4xlarge", "g6e.2xlarge"}
+# EC2 reports physical VRAM; installed-driver usable VRAM is checked separately.
+BUILD_HARDWARE = {
+    "g4dn.2xlarge": ("T4", 16384),
+    "g5.2xlarge": ("A10G", 22000),
+    "g6.2xlarge": ("L4", 22000),
+    "g6.4xlarge": ("L4", 22000),
+    "g6e.2xlarge": ("L40S", 22000),
+}
+BUILD_TYPES = set(BUILD_HARDWARE)
 
 
 def validate_instance(instance):
     gpus = instance.get("GpuInfo", {}).get("Gpus", [])
+    expected = BUILD_HARDWARE.get(instance.get("InstanceType"))
     if not (
-        instance.get("InstanceType") in BUILD_TYPES
+        expected is not None
         and instance.get("VCpuInfo", {}).get("DefaultVCpus", 0) >= 8
         and instance.get("MemoryInfo", {}).get("SizeInMiB", 0) >= 32768
         and "x86_64" in instance.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
         and len(gpus) == 1
         and gpus[0].get("Count") == 1
-        and gpus[0].get("Name") in {"L4", "L40S"}
-        and gpus[0].get("MemoryInfo", {}).get("SizeInMiB", 0) >= 22000
+        and gpus[0].get("GpuPartitionSize", 1) == 1
+        and gpus[0].get("Name") == expected[0]
+        and gpus[0].get("MemoryInfo", {}).get("SizeInMiB", 0) >= expected[1]
     ):
         raise ValueError(
-            "Build requires at least 8 vCPU, 32 GiB and one full L4/L40S with 22000 MiB"
+            "Build requires at least 8 vCPU, 32 GiB and the instance's full reviewed GPU: "
+            "T4 with 16384 MiB, or A10G/L4/L40S with 22000 MiB"
         )
 
 

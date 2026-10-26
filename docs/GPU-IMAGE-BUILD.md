@@ -15,7 +15,7 @@ with the complete Isaac Sim 6.0.1.0 dependency graph: `isaacsim-core` requires
 therefore **torch 2.11.0+cu128 / torchvision 0.26.0+cu128**. Lab remains
 `3.0.0b2.post1` and Sim remains `6.0.1.0`. Do not use `--no-deps` to force the old
 inconsistent pair into the image. The locked installer uses `--no-deps` only after
-resolving the entire 245-package closure, with every version and artifact hash fixed.
+resolving the entire 247-package closure, with every version and artifact hash fixed.
 
 Two independent Python 3.12 environments prevent conflicting Pydantic requirements:
 
@@ -26,6 +26,10 @@ Two independent Python 3.12 environments prevent conflicting Pydantic requiremen
 
 The runtime lock targets CPython 3.12 / Linux x86_64 / glibc >=2.35, and includes
 Matterix's psutil, toml, protobuf<5, tensorboard and scikit-learn requirements.
+It also pins HTTPX 0.28.1 and its HTTP Core dependency: native Studio loads the
+Academy configuration/worker imports inside this environment, independently of
+the agent environment. The offline import regression rejects packages absent
+from the native lock; it does not substitute for GPU execution.
 Ubuntu 24.04 meets the libc requirement. `flatdict` is source-only; its archive
 hash and setuptools/wheel/packaging build tools are pinned. Runtime installation
 uses those tools without a separate floating build environment. Upstream package
@@ -38,8 +42,13 @@ not install it or accept its licenses. The Packer build requires explicit licens
 acceptance. Keep that driver fixed until compatibility is retested.
 
 The base Ubuntu AMI must be a reviewed, region-specific 24.04 x86_64 image with
-SSM enabled and without an incompatible loaded display driver. Never use a latest
-image lookup. OS prerequisites are listed in `image/ubuntu-packages.txt`; actual
+SSM enabled. Before any private payload upload, `prepare-gpu.sh` installs the
+Nouveau blacklist and updates initramfs; if Nouveau is loaded it reboots. Packer
+allows that disconnect, waits 30 seconds and retries the next shell connection for
+up to ten minutes. Provisioning rejects a still-loaded Nouveau module before
+extracting payloads and again before installing the pinned NVIDIA driver. It never
+tries to unload a live driver. A failed initramfs update aborts before reboot.
+Never use a latest image lookup. OS prerequisites are listed in `image/ubuntu-packages.txt`; actual
 kernel, installed dpkg versions and SSM version must be retained with the resulting
 image. OS repositories are not a bit-for-bit snapshot: review any rebuild's OS
 delta rather than claiming identical image bytes. Every build emits fresh inventories.
@@ -101,8 +110,13 @@ authorization does not imply a successful image or native browser acceptance.
 Copy `build.pkrvars.json.example` to the protected directory. Fill the authorized
 account, exact base AMI, existing VPC/subnet, operator IPv4 `/32`, and input directory.
 Use `archive_sha256` and `manifest_sha256` from `release.json`. Set both confirmation
-flags true only once separately authorized. For the current 8-vCPU Canadian trial,
-also set `"build_instance_type": "g6.2xlarge"`; see [capacity trial](GPU-CAPACITY-TRIAL.md).
+flags true only once authorized. The current 8-vCPU Canadian fallbacks are
+`"build_instance_type": "g5.2xlarge"` and, after its capacity failures, the
+user-authorized `"build_instance_type": "g4dn.2xlarge"`; `g6.2xlarge` remains
+eligible. The T4 experiment requires 16,384 MiB physical GPU memory from EC2 and
+at least 15,360 MiB visible after driver installation. A10G/L4/L40S retain the
+22,000 MiB minimum. See [capacity trial](GPU-CAPACITY-TRIAL.md) for the pinned
+PyTorch/driver/Turing compatibility evidence. No selection bypasses native probes.
 Run the build against the same reviewed commit packaged in the protected `release.json`:
 
 ```sh
@@ -113,7 +127,9 @@ uv run python scripts/ec2-gpu-build.py build --config /protected/approved-build.
 
 The `build` command invokes Packer to create the explicitly selected single GPU instance
 and 300 GiB encrypted gp3 disk, then retains an AMI/snapshot. The default g6.4xlarge
-requires 16 vCPU; the current trial explicitly selects g6.2xlarge (8 vCPU).
+requires 16 vCPU; the current trial explicitly selects g4dn.2xlarge, g5.2xlarge or
+g6.2xlarge (8 vCPU). Canadian G4 compute is USD 0.835/hour as checked on 2026-10-26;
+storage, IPv4 and artifacts are additional.
 This is a paid operation; source preparation does not run it.
 The build wrapper checks the exact frozen credentials against the official regional
 STS endpoint, rejects the wrong account, and passes only those verified credentials
@@ -140,6 +156,8 @@ RSS/VRAM/OOM measurement window. Retain `scene-render.json`, `studio-probe.json`
 `capacity.json`, the raw measurement logs and the Studio run artifacts referenced
 by its report. These are local GPU checks, not browser/media qualification. See
 [capacity trial](GPU-CAPACITY-TRIAL.md) for the failure and retention rules.
+Keep `balanced` rendering and 960×540 output for every candidate. The T4 trial
+must not introduce frame generation or lower workflow, render, OOM or reset gates.
 
 Finalization also proves root IMDSv2 access succeeds while worker token requests fail
 at the network layer. Missing SSM, source drift, dependency conflicts, missing
