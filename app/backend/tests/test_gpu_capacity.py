@@ -11,6 +11,7 @@ import pytest
 from academy.native_image_probe import capacity_report
 
 ROOT = Path(__file__).resolve().parents[3]
+CANDIDATES = [("g6.2xlarge", "L4"), ("g5.2xlarge", "A10G"), ("g4dn.2xlarge", "T4")]
 
 
 def builder():
@@ -26,17 +27,28 @@ def instance(instance_type="g6.2xlarge", gpu="L4"):
         "VCpuInfo": {"DefaultVCpus": 8},
         "MemoryInfo": {"SizeInMiB": 32768},
         "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
-        "GpuInfo": {"Gpus": [{"Name": gpu, "Count": 1, "MemoryInfo": {"SizeInMiB": 22888}}]},
+        "GpuInfo": {
+            "Gpus": [
+                {
+                    "Name": gpu,
+                    "Count": 1,
+                    "GpuPartitionSize": 1.0,
+                    "MemoryInfo": {"SizeInMiB": 16384 if gpu == "T4" else 22888},
+                }
+            ]
+        },
     }
 
 
-@pytest.mark.parametrize("instance_type,gpu", [("g6.2xlarge", "L4"), ("g5.2xlarge", "A10G")])
-def test_full_rtx_candidates_meet_the_same_commissioning_minimum(instance_type, gpu):
+@pytest.mark.parametrize("instance_type,gpu", CANDIDATES)
+def test_full_rtx_candidates_meet_the_reviewed_commissioning_minimum(instance_type, gpu):
     builder().validate_instance(instance(instance_type, gpu))
 
 
-@pytest.mark.parametrize("instance_type,gpu", [("g6.2xlarge", "L4"), ("g5.2xlarge", "A10G")])
-@pytest.mark.parametrize("bad", ["ram", "cpu", "fractional", "vram", "gpu", "arch", "type"])
+@pytest.mark.parametrize("instance_type,gpu", CANDIDATES)
+@pytest.mark.parametrize(
+    "bad", ["ram", "cpu", "fractional", "partition", "vram", "gpu", "arch", "type"]
+)
 def test_capacity_rejects_lower_or_unreviewed_hardware(bad, instance_type, gpu):
     row = instance(instance_type, gpu)
     if bad == "ram":
@@ -45,8 +57,10 @@ def test_capacity_rejects_lower_or_unreviewed_hardware(bad, instance_type, gpu):
         row["VCpuInfo"]["DefaultVCpus"] = 4
     elif bad == "fractional":
         row["GpuInfo"]["Gpus"][0]["Count"] = 0.25
+    elif bad == "partition":
+        row["GpuInfo"]["Gpus"][0]["GpuPartitionSize"] = 0.5
     elif bad == "vram":
-        row["GpuInfo"]["Gpus"][0]["MemoryInfo"]["SizeInMiB"] = 16000
+        row["GpuInfo"]["Gpus"][0]["MemoryInfo"]["SizeInMiB"] = 16383 if gpu == "T4" else 21999
     elif bad == "gpu":
         row["GpuInfo"]["Gpus"][0]["Name"] = "A100"
     elif bad == "arch":
@@ -58,9 +72,24 @@ def test_capacity_rejects_lower_or_unreviewed_hardware(bad, instance_type, gpu):
 
 
 @pytest.mark.parametrize(
+    "instance_type,gpu",
+    [
+        ("g4dn.2xlarge", "A10G"),
+        ("g5.2xlarge", "T4"),
+        ("g6.2xlarge", "A10G"),
+        ("g6.4xlarge", "T4"),
+        ("g6e.2xlarge", "L4"),
+    ],
+)
+def test_instance_family_cannot_claim_a_different_candidate_gpu(instance_type, gpu):
+    with pytest.raises(ValueError, match="Build requires"):
+        builder().validate_instance(instance(instance_type, gpu))
+
+
+@pytest.mark.parametrize(
     "quota,active,passes", [(8, False, True), (0, False, False), (8, True, False)]
 )
-@pytest.mark.parametrize("instance_type,gpu", [("g6.2xlarge", "L4"), ("g5.2xlarge", "A10G")])
+@pytest.mark.parametrize("instance_type,gpu", CANDIDATES)
 def test_build_capacity_preflight_uses_frozen_identity_and_blocks_overlap(
     quota, active, passes, instance_type, gpu
 ):

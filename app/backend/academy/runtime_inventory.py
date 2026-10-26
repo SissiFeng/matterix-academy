@@ -242,10 +242,20 @@ def collect(engine, assets, python):
         result["gpu"] = gpu.stdout.strip()
         devices = result["gpu"].splitlines()
         parts = [part.strip() for part in devices[0].split(",")] if len(devices) == 1 else []
+        # EC2's 16-GiB T4 exposes 15 GiB after device reservations. Other
+        # candidates retain the 22,000-MiB floor. Every candidate must still
+        # pass actual render, workflow, reset and OOM probes before deployment.
+        minimum_vram = {
+            "Tesla T4": 15360,
+            "NVIDIA T4": 15360,
+            "NVIDIA A10G": 22000,
+            "NVIDIA L4": 22000,
+            "NVIDIA L40S": 22000,
+        }
         result["checks"]["gpu_present"] = (
             len(parts) == 3
-            and parts[0] in {"NVIDIA A10G", "NVIDIA L4", "NVIDIA L40S"}
-            and int(parts[2].split()[0]) >= 22000
+            and parts[0] in minimum_vram
+            and int(parts[2].split()[0]) >= minimum_vram[parts[0]]
         )
         result["checks"]["driver_version"] = (
             len(parts) == 3 and parts[1] == PROFILE["driver_version"]

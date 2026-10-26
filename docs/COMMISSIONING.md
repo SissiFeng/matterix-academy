@@ -19,7 +19,7 @@ Synthetic tests do not satisfy this target.
 | Isaac Sim | `6.0.1.0`, explicitly required by the Lab wheel's isaacsim extra |
 | PyTorch / torchvision | `2.11.0+cu128` / `0.26.0+cu128` |
 | NVIDIA Linux driver | `595.58.03`, candidate from version-specific requirements |
-| GPU | Single A10G or L4 24 GB, or L40S 48 GB; current 8-vCPU candidates are g5.2xlarge and g6.2xlarge; native fit still requires measured probes |
+| GPU | Single A10G/L4/L40S with at least 22,000 MiB, or authorized g4dn.2xlarge T4 trial with 16,384 MiB from EC2 and at least 15,360 MiB driver-visible; native fit still requires measured probes |
 | Academy release / AMI | Academy 0.2.0 local release, exact commit/hash in `ops/ec2-gpu/academy-release.json`; AMI requires an authorized build |
 
 The Lab wheel SHA256 is
@@ -39,6 +39,13 @@ The complete transitive dependency locks and image build recipe are now in
 [GPU-IMAGE-BUILD.md](GPU-IMAGE-BUILD.md). This source audit is not an installed image
 or GPU qualification.
 Record installed package freeze, image ID and artifact hashes on the authorized host.
+
+G5 capacity attempts failed in both reviewed Canadian AZs on 2026-10-26. The user
+authorized the lower-memory T4 trial; [GPU-CAPACITY-TRIAL.md](GPU-CAPACITY-TRIAL.md)
+records its PyTorch SM 7.5, fixed-driver and RTX compatibility sources and
+USD 0.835/hour compute rate. Keep the `balanced` preset, 960×540 native frames and
+all workflow, OOM, reset and browser requirements. Turing supports Ray
+Reconstruction but not Frame Generation; a hardware preflight does not qualify it.
 
 ## Host fingerprint (read only)
 

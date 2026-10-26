@@ -19,13 +19,26 @@ The regional offering is listed in `ca-central-1a` and `1b`, which does not guar
 available launch capacity. `g6.2xlarge` remains an eligible L4 alternative with the
 same CPU/RAM/VRAM minimums. The normal default remains `g6.4xlarge` (16 vCPU/64 GiB).
 Both 8-vCPU candidates fit the applied quota; native fit must still be measured.
-G4 remains excluded pending version and memory compatibility review. Existing
-paid-build/license flags remain required; no additional authorization is needed
-for this bounded fallback.
+The 2026-10-26 G5 attempts returned `InsufficientInstanceCapacity` in both reviewed
+AZs. The user also authorized a bounded **g4dn.2xlarge** fallback: one full T4,
+8 vCPU and 32 GiB RAM. EC2 reports 16,384 MiB physical GPU memory; the installed
+driver must expose at least 15,360 MiB. This is a lower-memory experiment, not a
+qualified image. Existing paid-build/license flags remain required; no additional
+authorization is needed for these fallbacks.
+
+The compatibility review found no Turing architecture exclusion: PyTorch 2.11's
+CUDA 12.8 binaries support SM 7.5, driver 595.58.03 lists Tesla T4, and the
+Omniverse renderer supports Turing, including DLSS Ray Reconstruction. Turing does
+not support DLSS Frame Generation. Keep the existing `balanced` render preset and
+960×540 output; do not introduce frame generation or reduce the scene, workflow,
+render, reset or browser gates. The actual pinned Matterix runtime still must pass
+the probes below; architecture support alone does not establish memory fit.
 
 The guarded build reads the selected EC2 type using the exact frozen credentials
 verified by STS. It requires x86_64, at least 8 vCPU and 32 GiB physical RAM, and
-one full A10G/L4/L40S with at least 22,000 MiB VRAM. It checks the **applied** quota and
+one full GPU. A10G/L4/L40S retain the 22,000 MiB minimum; the T4 trial requires
+16,384 MiB from EC2 and at least 15,360 MiB visible after driver installation.
+Record the observed model, driver and memory with the evidence. It checks the **applied** quota and
 refuses to overlap another pending/running/stopping G/VT instance. Keep build and
 acceptance sequential; these checks are not an atomic account-wide reservation.
 
@@ -69,10 +82,11 @@ reset/release and the second changed Studio design remain separate
 [commissioning gates](STUDIO-NATIVE-ACCEPTANCE.md). Keep at most one GPU active
 and stop between sessions; do not retain an idle acceptance host while awaiting login.
 
-Official Canadian Linux On-Demand prices read on 2026-10-26 are USD 1.34573/hour
-for `g5.2xlarge` and USD 1.08547/hour for `g6.2xlarge`. A two-hour G5 attempt is
-about USD 2.69 compute, plus IPv4, storage and any retained artifacts. Adding G5
-as a candidate changes neither the native gates nor the unqualified worker state.
+Official Canadian Linux On-Demand prices read on 2026-10-26 are USD 0.835/hour
+for `g4dn.2xlarge`, USD 1.34573/hour for `g5.2xlarge` and USD 1.08547/hour for
+`g6.2xlarge`. A two-hour G4 trial is USD 1.67 compute; G5 is about USD 2.69,
+plus IPv4, storage and any retained artifacts. Adding a candidate changes neither
+the native gates nor the unqualified worker state.
 
 The earlier cost snapshot is dated: the official price feed was published
 2026-10-22 and read 2026-10-23. Canadian Linux On-Demand `g6.2xlarge` was
@@ -84,7 +98,11 @@ compute hours. No one-hour build completion or total bill is promised.
 
 Sources:
 
-- [NVIDIA Isaac Sim 6.0 requirements](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/installation/requirements.html)
+- [NVIDIA Isaac Sim 6.0.1 requirements](https://docs.isaacsim.omniverse.nvidia.com/6.0.1/installation/requirements.html)
+- [PyTorch 2.11 CUDA architecture matrix](https://dev-discuss.pytorch.org/t/dropping-volta-support-from-cuda-12-8-binaries-for-release-2-11/3290)
+- [NVIDIA 595.58.03 supported GPUs](https://us.download.nvidia.com/XFree86/Linux-x86_64/595.58.03/README/supportedchips.html)
+- [Omniverse Turing renderer and driver support](https://docs.omniverse.nvidia.com/utilities/latest/common/technical-requirements.html)
+- [AWS G4 hardware specifications](https://aws.amazon.com/ec2/instance-types/g4/)
 - [AWS G6 hardware specifications](https://aws.amazon.com/ec2/instance-types/g6/)
 - [AWS G5 hardware specifications](https://aws.amazon.com/ec2/instance-types/g5/)
 - [AWS regional instance support](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-regions.html)

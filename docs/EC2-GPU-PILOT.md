@@ -5,7 +5,7 @@ Matterix DT delivery. The earlier browser-DT pause no longer blocks this work;
 separate signup/two-account acceptance remains outstanding. Development account
 `247893369214` and its 8-vCPU Canadian quota were reverified; no active GPU instance
 was present before the new guarded build attempt. The
-[bounded GPU trial](GPU-CAPACITY-TRIAL.md) now includes the user-authorized G5 fallback
+[bounded GPU trial](GPU-CAPACITY-TRIAL.md) now includes the user-authorized G5 and G4 fallbacks
 and supersedes the original preference to measure a 64-GiB host first. Build and browser acceptance outcomes must be recorded
 separately. No additional Academy account budget should be created.
 
@@ -34,13 +34,21 @@ The 8-vCPU trial first selected **g6.2xlarge**, with the same GPU and 32 GiB RAM
 On 2026-10-26 the user authorized **g5.2xlarge** as a fallback: one full A10G
 (advertised 24 GB; EC2 reports 22,888 MiB), 8 vCPUs and 32 GiB RAM. It is offered
 in `ca-central-1a` and `1b`; an offering is not a stock guarantee. Both candidates
-fit the applied quota and must pass unchanged image and browser gates. G4 is not
-enabled pending version/memory compatibility review. None is native-qualified by
-its instance specification.
+fit the applied quota and must pass unchanged image and browser gates. After G5
+attempts failed for insufficient capacity in both AZs, the user-authorized
+**g4dn.2xlarge** trial adds one T4, 8 vCPUs and 32 GiB RAM. Require 16,384 MiB GPU
+memory in the EC2 inventory and at least 15,360 MiB visible to the installed driver;
+A10G/L4/L40S keep the 22,000 MiB minimum. None is native-qualified by its specification.
 
-The official Canadian Linux On-Demand feed read on 2026-10-26 lists G5 at
-USD 1.34573/hour and G6 at USD 1.08547/hour. A two-hour G5 compute window is about
-USD 2.69, before IPv4, storage, media and retained artifacts. The table below
+The [version review and sources](GPU-CAPACITY-TRIAL.md) support a Turing experiment
+with the pinned CUDA/PyTorch and driver. Keep `balanced` rendering at 960×540;
+Turing supports Ray Reconstruction but not Frame Generation. No scene, workflow,
+OOM, render, reset or browser acceptance gate is relaxed for the smaller card.
+
+The official Canadian Linux On-Demand feed read on 2026-10-26 lists G4dn at
+USD 0.835/hour, G5 at USD 1.34573/hour and G6 at USD 1.08547/hour. A two-hour G4
+compute window is USD 1.67; G5 is about USD 2.69, before IPv4, storage, media and
+retained artifacts. The table below
 preserves the older planning snapshot.
 
 An L40S alternative is **us-east-1 / g6e.2xlarge**, one GPU with advertised 48 GB
@@ -91,6 +99,7 @@ Sources and reproducibility:
 
 - [Captured AWS records, feed metadata, SHA256 and cost arithmetic](evidence/ec2-gpu/prices-2026-10-19.json).
 - [AWS EC2 public pricing](https://aws.amazon.com/ec2/pricing/on-demand/),
+  [G4 specifications](https://aws.amazon.com/ec2/instance-types/g4/),
   [G6 specifications](https://aws.amazon.com/ec2/instance-types/g6/),
   [G5 specifications](https://aws.amazon.com/ec2/instance-types/g5/),
   [G6e specifications](https://aws.amazon.com/ec2/instance-types/g6e/).

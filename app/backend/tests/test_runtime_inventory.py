@@ -74,10 +74,22 @@ def test_full_rtx_candidate_still_requires_native_commissioning(monkeypatch, tmp
     assert result["native_verified"] is False
 
 
+@pytest.mark.parametrize("name", ["Tesla T4", "NVIDIA T4"])
+def test_t4_candidate_accepts_reserved_device_memory_but_requires_native_probes(
+    monkeypatch, tmp_path, name
+):
+    result = collect(monkeypatch, tmp_path, fixture_runtime(), f"{name}, 595.58.03, 15360 MiB\n")
+    assert result["ready_for_commissioning"]
+    assert result["native_verified"] is False
+
+
 @pytest.mark.parametrize(
     "gpu",
     [
         "NVIDIA A10G, 595.58.03, 16384 MiB\n",
+        "Tesla T4, 595.58.03, 15359 MiB\n",
+        "NVIDIA T4, 595.58.03, 8192 MiB\n",
+        "NVIDIA L4, 595.58.03, 15360 MiB\n",
         "NVIDIA A10G, 550.54.14, 22888 MiB\n",
         "NVIDIA A100, 595.58.03, 81920 MiB\n",
         "NVIDIA A10G, 595.58.03, 22888 MiB\nNVIDIA A10G, 595.58.03, 22888 MiB\n",
