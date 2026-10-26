@@ -267,14 +267,12 @@ def run(folder, *, probe=False):
     config.verify()
     validate_assets(plan, config)
     activate(Path(config.matterix_root))
-    from isaaclab.app import AppLauncher
+    from .native_kit import launch_native_app
 
-    parser = argparse.ArgumentParser()
-    AppLauncher.add_app_launcher_args(parser)
-    flags = ["--enable_cameras", "--device", "cuda:0", "--viz", "kit", "--livestream", "0"]
-    if config.headless:
-        flags += ["--headless"]
-    app = AppLauncher(parser.parse_args(flags)).app
+    app = launch_native_app(
+        headless=config.headless,
+        protected_roots=(config.matterix_root, config.assets_data_dir),
+    )
     env, frame = None, None
     try:
         import builtins

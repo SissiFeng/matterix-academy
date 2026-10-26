@@ -42,14 +42,12 @@ def run(folder):
     plan = request["experiment"]
     root = Path(config["matterix_root"]).resolve()
     activate(root)
-    from isaaclab.app import AppLauncher
+    from .native_kit import launch_native_app
 
-    parser = argparse.ArgumentParser()
-    AppLauncher.add_app_launcher_args(parser)
-    flags = ["--enable_cameras", "--device", "cuda:0", "--viz", "kit", "--livestream", "0"]
-    if config["headless"]:
-        flags += ["--headless"]
-    app = AppLauncher(parser.parse_args(flags)).app
+    app = launch_native_app(
+        headless=config["headless"],
+        protected_roots=(root, config["assets_data_dir"]),
+    )
     activate(root)
     import builtins
 

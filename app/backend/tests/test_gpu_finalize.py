@@ -64,6 +64,8 @@ def test_finalize_recreates_worker_runtime_directory_after_build_reboot(tmp_path
     # Provisioning reboots before finalization. Model the fresh volatile /run mount:
     # the disabled worker service has not created its systemd RuntimeDirectory yet.
     runtime = tmp_path / "run/academy-native"
+    cache = tmp_path / "cache/academy-native"
+    cache.parent.mkdir()
     runtime.parent.mkdir()
     assert not runtime.exists()
     script = (ROOT / "ops/ec2-gpu/image/finalize.sh").read_text()
@@ -73,11 +75,20 @@ def test_finalize_recreates_worker_runtime_directory_after_build_reboot(tmp_path
     setup = (
         setup.replace("/etc/academy-native/evidence", str(tmp_path / "evidence"))
         .replace("/run/academy-native", str(runtime))
+        .replace("/var/cache/academy-native", str(cache))
         .replace("-o academy-native -g academy-native", f"-o {os.getuid()} -g {os.getgid()}")
     )
     # Execute the real pre-probe setup with only paths and the service identity mapped
     # to this unprivileged fixture. No inventory, runtime import or service starts.
-    subprocess.run(["bash", "-euo", "pipefail", "-c", setup], check=True, timeout=10)
+    result = subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", setup + '\npwd\nprintf "%s" "$XDG_CACHE_HOME"'],
+        check=True,
+        timeout=10,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout.splitlines() == [str(cache), str(cache)]
+    assert cache.stat().st_uid == os.getuid() and cache.stat().st_mode & 0o777 == 0o700
     info = runtime.stat()
     assert info.st_uid == os.getuid() and info.st_gid == os.getgid()
     assert info.st_mode & 0o777 == 0o700

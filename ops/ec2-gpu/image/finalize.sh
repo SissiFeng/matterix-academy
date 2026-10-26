@@ -8,6 +8,11 @@ install -d -m 755 /etc/academy-native/evidence
 # /run was cleared by the build reboot; the disabled worker service has not
 # recreated its RuntimeDirectory. Native probes run as the worker without starting it.
 install -d -o academy-native -g academy-native -m 700 /run/academy-native
+install -d -o academy-native -g academy-native -m 700 /var/cache/academy-native
+# Packer starts in /home/ubuntu, which the worker cannot traverse. Kit also
+# needs its own writable portable root; HOME alone does not override kit.portable.
+cd /var/cache/academy-native
+export XDG_CACHE_HOME=/var/cache/academy-native
 export OMNI_KIT_ACCEPT_EULA=YES
 # Git safe.directory is per invoking user: checkouts are root-owned and read-only for the worker.
 runuser -u academy-native -- env HOME=/var/cache/academy-native git config --global --add safe.directory /srv/matterix
