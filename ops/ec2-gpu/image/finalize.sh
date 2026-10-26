@@ -12,11 +12,24 @@ export OMNI_KIT_ACCEPT_EULA=YES
 # Git safe.directory is per invoking user: checkouts are root-owned and read-only for the worker.
 runuser -u academy-native -- env HOME=/var/cache/academy-native git config --global --add safe.directory /srv/matterix
 runuser -u academy-native -- env HOME=/var/cache/academy-native git config --global --add safe.directory /srv/matterix-assets
+# Preserve the inventory even when its fail-closed CLI rejects this host. The
+# local Packer log must retain the reason after automatic instance cleanup.
+runtime_status=0
 runuser -u academy-native -- env HOME=/var/cache/academy-native OMNI_KIT_ACCEPT_EULA=YES \
   "$root/.venv/bin/python" -m academy.runtime_inventory \
   --engine-root /srv/matterix --assets-root /srv/matterix-assets \
-  --isaac-python /opt/matterix-isaac/bin/python --output /var/lib/academy-native/runtime.json
-install -m 644 /var/lib/academy-native/runtime.json /etc/academy-native/evidence/runtime.json
+  --isaac-python /opt/matterix-isaac/bin/python --output /var/lib/academy-native/runtime.json \
+  || runtime_status=$?
+if [[ -s /var/lib/academy-native/runtime.json ]]; then
+  install -m 644 /var/lib/academy-native/runtime.json /etc/academy-native/evidence/runtime.json
+  printf 'ACADEMY_RUNTIME_JSON='
+  cat /etc/academy-native/evidence/runtime.json
+fi
+if [[ "$runtime_status" != 0 ]]; then
+  printf 'Runtime inventory failed with exit status %s; native probes were not started.\n' "$runtime_status" >&2
+  exit "$runtime_status"
+fi
+[[ -s /etc/academy-native/evidence/runtime.json ]]
 # Keep measurements outside the native process so timeout/OOM still yields evidence.
 evidence=/etc/academy-native/evidence
 probe_started=$(date +%s)

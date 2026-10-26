@@ -190,8 +190,30 @@ def source_inventory(engine, assets):
     return result
 
 
+def diagnostic_tail(value, limit=4096):
+    """Keep bounded import/driver failures without credential values or signed URLs."""
+    text = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else str(value or "")
+    secret_name = r"token|secret|password|credential|authorization|cookie|api[_-]?key|access[_-]?key|signing|private"
+    for name, secret in os.environ.items():
+        if len(secret) >= 6 and re.search(secret_name, name, re.I):
+            text = text.replace(secret, "[redacted]")
+    text = re.sub(r"https?://[^\s\"'<>]+", "[url redacted]", text, flags=re.I)
+    text = re.sub(
+        r"\b(?:Bearer|Basic)\s+[A-Za-z0-9+/_=.\-]+", "[authorization redacted]", text, flags=re.I
+    )
+    text = re.sub(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b", "[access key redacted]", text)
+    text = re.sub(
+        rf"([A-Za-z0-9_-]*(?:{secret_name})[A-Za-z0-9_-]*[\s\"']*[:=][\s\"']*)[^\s\"',;}}]+",
+        r"\1[redacted]",
+        text,
+        flags=re.I,
+    )
+    return text[-limit:]
+
+
 def collect(engine, assets, python):
     result = source_inventory(engine, assets)
+    probe = None
     try:
         probe = subprocess.run(
             [str(python), "-c", PROBE],
@@ -228,9 +250,17 @@ def collect(engine, assets, python):
         result["checks"]["linux_x86_64"] = (
             runtime["os"] == "Linux" and runtime["machine"] == "x86_64"
         )
-    except (OSError, subprocess.SubprocessError, ValueError, KeyError, IndexError):
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, IndexError) as exc:
         result["checks"].update(runtime_versions=False, linux_x86_64=False, isaaclab_artifact=False)
         result["issues"].append("Pinned Isaac Python environment could not be verified")
+        result["runtime_error"] = {
+            "type": type(exc).__name__,
+            "returncode": getattr(exc, "returncode", getattr(probe, "returncode", None)),
+            "detail": diagnostic_tail(str(exc), 512),
+            "stderr_tail": diagnostic_tail(
+                getattr(exc, "stderr", None) or getattr(probe, "stderr", "")
+            ),
+        }
     try:
         gpu = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,driver_version,memory.total", "--format=csv,noheader"],
@@ -278,7 +308,11 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     report = collect(
-        args.engine_root.resolve(), args.assets_root.resolve(), args.isaac_python.resolve()
+        # Resolving bin/python's symlink runs the base interpreter without the
+        # selected venv's site-packages. Preserve this path while making it absolute.
+        args.engine_root.resolve(),
+        args.assets_root.resolve(),
+        args.isaac_python.absolute(),
     )
     report["profile_sha256"] = hashlib.sha256(
         json.dumps(PROFILE, sort_keys=True).encode()
