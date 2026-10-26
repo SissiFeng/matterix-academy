@@ -1,4 +1,4 @@
-"""Execute only finalization's diagnostic tail with local probe/capacity fixtures."""
+"""Run finalization's filesystem setup and diagnostics without a GPU or host changes."""
 
 import json
 import os
@@ -10,6 +10,33 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+def test_finalize_recreates_worker_runtime_directory_after_build_reboot(tmp_path):
+    # Provisioning reboots before finalization. Model the fresh volatile /run mount:
+    # the disabled worker service has not created its systemd RuntimeDirectory yet.
+    runtime = tmp_path / "run/academy-native"
+    runtime.parent.mkdir()
+    assert not runtime.exists()
+    script = (ROOT / "ops/ec2-gpu/image/finalize.sh").read_text()
+    setup = script[
+        script.index("root=/opt/academy-agent") : script.index("export OMNI_KIT_ACCEPT_EULA")
+    ]
+    setup = (
+        setup.replace("/etc/academy-native/evidence", str(tmp_path / "evidence"))
+        .replace("/run/academy-native", str(runtime))
+        .replace("-o academy-native -g academy-native", f"-o {os.getuid()} -g {os.getgid()}")
+    )
+    # Execute the real pre-probe setup with only paths and the service identity mapped
+    # to this unprivileged fixture. No inventory, runtime import or service starts.
+    subprocess.run(["bash", "-euo", "pipefail", "-c", setup], check=True, timeout=10)
+    info = runtime.stat()
+    assert info.st_uid == os.getuid() and info.st_gid == os.getgid()
+    assert info.st_mode & 0o777 == 0o700
+    # Match the prepared NativeConfig path used by the Studio renderer.
+    frames = runtime / "frames"
+    frames.mkdir(mode=0o700)
+    (frames / "probe.rgb").write_bytes(b"local framebuffer fixture")
 
 
 @pytest.mark.parametrize(

@@ -6,7 +6,9 @@ in [PR #10](https://github.com/SissiFeng/matterix-academy/pull/10); the
 the actual AWS application commit. Infrastructure observations below remain dated
 2026-10-23 unless their linked evidence says otherwise. Dated evidence lives in
 [VALIDATION.md](VALIDATION.md) and [DEPLOYMENT-2026-10-01.md](DEPLOYMENT-2026-10-01.md).
-See the [student trial guide](STUDENT-TRIAL.md) for all feature entry points.
+See the [student trial guide](STUDENT-TRIAL.md) for all feature entry points and the
+[AC GPU blueprint audit](AC-GPU-BLUEPRINT.md) for the verified EC2 GPU module
+capability and the decision to retain Academy's dedicated Ubuntu worker.
 
 Legend: **Verified** = observed in a real environment. **Implemented** = code and automated tests exist; no real-environment evidence. **Blocked** = waiting on something outside this repository.
 
@@ -42,8 +44,8 @@ disabled by default and no robot was operated during this implementation.
 | CloudFront, S3, API Gateway, Lambda, DynamoDB, Cognito | Verified | 54 resources applied; post-apply plan clean |
 | utoronto.ca self-registration | Verified (infrastructure) | Real signup, mailbox confirmation, sign-in and two-account isolation are deferred by the user (2026-10-23); runnable harness: [learner acceptance](LEARNER-ACCEPTANCE.md) |
 | Machine API, worker authorizer, lease reaper | Verified with synthetic workers | Smoke test: 21 assertions |
-| Automatic release on `main` | Verified for the prior main release; current update under validation | Latest existing CI/deploy runs succeeded. Install phases now have separate time bounds and logs; release checks bind runtime version and archive checksums |
-| Academy 0.2.0 / internal Flex GPU acceptance | AWS application deployed; GPU blocked | Four Lambda hashes and 35 web files verified at source `674c1e2`; global gate stays false. Applied AWS GPU quota is now 8 vCPU; the 16-vCPU request remains CASE_OPENED. A guarded g6.2xlarge capacity trial is prepared; see [capacity trial](GPU-CAPACITY-TRIAL.md). Native browser acceptance is deferred with real account acceptance. See [live record](DEPLOYMENT-2026-10-20.md) |
+| Automatic release on `main` | Verified | Student trial `718b937` deployed in [run 40337149936](https://github.com/SissiFeng/matterix-academy/actions/runs/40337149936); 1,290 backend tests and 74 browser journeys passed. Four Lambda code hashes and all 41 published web files matched the release. The live version record identifies subsequent releases |
+| Academy 0.2.0 / internal Flex GPU acceptance | AWS application deployed; GPU not accepted | On 2026-10-26 the user resumed real DT delivery. Original development identity, 8-vCPU On-Demand quota and base Ubuntu AMI were reverified; 16-vCPU request still CASE_OPENED and Spot quota zero. A fresh ca-central-1b build failed with InsufficientInstanceCapacity. The next allocation request was stopped to fix the post-reboot probe directory; both attempts were reconciled with no instance or temporary key/security group remaining. See [capacity trial](GPU-CAPACITY-TRIAL.md). Real video/refresh/reset/second-run evidence remains absent; global gate stays false |
 | Native gate in release | Implemented | `release.py` requires the Lambda gate to equal `NATIVE_EXECUTION_EXPECTED` (default `false`) |
 | Alarm notifications and budget | Notifications verified; Academy budget disabled | 13 operational alarms target a confirmed SNS subscription. Controlled ALARM and OK emails arrived. The requested US$400 account budget was removed at the user's request; the existing organization budget was preserved |
 | Lambda concurrency | Capacity acceptance pending | Applied quota remains 10 with learner limit 5 requests/s. Increase request 209df9a3cc9940ba8adbe5f47e9ee2e4Y7CXjacq is CASE_OPENED; do not claim cohort capacity before approval and authenticated load acceptance |

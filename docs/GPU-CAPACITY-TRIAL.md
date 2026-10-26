@@ -6,6 +6,13 @@ still pending. `g6.2xlarge` is offered in `ca-central-1a`, `1b`, and `1d`. An of
 does not guarantee launch capacity. `g6e.2xlarge` is absent from this region's EC2
 type API and price catalog; US East's G/VT quota is still zero.
 
+Continuation checked on 2026-10-26: STS again verified development account
+`247893369214`; the applied Canadian quota is still 8 vCPU and no active GPU
+instances were present before the new guarded build attempt. The user resumed
+real DT delivery. Current reviewed Academy main `718b937` has been repackaged;
+build completion and browser acceptance still require their own evidence. The
+2026-10-23 attempts failed for insufficient capacity in all three reviewed AZs.
+
 For this bounded trial, select `build_instance_type: "g6.2xlarge"` in the protected
 Packer JSON. The normal default remains `g6.4xlarge`. This revises the earlier
 preference to measure the 64-GiB host first: a full L4, 8 vCPU and 32 GiB can now be
@@ -28,32 +35,40 @@ The local timeout is **not a billing cap**: inspect the Packer log and reconcile
 the build's instances, volumes, AMIs, snapshots, keys and security groups after
 any failed/interrupted build. Never remove another workload's resources.
 
-The unchanged native probe must load the pinned internal Flex scene, render at
-least three nonblack 960×540 frames, reset and close successfully. It is bounded
-to 30 minutes plus a 30-second termination grace. Finalization retains:
+Finalization first loads the pinned fixed Flex scene, renders at least three
+nonblack 960×540 frames, resets and closes it. It then runs the full saved Studio
+probe: pickup, 100 µL aspiration, 100 µL dispense into A1 and drop, with native
+observations, bound renderer frames and verified reset. The two probes share
+one 30-minute timeout plus a 30-second termination grace. Finalization retains:
 
 - `scene-render.json`: native frame count and measured scene startup, render and reset times.
+- `studio-probe.json`: saved-plan hash, completed native workflow, frame and reset
+  checks, plus the path to its run artifacts under `/var/lib/academy-native/`.
 - `capacity.json`: elapsed time, GNU time peak process RSS, sampled peak GPU memory,
   CPU count, OS-visible RAM and kernel OOM evidence. Linux reserves part of physical
   RAM, so this host check allows 31 GiB visible after EC2 verifies 32 GiB physical.
 - `probe-time.txt`, `gpu-memory.csv`, `probe-kernel.log` and measurement timestamps.
 
-These files live in `/etc/academy-native/evidence/`. The compact capacity report
-prints to Packer's local log before a failed capacity gate removes the host.
-The scene report prints only after the capacity gate passes; it may be absent for
-a failed or interrupted probe. A killed/timed-out process, missing measurements, unreadable kernel log,
+The reports and measurement logs live in `/etc/academy-native/evidence/`; retain
+the referenced Studio run artifacts separately as well. Available scene and Studio
+reports print to Packer's local log before the capacity gate, followed by the compact
+capacity report, so they survive removal of a failed build host. A report may be
+absent if its probe did not reach report creation. A killed/timed-out process,
+missing measurements, unreadable kernel log,
 or any observed kernel OOM fails finalization. Do not publish an image after such
 a failure. Do not add swap or lower source/version/render/reset gates to obtain a
 pass. Keep raw timing/GPU logs from a successful image for review.
 
-Passing this probe establishes measured image startup/render capacity only.
-It neither runs the five-step workflow nor qualifies the worker. Real decoded
-browser video, refresh recovery, reset/release and a second complete run remain
-separate commissioning gates. With learner login acceptance deferred, create no
-idle acceptance instance merely to wait for a user.
+Passing both probes establishes measured image capacity and local execution/reset
+of the Studio probe design. It does not execute the five-step mixing workflow or
+qualify the worker. Real decoded browser video, refresh recovery, verified
+reset/release and the second changed Studio design remain separate
+[commissioning gates](STUDIO-NATIVE-ACCEPTANCE.md). Keep at most one GPU active
+and stop between sessions; do not retain an idle acceptance host while awaiting login.
 
-The official price feed was published 2026-10-22 and read 2026-10-23. Canadian
-Linux On-Demand `g6.2xlarge` is USD 1.08547/hour versus USD 1.46920/hour for
+The following cost snapshot is dated: the official price feed was published
+2026-10-22 and read 2026-10-23. Canadian Linux On-Demand `g6.2xlarge` was
+USD 1.08547/hour versus USD 1.46920/hour for
 `g6.4xlarge`. A two-hour compute trial is about USD 2.17, plus IPv4 and storage.
 The retained 300-GiB gp3 volume is USD 26.40/month; AMI snapshots, KVS, traffic and
 logs are extra. The initial operational target remains at most eight total GPU
