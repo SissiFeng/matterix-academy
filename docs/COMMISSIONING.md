@@ -1,8 +1,9 @@
 # Internal Flex GPU commissioning
 
 Status: tooling prepared; native browser acceptance has not run. See [STATUS.md](STATUS.md)
-for the latest image, deployment and resource evidence. Real-account acceptance is
-deferred by the user as of 2026-10-23.
+for the latest image, deployment and resource evidence. The user resumed real DT
+delivery on 2026-10-26; the separate learner registration/two-account exercise remains
+outstanding. Saved Workflow Studio designs use [STUDIO-NATIVE-ACCEPTANCE.md](STUDIO-NATIVE-ACCEPTANCE.md).
 The acceptance target is the existing Onboarding browser → Simulation lab → Four-source
 mixing → native Isaac video → five completed steps → verified reset/release, twice.
 Synthetic tests do not satisfy this target.

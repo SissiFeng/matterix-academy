@@ -1,10 +1,12 @@
 # Workflow Studio native acceptance
 
 Status: implementation and synthetic contract tests are available; this document does
-not record a completed GPU or real-account browser acceptance. Real-account acceptance
-remains deferred. No AWS resource is created by the preparation steps below. Consult
+not record a completed GPU or real-account browser acceptance. The user resumed real
+DT delivery on 2026-10-26 under the existing single-host resource authorization;
+separate learner registration/two-account acceptance remains outstanding.
+No AWS resource is created by the preparation steps below. Consult
 [STATUS.md](STATUS.md), [GPU-CAPACITY-TRIAL.md](GPU-CAPACITY-TRIAL.md) and the reviewed
-deployment inventory before a separately authorized live run.
+deployment inventory before a live run in the authorized development account.
 
 The acceptance target is a saved Workflow Studio design in the English Onboarding
 browser → the nominated internal Matterix worker → the exact Flex layout and actions

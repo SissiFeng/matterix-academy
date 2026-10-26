@@ -1,27 +1,38 @@
-# Current execution note — 2026-10-23
+# Current execution note — 2026-10-26
 
-The user authorized necessary paid commissioning resources. Applied Canadian GPU quota is now 8 vCPU; [the bounded g6.2xlarge capacity trial](GPU-CAPACITY-TRIAL.md) supersedes the earlier preference to measure a 64-GiB host first. Real account/browser acceptance is deferred at the user's request. No additional Academy account budget should be created.
+The user has authorized necessary paid commissioning resources and resumed real
+Matterix DT delivery. The earlier browser-DT pause no longer blocks this work;
+separate signup/two-account acceptance remains outstanding. Development account
+`247893369214` and its 8-vCPU Canadian quota were reverified; no active GPU instance
+was present before the new guarded build attempt. The
+[bounded g6.2xlarge trial](GPU-CAPACITY-TRIAL.md) supersedes the original preference
+to measure a 64-GiB host first. Build and browser acceptance outcomes must be recorded
+separately. No additional Academy account budget should be created.
 
-# Single EC2 GPU pilot: browser → fixed Isaac scene
+# Single EC2 GPU pilot: browser → internal Flex simulation
 
-Prepared 2026-10-19. **No EC2, AMI build host, volume, signaling channel, account
-selection, enrollment, deployment or native qualification was performed.**
-This is a deployment preparation package. The paid-resource gate is false.
-The existing application's native-execution gate is unchanged and false by default.
+Historical preparation baseline (2026-10-19): the original package created no
+resources and selected no account. Resource authorization followed on 2026-10-20;
+the 2026-10-23 build attempts failed for insufficient capacity and were reconciled.
+Configuration defaults remain disabled. The application's global native-execution
+gate must stay false until scene-specific native qualification is recorded.
 
-Goal after separate resource authorization: one Ubuntu GPU host runs the existing
-`NativeFlexRunner`, one learner at a time, `Matterix-Flex-Mixing-v1` /
-`mix_four_vials`, seed 42, `num_envs=1`. A browser must show this same run's confirmed
-observations and real camera frames, followed by verified reset and release.
-No physical instruments are attached. Synthetic course success is not native evidence.
+One Ubuntu GPU host runs `NativeFlexRunner`, one learner at a time, with `num_envs=1`.
+The current acceptance target is a saved Flex Workflow Studio design, followed by
+a second design with changed layout and volume; see
+[Studio native acceptance](STUDIO-NATIVE-ACCEPTANCE.md). The separate fixed
+`Matterix-Flex-Mixing-v1` / `mix_four_vials` scene uses seed 42. Each browser view
+must show its own run's confirmed observations and real camera frames, then verified
+reset and release. OT-2 requires separate native assets and qualification. No physical
+instruments are attached; synthetic course success is not native evidence.
 
 ## Decision and cost envelope
 
-Prefer **ca-central-1 / g6.4xlarge**, to keep the worker close to the existing Canadian
-API and KVS region: one L4 (advertised 24 GB VRAM), 16 vCPUs, 64 GiB RAM.
-This is a capacity candidate, not a measured Matterix performance result.
-The smaller g6.2xlarge has the same GPU but only 32 GiB RAM; reserve it for cost
-optimization after measuring peak RSS/VRAM and startup/rendering on the larger host.
+The original 2026-10-19 preference was **ca-central-1 / g6.4xlarge**: one L4
+(advertised 24 GB VRAM), 16 vCPUs and 64 GiB RAM, near the existing Canadian API/KVS.
+The current trial explicitly selects **g6.2xlarge**, with the same GPU, 8 vCPUs and
+32 GiB RAM, within the applied quota. Its suitability depends on the measured native
+probes; an instance specification alone is not a Matterix performance result.
 
 An L40S alternative is **us-east-1 / g6e.2xlarge**, one GPU with advertised 48 GB
 VRAM, 8 vCPUs, 64 GiB RAM. No g6e.2xlarge row was found in the captured Canadian
@@ -30,8 +41,8 @@ Use the US option only after reviewing data location and additional cross-region
 media/control traffic. It does not move the existing API/KVS region automatically.
 A100/H100 are not a substitute for the required RTX rendering support.
 
-Public Linux On-Demand rates, USD, retrieved 2026-10-19; the AWS feed publication
-is 2026-10-15. No Spot, Savings Plans, credits, Free Tier or taxes assumed:
+Historical public Linux On-Demand rates, USD, retrieved 2026-10-19; the AWS feed
+publication is 2026-10-15. No Spot, Savings Plans, credits, Free Tier or taxes assumed:
 
 | Region / candidate | Compute/hour | 8 running hours | 40 running hours | 730 running hours |
 |---|---:|---:|---:|---:|
@@ -142,6 +153,14 @@ old Docker defaults are not compatibility evidence. Exact internal source pins,
 wheel hash, source audit and commissioning commands are in [COMMISSIONING.md](COMMISSIONING.md).
 This is a source/metadata compatibility assessment, not native qualification.
 
+The image finalizer runs both the fixed scene/render/reset probe and a complete
+four-action Studio native probe. They share one 30-minute timeout plus a 30-second
+termination grace and an RSS/VRAM/OOM measurement window. Retain the installed
+inventory, `scene-render.json`, `studio-probe.json`, `capacity.json`, raw measurement
+logs and the Studio report's referenced run artifacts. See
+[image build](GPU-IMAGE-BUILD.md) for exact gates. Passing these probes does not
+establish browser video, refresh recovery, supervisor/media release or a second run.
+
 Required image layout:
 
 | Path | Contents / authority |
@@ -224,27 +243,29 @@ Provider download and public pricing requests are ordinary public HTTPS reads.
 Do not run the existing `scripts/probe-kvs.py` in this preparation phase: it creates
 a temporary billable signaling channel.
 
-## Later deployment and acceptance sequence — requires new authorization
+## Authorized deployment and acceptance sequence
 
-All following cloud/host operations are future steps. AMI ID, publisher, exact
-versions, network IDs, operator account, quotas and commissioning evidence are
-unresolved inputs, deliberately not invented here.
+The existing authorization covers the bounded build and single-host commissioning
+in the verified development account. Recheck live identity, network, quota and
+credential lifetime before executing. A successful build must supply the actual
+AMI ID and evidence; do not infer them from a configuration or a launch attempt.
 
 1. **Review account, network, quota and spending window.** Operator checks STS
    identity against the approved account, instance-type offerings for the selected
-   subnet AZ, G/VT On-Demand vCPU quota (16 for g6.4xlarge), capacity, SSM policy,
+   subnet AZ, G/VT On-Demand vCPU quota (8 for the selected g6.2xlarge), capacity, SSM policy,
    Internet Gateway and ACLs. A price entry is not capacity evidence. Review the
    existing application's native gate, learner access and KVS region. Choose a
    maximum running-hours window and stop operator; no automated cost cap exists.
-2. **Prepare/review image.** Meet the contract above, retain the package lock and
-   exact driver/Lab/engine/assets pins, and verify the manifest hash. GPU image
-   builds themselves cost money and are outside this no-resource preparation.
+2. **Build/review image.** Package the exact tested Academy commit into a new
+   protected directory, retain dependency/source pins and verify input hashes.
+   Use the guarded build wrapper and retain both native probe reports and capacity
+   measurements. A local source export does not build an AMI.
 3. **Review the isolated plan.** Copy `pilot.tfvars.example` to a local ignored
    variable file, resolve every empty input, and only then set `enabled=true`.
    Initialize the chosen state location and inspect a saved plan. It must contain
    one GPU instance and its IAM/security group only. No existing Academy resource,
    DNS, learner auth, production gate or unrelated network may change. Applying
-   that reviewed plan is a distinct authorized step; no apply was run here.
+   that reviewed plan must use the verified image and preserve the one-GPU limit.
 4. **Prove host readiness.** Through SSM, record Ubuntu/kernel/architecture,
    `nvidia-smi` GPU/driver/VRAM, installed Sim/Lab/Python versions, launcher argument
    compatibility and task imports. As the service user, run `NativeConfig.verify()`
@@ -252,18 +273,22 @@ unresolved inputs, deliberately not invented here.
    writable cache/state, free EBS, cold-start extension dependencies, IMDS denial,
    SSM functionality and no duplicate worker service. An environment probe alone
    is not a passing native test.
-5. **Bounded browser commissioning.** Follow [COMMISSIONING.md](COMMISSIONING.md):
-   a passing host inventory permits an operator-issued grant for one JWT subject,
-   one worker, seed 42, at most two runs and at most one hour. The worker stays
-   unqualified and the global execution gate stays disabled. Collect actual decoded
-   relay video, native snapshots, reset/release receipts and the owner-scoped cloud report.
+5. **Bounded browser commissioning.** Follow
+   [Studio native acceptance](STUDIO-NATIVE-ACCEPTANCE.md): a passing host inventory
+   permits a grant for one JWT subject, one worker, exactly two approved saved plans
+   and at most one hour. Run both plans through the real browser, including refresh
+   recovery and the changed tip-rack slot and volume. The worker stays unqualified
+   and the global execution gate stays disabled. Collect actual decoded relay video,
+   native snapshots, reset/release receipts and the owner-scoped cloud report.
+   [COMMISSIONING.md](COMMISSIONING.md) covers the separate fixed mixing acceptance.
 6. **Review qualification.** The offline evidence checker never qualifies a worker.
    Review image identity, isolation, interruption/recovery and cleanup evidence against
    [WORKER-CONTROL.md](WORKER-CONTROL.md) before separately using worker_admin qualify.
    General learner enablement remains a separate reviewed application deployment.
-7. **Browser acceptance.** Use the Simulation lab → Four-source mixing flow in
-   an authenticated browser, seed 42. Run the matrix below; collect sanitized
-   identity-bound reports. A visible animation alone is insufficient.
+7. **General learner enablement.** Enable only the scenes covered by reviewed
+   qualification. Verify the deployed browser and API retain the same source/scene
+   bindings and fail closed for unsupported designs. A visible animation alone
+   does not establish qualification.
 8. **Drain, stop and reconcile costs.** Wait for verified cleanup and a free worker;
    stop the native service and EC2. Never stop it to resolve an unknown outcome.
    Keep journal/config/evidence for recovery. Verify stopped state and continuing
@@ -280,14 +305,14 @@ intentionally **not** accepted by `worker_admin qualify`.
 
 | Gate | Action | Required evidence / failure behavior |
 |---|---|---|
-| Exact intent | Submit fixed seed 42 once | Cloud run ID, saved plan hash, worker ID, native session and pinned engine/assets agree; 5 ordered logical actions: uncover + four 10 µL transfers |
-| True observations | Run full workflow | All 5 actions confirmed once in order, terminal native snapshot and actual liquid/tip/lid observations; no intended amount substituted for missing observation |
+| Exact intent | Submit each approved saved Studio design once | Cloud run ID, full saved plan hash, layout, ordered actions, worker/native IDs and source pins agree; fixed mixing uses its separate seed-42 plan |
+| True observations | Run full workflow | Every saved action confirmed once in order, terminal native snapshot and native-semantic liquid/tip observations; mixing additionally requires its five actions and lid observations |
 | Video binding | Open live viewport | Real 960×540 camera frames for that same native session; selected relay ICE connection and run-scoped viewer grants; stale frames never establish progress |
 | Refresh/reconnect | Close/reopen or interrupt browser network | Same original run; no second submission, launch or advance caused by browser polling; confirmed state retained |
 | Lost receipt/restart | Supervised interruption at a journaled boundary | Original IDs queried, no duplicate native side effect; uncertainty quarantines instead of retrying |
 | Isolation | Second learner tries to read/control/view first learner's run | Denied; no host/credentials/grants leak; only one active native lease on the host |
 | Unsupported controls | Inspect/push pause/resume/cancel | UI/API do not promise unsupported controls; forced host interruption is operator recovery, not clean cancel |
-| Cleanup/reuse | Finish, inspect reset/release, run a second fixed trial | Object/liquid/tip/controller reset checks, process/media stopped and release receipt bound to original IDs; worker/session unlocked only after verified cleanup |
+| Cleanup/reuse | Inspect reset/release, then run the changed second Studio design | Object/liquid/tip/controller reset checks, process/media stopped and release receipt bound to original IDs; second run has fresh scene state and the approved changed slot/volume |
 | No hardware / no synthetic substitution | Inspect all outputs and fault state | GPU simulation only; no physical authority; fault never becomes a synthetic success |
 | Stop/accounting | Drain and stop | Host stopped, no orphan native process, record retained storage and media costs; ExpiresOn tag alone does not count |
 
@@ -298,13 +323,17 @@ locations. Raw worker tokens, publisher grants, TURN credentials, signed URLs an
 journals containing claim tokens must not be committed or attached to learner
 reports. Use sanitized extracts; preserve protected originals for reconciliation.
 
-## What remains unverified
+## Evidence boundary
 
-No GPU benchmark, EC2/AZ capacity/quota, approved account/AMI, host install,
-live commissioning execution, current production release/gate, native observations,
-WebRTC frames, browser-to-GPU run, recovery, cleanup, cost ceiling or physical
-operation was verified by preparing these files. Local tests establish configuration
-contracts and zero-resource defaults only. Local verification passed 436 backend
+Account/quota checks, source packaging, a GPU launch, image probes and browser
+commissioning are distinct evidence stages. Record the current attempt's outcome
+before claiming a built image or accepted browser DT workflow. The build attempt
+does not yet establish native observations, real browser frames, recovery,
+reset/release or a second run. No stage establishes physical operation or a cost cap.
+See [STATUS.md](STATUS.md) and dated deployment records for application evidence.
+
+The original preparation tests established configuration contracts and zero-resource
+defaults only. That dated local verification passed 436 backend
 tests (19 new preparation tests), Lambda packaging, frontend build/format, and
 both Terraform validations including the zero-resource disabled plan. See the
 [dated local validation record](VALIDATION.md).

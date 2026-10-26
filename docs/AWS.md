@@ -104,6 +104,11 @@ Primary references: [Cognito PKCE authorization](https://docs.aws.amazon.com/cog
 
 ## Prepared single EC2 GPU pilot (not deployed)
 
+The [AC GPU blueprint audit](AC-GPU-BLUEPRINT.md) confirms that AC's shared modules
+support ECS on EC2 GPU inputs. Those inputs do not apply to this serverless root.
+The current Matterix acceptance uses the dedicated Ubuntu worker below; it does
+not replace the student application or take ownership of shared ECS capacity.
+
 The [EC2 GPU pilot plan](EC2-GPU-PILOT.md) adds a separate, default-disabled
 Terraform root at `infra/ec2-gpu/`. It reuses the worker API for one fixed native
 scene. The ordinary application deployment does not apply it or enable native

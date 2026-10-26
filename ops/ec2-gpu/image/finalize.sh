@@ -5,6 +5,9 @@ umask 077
 [[ "$EUID" == 0 && "$(uname -m)" == x86_64 ]]
 root=/opt/academy-agent
 install -d -m 755 /etc/academy-native/evidence
+# /run was cleared by the build reboot; the disabled worker service has not
+# recreated its RuntimeDirectory. Native probes run as the worker without starting it.
+install -d -o academy-native -g academy-native -m 700 /run/academy-native
 export OMNI_KIT_ACCEPT_EULA=YES
 # Git safe.directory is per invoking user: checkouts are root-owned and read-only for the worker.
 runuser -u academy-native -- env HOME=/var/cache/academy-native git config --global --add safe.directory /srv/matterix

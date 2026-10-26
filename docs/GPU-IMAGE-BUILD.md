@@ -93,6 +93,11 @@ acceptance. It does not use or install any worker token.
 
 ## Build only after resource authorization
 
+Necessary paid build and single-host commissioning resources are already authorized
+for the existing development account; the user resumed real DT delivery on
+2026-10-26. Keep the explicit build/license flags and account checks. This
+authorization does not imply a successful image or native browser acceptance.
+
 Copy `build.pkrvars.json.example` to the protected directory. Fill the authorized
 account, exact base AMI, existing VPC/subnet, operator IPv4 `/32`, and input directory.
 Use `archive_sha256` and `manifest_sha256` from `release.json`. Set both confirmation
@@ -121,10 +126,22 @@ single address, installs the pinned driver/runtime, reboots and performs final p
 Root SSH provisioners are build-only. Learners use the existing browser API and
 never receive SSH, SSM or worker credentials.
 
-Finalization must pass the installed source/runtime fingerprint and instantiate the
-fixed seed-42 Flex scene, produce three nonblack 960×540 native frames, reset and
-close it. This scene/render probe does not execute or validate the mixing workflow.
-It separately proves root IMDSv2 access succeeds while worker token requests fail
+Finalization must pass the installed source/runtime fingerprint, then run two
+native probes in sequence:
+
+1. Load the fixed seed-42 Flex scene, render at least three nonblack 960×540 frames,
+   reset and close. This probe does not execute the five-step mixing workflow.
+2. Construct the saved Flex Studio plan, execute pickup → aspirate 100 µL → dispense
+   100 µL into A1 → drop, verify native observations and bound renderer frames,
+   then reset and close. A failed terminal snapshot or reset fails the probe.
+
+Both probes share one 30-minute timeout plus a 30-second termination grace and one
+RSS/VRAM/OOM measurement window. Retain `scene-render.json`, `studio-probe.json`,
+`capacity.json`, the raw measurement logs and the Studio run artifacts referenced
+by its report. These are local GPU checks, not browser/media qualification. See
+[capacity trial](GPU-CAPACITY-TRIAL.md) for the failure and retention rules.
+
+Finalization also proves root IMDSv2 access succeeds while worker token requests fail
 at the network layer. Missing SSM, source drift, dependency conflicts, missing
 assets, wrong GPU/driver, black renderer or unreadable service files abort the build.
 Code is read-only to the worker; state/cache remain private and writable. The service
@@ -137,16 +154,20 @@ root; it must match those tags. No AMI ID is invented before a successful build.
 
 ## Start browser DT acceptance
 
-After the image and pilot host are separately authorized, enroll that one worker,
+After a successful reviewed image build and pilot-host deployment, enroll that one worker,
 install its protected token, configure the existing worker API origin and start the
 service. Deploy the **same Academy release** to the API/frontend through the existing
 release procedure; a local source release does not update a running AWS application.
-Then follow [COMMISSIONING.md](COMMISSIONING.md) to grant one designated user two
-fixed runs and run the actual browser acceptance harness. Keep the global learner
-execution gate disabled throughout commissioning.
+For saved workflows, follow [Studio native acceptance](STUDIO-NATIVE-ACCEPTANCE.md):
+grant one designated user exactly two approved designs and run
+`npm run commissioning:studio`. The second design changes both tip-rack placement
+and transfer volume. [COMMISSIONING.md](COMMISSIONING.md) and
+`npm run commissioning:live` cover the separate fixed mixing scene. Keep the global
+learner execution gate disabled throughout commissioning.
 
 Ready-to-use evidence requires the real Onboarding browser to show decoded native
-video, complete all five workflow steps, survive refresh without another submission,
-reset/release, and repeat once. Local browser fixtures and a successful AMI build
+video for the exact saved design, complete every approved action, survive refresh
+without another submission, reset/release, and run the second approved design.
+Local browser fixtures and a successful AMI build
 cannot substitute for that acceptance. Qualification additionally requires isolation
 and interruption/recovery review. Neither image preparation nor packaging records it.
