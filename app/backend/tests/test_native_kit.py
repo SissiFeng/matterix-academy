@@ -326,3 +326,31 @@ def test_native_child_exits_after_saving_result_despite_extension_thread(tmp_pat
         assert "RuntimeError: native failed" in result.stderr
     if "probe failed" in ending:
         assert "probe failed" in result.stderr
+
+
+def test_camera_pose_reaches_renderer_without_a_viewport(monkeypatch):
+    calls = []
+    module = ModuleType("isaacsim.core.rendering_manager")
+    module.ViewportManager = SimpleNamespace(set_camera_view=lambda *a, **kw: calls.append((a, kw)))
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    env = SimpleNamespace(
+        num_envs=1,
+        cfg=SimpleNamespace(
+            viewer=SimpleNamespace(
+                origin_type="env",
+                env_index=0,
+                cam_prim_path="/OmniverseKit_Persp",
+                eye=(0.42, -1.10, 0.8),
+                lookat=(0, 0.3, 0.4),
+            )
+        ),
+        scene=SimpleNamespace(env_origins=[SimpleNamespace(tolist=lambda: [1, 2, 3])]),
+    )
+    native_kit.configure_native_camera(env)
+    assert calls[0][0] == ("/OmniverseKit_Persp",)
+    assert calls[0][1]["eye"] == pytest.approx([1.42, 0.9, 3.8])
+    assert calls[0][1]["target"] == pytest.approx([1, 2.3, 3.4])
+    env.num_envs = 2
+    with pytest.raises(RuntimeError, match="single-environment"):
+        native_kit.configure_native_camera(env)
+    assert len(calls) == 1

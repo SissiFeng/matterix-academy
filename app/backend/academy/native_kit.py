@@ -97,6 +97,21 @@ def close_native_app(app):
         faulthandler.cancel_dump_traceback_later()
 
 
+def configure_native_camera(env):
+    """Apply the saved view directly; Kit's viewport controller can be absent headless."""
+    from isaacsim.core.rendering_manager import ViewportManager
+
+    viewer = env.cfg.viewer
+    if viewer.origin_type != "env" or viewer.env_index != 0 or env.num_envs != 1:
+        raise RuntimeError("Native camera requires the qualified single-environment view")
+    origin = env.scene.env_origins[0].tolist()
+    ViewportManager.set_camera_view(
+        viewer.cam_prim_path,
+        eye=[float(viewer.eye[i]) + float(origin[i]) for i in range(3)],
+        target=[float(viewer.lookat[i]) + float(origin[i]) for i in range(3)],
+    )
+
+
 def run_native_cli(main):
     """Exit a dedicated native child only after its main has saved final evidence.
 

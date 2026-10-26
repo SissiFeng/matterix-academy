@@ -267,7 +267,7 @@ def run(folder, *, probe=False):
     config.verify()
     validate_assets(plan, config)
     activate(Path(config.matterix_root))
-    from .native_kit import close_native_app, launch_native_app
+    from .native_kit import close_native_app, configure_native_camera, launch_native_app
 
     app = launch_native_app(
         headless=config.headless,
@@ -289,6 +289,7 @@ def run(folder, *, probe=False):
         if getattr(builtins, "ISAACLAB_CALLBACK_EXCEPTION", None):
             raise RuntimeError("Studio native assets failed to initialize")
         observations, _ = env.reset()
+        configure_native_camera(env)
         robot = env.scene["flex"]
         tips = env.scene["studio_tips"]
         tip = env.semantic_manager.full_semantic_predicates["flex/FlexRightIsTipAttached"]

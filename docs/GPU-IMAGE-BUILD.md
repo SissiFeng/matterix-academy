@@ -69,6 +69,8 @@ For the pinned Lab 3 runtime, headless is an application setting, not the deprec
 Academy must retain the Kit visualizer for frame pumping and camera updates while
 the host window stays disabled. Camera rendering remains enabled. Native scene,
 nonblack frame, Studio workflow and reset probes must all pass on the GPU.
+The single-environment camera pose is applied directly through the rendering
+manager because a headless host has no viewport controller to apply it.
 
 Use a protected directory **outside all Academy, engine and asset checkouts**.
 The source export never copies credentials, hooks, untracked files or external
