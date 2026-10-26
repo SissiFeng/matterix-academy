@@ -2,10 +2,16 @@
 
 import argparse
 import hashlib
+import importlib.metadata
+import importlib.util
 import json
+import math
 import os
+import platform
 import re
 import subprocess
+import sys
+import time
 import zipfile
 from pathlib import Path
 
@@ -36,21 +42,124 @@ REQUIRED_CHECKS = {
     "gpu_present",
     "driver_version",
 }
-PROBE = """import importlib.metadata as m, importlib.util as u, json, platform, sys, argparse, subprocess
-from academy.runtime_inventory import verify_installed_isaaclab
-proof=verify_installed_isaaclab()
-if not proof['verified']: raise RuntimeError('Installed Isaac Lab differs from the pinned publisher wheel')
-p={}
-for n in ("isaaclab","isaacsim","torch","torchvision","isaaclab_physx"):
- try: p[n]=m.version(n)
- except m.PackageNotFoundError: p[n]=None
-from isaaclab.app import AppLauncher
-parser=argparse.ArgumentParser()
-AppLauncher.add_app_launcher_args(parser)
-parser.parse_args(["--enable_cameras","--device","cuda:0","--viz","kit","--livestream","0","--headless"])
-checked=subprocess.run([sys.executable,"-m","pip","check"],capture_output=True,text=True,timeout=45)
-print(json.dumps({"isaaclab_artifact":proof,"launcher_arguments":True,"pip_check":checked.returncode==0,"python":platform.python_version(),"os":platform.system(),"machine":platform.machine(),"packages":p,"physx":u.find_spec("isaaclab_physx") is not None}))
+# Restored EBS volumes fetch blocks on first use. Wheel verification, the first
+# Isaac import and a separately bounded pip check cannot share a 60-second cap.
+# Keep one bounded attempt; native rendering has its own unchanged timeout.
+RUNTIME_PROBE_TIMEOUT_SECONDS = 300
+PIP_CHECK_TIMEOUT_SECONDS = 45
+PROBE_STAGES = (
+    "isaaclab_artifact",
+    "package_metadata",
+    "pip_check",
+    "launcher_import",
+    "launcher_arguments",
+)
+PROGRESS_PREFIX = "ACADEMY_RUNTIME_STAGE="
+PROBE = """import json
+from academy.runtime_inventory import probe_runtime
+print(json.dumps(probe_runtime()), flush=True)
 """
+
+
+def probe_runtime():
+    """Inspect the selected environment in a child process without starting Isaac."""
+    started = time.monotonic()
+    progress = []
+
+    def mark(stage, status):
+        item = {
+            "stage": stage,
+            "status": status,
+            "elapsed_seconds": round(time.monotonic() - started, 3),
+        }
+        progress.append(item)
+        print(PROGRESS_PREFIX + json.dumps(item, sort_keys=True), flush=True)
+
+    mark("isaaclab_artifact", "started")
+    proof = verify_installed_isaaclab()
+    if not proof["verified"]:
+        raise RuntimeError("Installed Isaac Lab differs from the pinned publisher wheel")
+    mark("isaaclab_artifact", "completed")
+    mark("package_metadata", "started")
+    packages = {}
+    for name in ("isaaclab", "isaacsim", "torch", "torchvision", "isaaclab_physx"):
+        try:
+            packages[name] = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            packages[name] = None
+    physx = importlib.util.find_spec("isaaclab_physx") is not None
+    mark("package_metadata", "completed")
+    # Check the original environment before Isaac imports alter its search paths.
+    mark("pip_check", "started")
+    checked = subprocess.run(
+        [sys.executable, "-m", "pip", "check"],
+        capture_output=True,
+        text=True,
+        timeout=PIP_CHECK_TIMEOUT_SECONDS,
+    )
+    mark("pip_check", "completed")
+    mark("launcher_import", "started")
+    from isaaclab.app import AppLauncher
+
+    mark("launcher_import", "completed")
+    mark("launcher_arguments", "started")
+    parser = argparse.ArgumentParser()
+    AppLauncher.add_app_launcher_args(parser)
+    parser.parse_args(
+        [
+            "--enable_cameras",
+            "--device",
+            "cuda:0",
+            "--viz",
+            "kit",
+            "--livestream",
+            "0",
+            "--headless",
+        ]
+    )
+    mark("launcher_arguments", "completed")
+    result = {
+        "isaaclab_artifact": proof,
+        "launcher_arguments": True,
+        "pip_check": checked.returncode == 0,
+        "python": platform.python_version(),
+        "os": platform.system(),
+        "machine": platform.machine(),
+        "packages": packages,
+        "physx": physx,
+        "probe_progress": progress,
+    }
+    if checked.returncode:
+        result["pip_check_diagnostics"] = {
+            "returncode": checked.returncode,
+            "stdout_tail": diagnostic_tail(checked.stdout),
+            "stderr_tail": diagnostic_tail(checked.stderr),
+        }
+    return result
+
+
+def probe_progress(output):
+    """Keep only bounded, nonsecret stage records, including on a killed child."""
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    progress = []
+    for line in (output or "").splitlines():
+        if not line.startswith(PROGRESS_PREFIX):
+            continue
+        try:
+            item = json.loads(line.removeprefix(PROGRESS_PREFIX))
+            if (
+                set(item) == {"stage", "status", "elapsed_seconds"}
+                and item["stage"] in PROBE_STAGES
+                and item["status"] in {"started", "completed"}
+                and type(item["elapsed_seconds"]) in {int, float}
+                and math.isfinite(item["elapsed_seconds"])
+                and 0 <= item["elapsed_seconds"] <= RUNTIME_PROBE_TIMEOUT_SECONDS
+            ):
+                progress.append(item)
+        except (ValueError, TypeError):
+            continue
+    return progress[-2 * len(PROBE_STAGES) :]
 
 
 def verify_installed_isaaclab(
@@ -214,12 +323,13 @@ def diagnostic_tail(value, limit=4096):
 def collect(engine, assets, python):
     result = source_inventory(engine, assets)
     probe = None
+    probe_started = time.monotonic()
     try:
         probe = subprocess.run(
             [str(python), "-c", PROBE],
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=RUNTIME_PROBE_TIMEOUT_SECONDS,
             check=True,
             env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])},
         )
@@ -253,10 +363,15 @@ def collect(engine, assets, python):
     except (OSError, subprocess.SubprocessError, ValueError, KeyError, IndexError) as exc:
         result["checks"].update(runtime_versions=False, linux_x86_64=False, isaaclab_artifact=False)
         result["issues"].append("Pinned Isaac Python environment could not be verified")
+        stdout = getattr(exc, "stdout", None) or getattr(probe, "stdout", "")
         result["runtime_error"] = {
             "type": type(exc).__name__,
             "returncode": getattr(exc, "returncode", getattr(probe, "returncode", None)),
+            "timeout_seconds": RUNTIME_PROBE_TIMEOUT_SECONDS,
+            "elapsed_seconds": round(time.monotonic() - probe_started, 3),
+            "progress": probe_progress(stdout),
             "detail": diagnostic_tail(str(exc), 512),
+            "stdout_tail": diagnostic_tail(stdout),
             "stderr_tail": diagnostic_tail(
                 getattr(exc, "stderr", None) or getattr(probe, "stderr", "")
             ),
