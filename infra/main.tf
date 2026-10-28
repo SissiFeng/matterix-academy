@@ -266,7 +266,7 @@ resource "aws_cloudfront_response_headers_policy" "web" {
       override                   = true
     }
     content_security_policy {
-      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://${aws_cognito_user_pool.learners.endpoint} https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://${aws_cognito_user_pool.learners.endpoint} https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com wss://*.kinesisvideo.${var.region}.amazonaws.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
       override                = true
     }
   }

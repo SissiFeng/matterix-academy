@@ -168,6 +168,9 @@ export default function IsaacViewport({
       // Serialize SDP and ICE operations: WebSocket event callbacks can overlap.
       let messages = Promise.resolve();
       socket.onmessage = (event) => {
+        // KVS can send empty text frames between signaling messages. They have
+        // no SDP/ICE payload and must not tear down a valid negotiation.
+        if (event.data === "") return;
         messages = messages
           .then(async () => {
             if (!alive || !peer) return;
