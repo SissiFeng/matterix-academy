@@ -88,14 +88,53 @@ after the stopped worker's RuntimeDirectory was removed; the standalone probe
 setup recreated that directory before a new independent probe. Production
 systemd normally creates it. No prior learner run was replayed.
 
+## Real browser recovery and acceptance
+
+The learner subsequently signed in and completed real browser acceptance after
+[PR #20](https://github.com/SissiFeng/matterix-academy/pull/20) repaired the regional
+KVS CSP and empty signaling-frame handling. The verified live release is
+`e54b4ac68e8d1883c1f1b668b44cefacf9965527`, deployment
+[40754236748](https://github.com/SissiFeng/matterix-academy/actions/runs/40754236748).
+The pilot retained the reviewed adapter from `1d0e7892d39ef6ce8081f44b1cfc37afbd07c9c1`.
+See [video recovery](DEPLOYMENT-VIDEO-2026-10-28.md) for the two earlier failed
+zero-transfer runs, their verified final cleanup, and the specific signaling bugs.
+
+The consumed failed grant was explicitly retired with expected version 4 → 5;
+its complete original authority was preserved in an operator audit record. Both
+failed run records remain unchanged. A separate one-hour window authorized the
+same two exact designs, with a new grant and fresh run IDs; neither old run was replayed.
+The worker remained quarantined, unqualified, and idle before the new window.
+
+| Real browser run | Tips | Transfer | Final stock / A1 | Browser decoded frames | Final reset |
+|---|---|---:|---:|---:|---|
+| `ecc78311-528b-4a20-8c9d-83a84b590f3d` | B1 | 100 µL | 900 / 100 µL | 3,176 | Verified |
+| `4c8b827d-52db-40e8-befa-9e91919847d9` | C1 | 50 µL | ≈950 / ≈50 µL | 5,199 | Verified |
+
+Both ran all four saved actions and 21 native actions. First-run refresh recovered
+the same run without another POST and decoded 2,359 frames after refresh. Browser
+receipts report exactly two submission POSTs, completed status and no issues.
+Native frame proofs retain 780 / 690 nonblack frames. The existing evidence
+evaluator passed all eight checks, binding exact plans, runtime inventory, native
+snapshots, rendered frames, browser relay observations and final stopped/reset receipts.
+[Sanitized evidence](evidence/ec2-gpu/native-browser-recovery-2026-10-28.json)
+contains the exact source/image pins, proof hashes and finite native-semantic amounts.
+Full manifests and browser receipts remain private because execution manifests may
+contain short-lived worker authority.
+
+A real Chrome screencast records workflow creation, both runs, first-run refresh,
+changed amounts/slot, rendered motion and final reset. The H.264 file is 1350×940,
+15 fps and about 9:38; a 4:38 excerpt starts with the second design change. No
+rendered teaching animation substitutes for the live native viewport. The file
+decoded without errors, and representative native motion/result frames were
+visually inspected; this is not a frame-by-frame movie review.
+
 ## Remaining acceptance
 
-A local scene or Studio probe does not qualify browser video, refresh recovery,
-second changed design, isolation, interruption recovery, or physical hardware.
-Global native execution stays off. Continue with the exact two-design,
-subject-scoped procedure in [STUDIO-NATIVE-ACCEPTANCE.md](STUDIO-NATIVE-ACCEPTANCE.md)
-after the nominated learner signs in. Do not mark the quarantined worker qualified
-from these local results.
+The bounded browser video, refresh and changed-design path above passed. Broader
+isolation, interruption/recovery, image publication/identity and learner-capacity
+acceptance remain separate. Global native execution stays off and the worker
+remains quarantined/unqualified; no physical hardware was enabled. Do not promote
+the worker solely from this successful two-design demonstration.
 
 ## Software validation
 
@@ -104,9 +143,11 @@ frontend build/format and offline Terraform validation including the zero-resour
 pilot plan. The initial shell selected Node 18 and lacked the optional native
 bundler/browser packages; checks were rerun after selecting installed Node 22.15
 and installing dependencies and the Playwright Chromium test browser.
-All **81 Playwright journeys passed** (3.9 minutes). The real-account native
-video/refresh/two-design acceptance is deferred by the user, separately from
-these local teaching and native-contract browser fixtures.
+The original **81 Playwright journeys passed** (3.9 minutes). The independent
+video hotfix subsequently passed 1,406 backend tests and **85 Chromium journeys**,
+including four new real-component/CSP regression tests; its CI and deployment passed.
+The real-account native video/refresh/two-design evidence above is separate from
+these synthetic teaching and signaling fixtures.
 
 After retaining evidence and verifying both the worker and native processes were
 inactive (GPU memory/use zero), the existing pilot was stopped to avoid idle GPU
