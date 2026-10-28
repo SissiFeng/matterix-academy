@@ -10,11 +10,15 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
-from academy import native_kit
+from academy import native_assets, native_kit
 
 
 @pytest.fixture
 def cache(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        native_assets, "verified_ground", lambda root: str(root / "default_environment.usd")
+    )
+    monkeypatch.setattr(native_assets, "configure_ground", lambda root: None)
     path = tmp_path.resolve() / "worker-cache"
     monkeypatch.setenv("XDG_CACHE_HOME", str(path))
     return path

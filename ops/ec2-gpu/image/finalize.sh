@@ -14,6 +14,10 @@ install -d -o academy-native -g academy-native -m 700 /var/cache/academy-native
 cd /var/cache/academy-native
 export XDG_CACHE_HOME=/var/cache/academy-native
 export OMNI_KIT_ACCEPT_EULA=YES
+# Prepare immutable NVIDIA ground dependencies through HTTPS before restricted runtime use.
+runuser -u academy-native -- env HOME=/var/cache/academy-native PYTHONPATH="$root/app/backend" \
+  "$root/.venv/bin/python" -m academy.native_assets --prepare \
+  --cache-root /var/cache/academy-native/nvidia-ground
 # Git safe.directory is per invoking user: checkouts are root-owned and read-only for the worker.
 runuser -u academy-native -- env HOME=/var/cache/academy-native git config --global --add safe.directory /srv/matterix
 runuser -u academy-native -- env HOME=/var/cache/academy-native git config --global --add safe.directory /srv/matterix-assets

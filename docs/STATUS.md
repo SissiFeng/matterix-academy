@@ -54,7 +54,7 @@ disabled by default and no robot was operated during this implementation.
 
 | Area | State | Notes |
 |---|---|---|
-| Single EC2 Ubuntu GPU pilot | Authorized capacity trial | Existing SDL0-DEV1 development account; sequential build and acceptance, at most one GPU. Installed image/render capacity and real browser workflow remain separate gates. See [capacity trial](GPU-CAPACITY-TRIAL.md) |
+| Single EC2 Ubuntu GPU pilot | Local GPU startup recovered; browser acceptance pending | October 28: reproduced blocked Omni HTTP asset copy on the HTTPS-only pilot; local pinned assets yielded 24.507/23.749-second T4 scene startup. [Recovery record](DEPLOYMENT-2026-10-28.md). Existing SDL0-DEV1 development account; sequential build and acceptance, at most one GPU. Installed image/render capacity and real browser workflow remain separate gates. See [capacity trial](GPU-CAPACITY-TRIAL.md) |
 | Pinned `mix_four_vials` adapter, journal, supervisor | Implemented | Fixed recipe; only the seed is learner-selectable |
 | Workflow Studio → native Flex | Implemented | Saved layout, action order, volumes and initial amounts compile into `workflow-studio-flex`; native observations, run-bound video, recovery and verified cleanup are wired. CPU/browser fixtures and a local GPU probe are prepared; no real GPU/browser acceptance is recorded. See [Studio native acceptance](STUDIO-NATIVE-ACCEPTANCE.md) |
 | Workflow Studio → native OT-2 | **Blocked** | OT-2 teaching designs work; the approved Flex asset pin has no OT-2 robot. A reviewed OT-2 image, deck mapping and separate qualification are required |

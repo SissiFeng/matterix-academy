@@ -214,3 +214,22 @@ without another submission, reset/release, and run the second approved design.
 Local browser fixtures and a successful AMI build
 cannot substitute for that acceptance. Qualification additionally requires isolation
 and interruption/recovery review. Neither image preparation nor packaging records it.
+
+### Restricted-runtime asset preparation
+
+The native child now requires the pinned NVIDIA ground USD and its three textures
+in `/var/cache/academy-native/nvidia-ground`. Image finalization prepares them
+explicitly over HTTPS and native startup only verifies/reads them. This avoids
+Omni client's HTTP CDN fallback on the HTTPS-only pilot and temporary-download
+loss after reboot. For an existing stopped worker, run as its service user:
+
+```sh
+PYTHONPATH=/opt/academy-agent/app/backend /opt/academy-agent/.venv/bin/python \
+  -m academy.native_assets --prepare \
+  --cache-root /var/cache/academy-native/nvidia-ground
+```
+
+The cache must belong to the worker and remain private. Do not alter independent
+Matterix/Isaac files or open HTTP egress to work around this failure. See
+[the October 28 runtime recovery record](DEPLOYMENT-2026-10-28.md) for measured
+T4 timings and the separate browser qualification boundary.

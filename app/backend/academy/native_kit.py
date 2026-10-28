@@ -59,6 +59,10 @@ def verify_kit_paths(root, tokens):
 
 def launch_native_app(*, headless, protected_roots=()):
     root = prepare_kit_root(protected_roots)
+    from .native_assets import verified_ground
+
+    ground_root = root.parent / "nvidia-ground"
+    verified_ground(ground_root)
     from isaaclab.app import AppLauncher
 
     parser = argparse.ArgumentParser()
@@ -76,7 +80,10 @@ def launch_native_app(*, headless, protected_roots=()):
     try:
         import carb.tokens
 
+        from .native_assets import configure_ground
+
         paths = verify_kit_paths(root, carb.tokens.get_tokens_interface())
+        configure_ground(ground_root)
         print("ACADEMY_KIT_PATHS=" + json.dumps(paths, sort_keys=True), flush=True)
     except BaseException:
         close_native_app(app)
