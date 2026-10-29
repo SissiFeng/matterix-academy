@@ -19,3 +19,8 @@ github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@139333201
 # GPU host region (EC2/SSM only; Cognito, DynamoDB, KVS stay in `region`).
 # Set together with the us-east-2 gpu_instance_id, never with a Canadian one.
 # gpu_region = "us-east-2"
+
+# Optional photo-to-twin (GPT-6 Astra). Enable model access in the region and store the
+# Bedrock API key in an existing ca-central-1 secret first; Terraform never sees the key.
+# twin_region             = "us-east-1"
+# twin_api_key_secret_arn = "arn:aws:secretsmanager:ca-central-1:247893369214:secret:matterix-academy/dev/bedrock-twin-key-AbCdEf"

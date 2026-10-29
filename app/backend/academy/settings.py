@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import secrets
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,10 +27,26 @@ class Settings:
     real_enabled: bool = False
     operator_group: str = "lab-operators"
     local_operator: bool = False
+    twin_region: str = ""
+    twin_api_key: str = ""
+    twin_api_key_secret: str = ""
 
     def __post_init__(self):
         if self.runtime not in {"local", "aws"}:
             raise ValueError("ACADEMY_RUNTIME must be local or aws")
+        if self.twin_region not in {"", "us-east-1", "us-west-2"}:
+            raise ValueError(
+                "ACADEMY_TWIN_REGION must be a Bedrock Mantle region serving GPT-6 Astra"
+            )
+        if self.twin_api_key_secret and not re.fullmatch(
+            r"arn:aws:secretsmanager:[a-z0-9-]+:\d{12}:secret:[A-Za-z0-9/_+=.@-]+",
+            self.twin_api_key_secret,
+        ):
+            raise ValueError("ACADEMY_TWIN_API_KEY_SECRET must be a Secrets Manager secret ARN")
+        if (self.twin_api_key or self.twin_api_key_secret) and not self.twin_region:
+            raise ValueError("A Bedrock twin key requires ACADEMY_TWIN_REGION")
+        if self.runtime == "aws" and self.twin_api_key:
+            raise ValueError("AWS reads the Bedrock twin key from Secrets Manager, not plaintext")
         if self.runtime == "aws" and (
             self.allow_demo
             or not all([self.table, self.issuer, self.client_id, self.cognito_domain])
@@ -83,4 +100,7 @@ class Settings:
             real_enabled=os.getenv("ACADEMY_REAL_ENABLED", "false").lower() == "true",
             operator_group=os.getenv("ACADEMY_OPERATOR_GROUP", "lab-operators"),
             local_operator=os.getenv("ACADEMY_LOCAL_OPERATOR", "false").lower() == "true",
+            twin_region=os.getenv("ACADEMY_TWIN_REGION", ""),
+            twin_api_key=os.getenv("ACADEMY_TWIN_API_KEY", ""),
+            twin_api_key_secret=os.getenv("ACADEMY_TWIN_API_KEY_SECRET", ""),
         )
