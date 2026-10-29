@@ -53,7 +53,7 @@ class FakeAstra:
 def add(client, version, **source):
     twin_id = str(uuid4())
     response = client.post(
-        "/api/instruments", json={"expected_version": version, "id": twin_id, **source}
+        "/api/twins", json={"expected_version": version, "id": twin_id, **source}
     )
     assert response.status_code == 200, response.text
     return twin_id, response.json()
@@ -61,22 +61,22 @@ def add(client, version, **source):
 
 def confirm(client, twin_id, version, spec):
     response = client.put(
-        f"/api/instruments/{twin_id}/confirm", json={"expected_version": version, "spec": spec}
+        f"/api/twins/{twin_id}/confirm", json={"expected_version": version, "spec": spec}
     )
     assert response.status_code == 200, response.text
     return response.json()
 
 
 def test_unconfigured_astra_fails_closed_and_templates_still_work(client):
-    catalog = client.get("/api/instruments").json()
+    catalog = client.get("/api/twins").json()
     assert catalog["astra_available"] is False
     assert catalog["real_available"] is False
     image = {"expected_version": 0, "id": str(uuid4()), "image": PNG}
-    assert client.post("/api/instruments", json=image).status_code == 503
+    assert client.post("/api/twins", json=image).status_code == 503
     twin_id, catalog = add(client, 0, template_id="heater")
     assert catalog["twins"][0]["spec"] == TEMPLATES["heater"]
     assert catalog["twins"][0]["confirmed"] is False
-    assert client.get(f"/api/instruments/{twin_id}/usd").status_code == 409
+    assert client.get(f"/api/twins/{twin_id}/usd").status_code == 409
 
 
 def test_photo_generation_polls_validates_and_is_never_replayed(client, app):
@@ -86,7 +86,7 @@ def test_photo_generation_polls_validates_and_is_never_replayed(client, app):
     twin = catalog["twins"][0]
     assert (twin["status"], twin["source"], twin["spec"]) == ("generating", "astra_image", None)
     version = catalog["version"]
-    poll = f"/api/instruments/{twin_id}/poll"
+    poll = f"/api/twins/{twin_id}/poll"
     assert client.post(poll, json={"expected_version": version}).json()["version"] == version
     catalog = client.post(poll, json={"expected_version": version}).json()
     assert catalog["twins"][0]["status"] == "draft"
@@ -114,7 +114,7 @@ def test_out_of_bounds_or_refused_output_is_rejected(client, app, result):
     app.state.twins.provider = FakeAstra(polls=[result])
     twin_id, catalog = add(client, 0, image=PNG)
     catalog = client.post(
-        f"/api/instruments/{twin_id}/poll", json={"expected_version": catalog["version"]}
+        f"/api/twins/{twin_id}/poll", json={"expected_version": catalog["version"]}
     ).json()
     assert catalog["twins"][0]["status"] == "failed"
     assert catalog["twins"][0]["spec"] is None
@@ -131,7 +131,7 @@ def test_unknown_submission_is_recorded_not_retried(client, app):
 def test_image_must_match_declared_type(client, app):
     app.state.twins.provider = FakeAstra()
     body = {"expected_version": 0, "id": str(uuid4()), "image": PNG, "mime": "image/jpeg"}
-    assert client.post("/api/instruments", json=body).status_code == 422
+    assert client.post("/api/twins", json=body).status_code == 422
 
 
 def build_cell(client):
@@ -152,19 +152,17 @@ def test_multi_device_workflow_runs_on_mock_connectors(client):
         {"device_id": reader, "operation": "read"},
     ]
     saved = client.put(
-        "/api/instruments/workflow", json={"expected_version": catalog["version"], "steps": steps}
+        "/api/twins/workflow", json={"expected_version": catalog["version"], "steps": steps}
     )
     assert saved.status_code == 200, saved.text
-    run = client.post(
-        "/api/instruments/workflow/run", json={"expected_version": saved.json()["version"]}
-    )
+    run = client.post("/api/twins/workflow/run", json={"expected_version": saved.json()["version"]})
     assert run.status_code == 200, run.text
     result = run.json()["runs"][0]
     assert (result["evidence"], result["connector"]) == ("synthetic", "mock_sila2")
     assert [t["location"] for t in result["trace"]] == [heater, heater, reader, reader]
     assert result["trace"][-1]["measurement"]["temperature_c"] == 37
     stale = client.post(
-        "/api/instruments/workflow/run", json={"expected_version": saved.json()["version"]}
+        "/api/twins/workflow/run", json={"expected_version": saved.json()["version"]}
     )
     assert stale.status_code == 409
 
@@ -181,7 +179,7 @@ def test_invalid_handoffs_and_capability_edits_are_rejected(client):
         ],
     ]:
         response = client.put(
-            "/api/instruments/workflow", json={"expected_version": version, "steps": steps}
+            "/api/twins/workflow", json={"expected_version": version, "steps": steps}
         )
         assert response.status_code == 422, steps
     steps = [
@@ -189,22 +187,22 @@ def test_invalid_handoffs_and_capability_edits_are_rejected(client):
         {"device_id": heater, "operation": "heat", "value": 50},
     ]
     version = client.put(
-        "/api/instruments/workflow", json={"expected_version": version, "steps": steps}
+        "/api/twins/workflow", json={"expected_version": version, "steps": steps}
     ).json()["version"]
     no_heat = {**TEMPLATES["heater"], "operations": ["load", "wait"]}
     response = client.put(
-        f"/api/instruments/{heater}/confirm", json={"expected_version": version, "spec": no_heat}
+        f"/api/twins/{heater}/confirm", json={"expected_version": version, "spec": no_heat}
     )
     assert response.status_code == 422
     assert (
         client.request(
-            "DELETE", f"/api/instruments/{heater}", json={"expected_version": version}
+            "DELETE", f"/api/twins/{heater}", json={"expected_version": version}
         ).status_code
         == 409
     )
     assert (
         client.request(
-            "DELETE", f"/api/instruments/{reader}", json={"expected_version": version}
+            "DELETE", f"/api/twins/{reader}", json={"expected_version": version}
         ).status_code
         == 200
     )
@@ -213,7 +211,7 @@ def test_invalid_handoffs_and_capability_edits_are_rejected(client):
 def test_real_connector_fails_closed(client):
     twin_id, catalog = add(client, 0, template_id="reader")
     response = client.put(
-        f"/api/instruments/{twin_id}/connector",
+        f"/api/twins/{twin_id}/connector",
         json={"expected_version": catalog["version"], "mode": "real"},
     )
     assert response.status_code == 409
@@ -223,9 +221,9 @@ def test_real_connector_fails_closed(client):
 def test_exports_are_self_contained_usd_and_valid_sila_xml(client):
     twin_id, catalog = add(client, 0, template_id="heater")
     confirm(client, twin_id, catalog["version"], {**TEMPLATES["heater"], "name": "Heater <&> 2"})
-    text = client.get(f"/api/instruments/{twin_id}/usd").text
+    text = client.get(f"/api/twins/{twin_id}/usd").text
     assert text.startswith("#usda 1.0") and "@" not in text and "references" not in text
-    package = client.get(f"/api/instruments/{twin_id}/sila").json()
+    package = client.get(f"/api/twins/{twin_id}/sila").json()
     feature = ET.fromstring(package["files"]["Heater2Mock.sila.xml"])
     ns = {"s": "http://www.sila-standard.org"}
     assert feature.find("s:Identifier", ns).text == "Heater2Mock"
@@ -239,9 +237,7 @@ def test_usda_is_deterministic():
 
 
 def plan(client, version, steps):
-    return client.put(
-        "/api/instruments/workflow", json={"expected_version": version, "steps": steps}
-    )
+    return client.put("/api/twins/workflow", json={"expected_version": version, "steps": steps})
 
 
 @pytest.mark.parametrize(
@@ -293,9 +289,7 @@ def test_consumables_run_out_and_value_edits_need_no_residual(client):
     response = plan(client, catalog["version"], steps)
     assert response.json()["detail"]["layer"] == "consumable"
     run = plan(client, catalog["version"], steps[:2]).json()
-    run = client.post(
-        "/api/instruments/workflow/run", json={"expected_version": run["version"]}
-    ).json()
+    run = client.post("/api/twins/workflow/run", json={"expected_version": run["version"]}).json()
     assert run["runs"][0]["trace"][-1]["consumables"][handler] == {"Pipette tips": 0}
 
 
@@ -304,11 +298,11 @@ def test_added_detail_requires_an_open_residual_which_it_then_resolves(client):
     spec = TEMPLATES["reader"]
     catalog = confirm(client, reader, catalog["version"], spec)
     detailed = {**spec, "parts": [*spec["parts"], BOX]}
-    path = f"/api/instruments/{reader}/confirm"
+    path = f"/api/twins/{reader}/confirm"
     refused = client.put(path, json={"expected_version": catalog["version"], "spec": detailed})
     assert refused.status_code == 422 and "geometry" in refused.json()["detail"]
     catalog = client.post(
-        f"/api/instruments/{reader}/residuals",
+        f"/api/twins/{reader}/residuals",
         json={
             "expected_version": catalog["version"],
             "layer": "geometry",
@@ -328,3 +322,9 @@ def test_added_detail_requires_an_open_residual_which_it_then_resolves(client):
     twin = catalog["twins"][0]
     assert twin["revision"] == 2 and twin["residuals"][0]["resolved_in"] == 2
     assert len(twin["spec"]["parts"]) == 3
+
+
+def test_no_two_routes_share_a_method_and_path(app):
+    # FastAPI silently lets the first registration win; a shared path breaks one feature.
+    seen = [(m, r.path) for r in app.routes for m in getattr(r, "methods", ()) or ()]
+    assert len(seen) == len(set(seen)), sorted({x for x in seen if seen.count(x) > 1})

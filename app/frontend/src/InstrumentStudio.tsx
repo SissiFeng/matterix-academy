@@ -97,7 +97,7 @@ export default function InstrumentStudio() {
     if (!dirty.current) setSteps(next.steps);
   }, []);
   const load = useCallback(
-    async () => accept(await api<InstrumentCatalog>("/instruments")),
+    async () => accept(await api<InstrumentCatalog>("/twins")),
     [accept],
   );
   useEffect(() => {
@@ -132,7 +132,7 @@ export default function InstrumentStudio() {
       try {
         accept(
           await api<InstrumentCatalog>(
-            `/instruments/${generating.id}/poll`,
+            `/twins/${generating.id}/poll`,
             json({ expected_version: version.current }),
           ),
         );
@@ -316,7 +316,7 @@ export default function InstrumentStudio() {
                     e.target.value = "";
                     if (!file) return;
                     try {
-                      await mutate("/instruments", {
+                      await mutate("/twins", {
                         id: crypto.randomUUID(),
                         image: await encodePhoto(file),
                         mime: "image/jpeg",
@@ -334,7 +334,7 @@ export default function InstrumentStudio() {
                     className={s.secondary}
                     disabled={busy}
                     onClick={() =>
-                      mutate("/instruments", {
+                      mutate("/twins", {
                         id: crypto.randomUUID(),
                         template_id: id,
                       })
@@ -356,18 +356,16 @@ export default function InstrumentStudio() {
                   twin={twin}
                   busy={busy}
                   onConfirm={(spec) =>
-                    mutate(`/instruments/${twin.id}/confirm`, { spec }, "PUT")
+                    mutate(`/twins/${twin.id}/confirm`, { spec }, "PUT")
                   }
-                  onRemove={() =>
-                    mutate(`/instruments/${twin.id}`, {}, "DELETE")
-                  }
+                  onRemove={() => mutate(`/twins/${twin.id}`, {}, "DELETE")}
                   onResidual={(input) =>
-                    mutate(`/instruments/${twin.id}/residuals`, input)
+                    mutate(`/twins/${twin.id}/residuals`, input)
                   }
                   onDownload={async () => {
                     try {
                       const response = await fetch(
-                        `/api/instruments/${twin.id}/usd`,
+                        `/api/twins/${twin.id}/usd`,
                         { credentials: "same-origin" },
                       );
                       if (!response.ok)
@@ -562,11 +560,7 @@ export default function InstrumentStudio() {
                       onClick={async () => {
                         dirty.current = false;
                         if (
-                          !(await mutate(
-                            "/instruments/workflow",
-                            { steps },
-                            "PUT",
-                          ))
+                          !(await mutate("/twins/workflow", { steps }, "PUT"))
                         )
                           dirty.current = true;
                       }}
@@ -576,7 +570,7 @@ export default function InstrumentStudio() {
                     <button
                       className={s.primary}
                       disabled={busy || dirty.current || !catalog.steps.length}
-                      onClick={() => mutate("/instruments/workflow/run", {})}
+                      onClick={() => mutate("/twins/workflow/run", {})}
                     >
                       <Play size={15} /> Run on mock connectors
                     </button>
@@ -656,7 +650,7 @@ export default function InstrumentStudio() {
                         disabled={!catalog.real_available || busy}
                         onChange={() =>
                           mutate(
-                            `/instruments/${twin.id}/connector`,
+                            `/twins/${twin.id}/connector`,
                             { mode: "real" },
                             "PUT",
                           )
@@ -675,7 +669,7 @@ export default function InstrumentStudio() {
                         try {
                           setConnector(
                             await api<ConnectorPackage>(
-                              `/instruments/${twin.id}/sila`,
+                              `/twins/${twin.id}/sila`,
                             ),
                           );
                         } catch (e) {

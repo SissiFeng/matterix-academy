@@ -247,39 +247,39 @@ def create_app(settings: Settings | None = None, store=None):
     def create_twin(device_id: UUID, data: TwinCreate, owner: str = Depends(identify)):
         return app.state.onboarding.create_twin(owner, device_id, data)
 
-    @app.get("/api/instruments")
-    def instruments(owner: str = Depends(identify)):
+    @app.get("/api/twins")
+    def twins(owner: str = Depends(identify)):
         return app.state.twins.catalog(owner)
 
-    @app.post("/api/instruments")
+    @app.post("/api/twins")
     def create_instrument(data: CreateTwin, owner: str = Depends(identify)):
         return app.state.twins.create(owner, data)
 
-    @app.post("/api/instruments/{twin_id}/poll")
+    @app.post("/api/twins/{twin_id}/poll")
     def poll_instrument(twin_id: UUID, data: TwinRevision, owner: str = Depends(identify)):
         return app.state.twins.poll(owner, twin_id, data)
 
-    @app.put("/api/instruments/{twin_id}/confirm")
+    @app.put("/api/twins/{twin_id}/confirm")
     def confirm_instrument(twin_id: UUID, data: ConfirmTwin, owner: str = Depends(identify)):
         return app.state.twins.confirm(owner, twin_id, data)
 
-    @app.put("/api/instruments/{twin_id}/connector")
+    @app.put("/api/twins/{twin_id}/connector")
     def instrument_connector_mode(
         twin_id: UUID, data: ConnectorMode, owner: str = Depends(identify)
     ):
         return app.state.twins.mode(owner, twin_id, data)
 
-    @app.post("/api/instruments/{twin_id}/residuals")
+    @app.post("/api/twins/{twin_id}/residuals")
     def record_instrument_residual(
         twin_id: UUID, data: RecordResidual, owner: str = Depends(identify)
     ):
         return app.state.twins.residual(owner, twin_id, data)
 
-    @app.delete("/api/instruments/{twin_id}")
+    @app.delete("/api/twins/{twin_id}")
     def delete_instrument(twin_id: UUID, data: TwinRevision, owner: str = Depends(identify)):
         return app.state.twins.delete(owner, twin_id, data)
 
-    @app.get("/api/instruments/{twin_id}/usd")
+    @app.get("/api/twins/{twin_id}/usd")
     def instrument_usd(twin_id: UUID, owner: str = Depends(identify)):
         return Response(
             app.state.twins.export(owner, twin_id, "usd"),
@@ -287,15 +287,15 @@ def create_app(settings: Settings | None = None, store=None):
             headers={"Content-Disposition": f'attachment; filename="{twin_id}.usda"'},
         )
 
-    @app.get("/api/instruments/{twin_id}/sila")
+    @app.get("/api/twins/{twin_id}/sila")
     def instrument_sila(twin_id: UUID, owner: str = Depends(identify)):
         return app.state.twins.export(owner, twin_id, "sila")
 
-    @app.put("/api/instruments/workflow")
+    @app.put("/api/twins/workflow")
     def save_instrument_workflow(data: SavePlan, owner: str = Depends(identify)):
         return app.state.twins.plan(owner, data)
 
-    @app.post("/api/instruments/workflow/run")
+    @app.post("/api/twins/workflow/run")
     def run_instrument_workflow(data: TwinRevision, owner: str = Depends(identify)):
         return app.state.twins.run(owner, data)
 
