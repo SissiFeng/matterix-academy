@@ -1,18 +1,24 @@
 """Real private-cache filesystem checks with a synthetic launcher; no GPU evidence."""
 
+import argparse
 import builtins
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
-from academy import native_kit
+from academy import native_assets, native_kit
 
 
 @pytest.fixture
 def cache(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        native_assets, "verified_ground", lambda root: str(root / "default_environment.usd")
+    )
+    monkeypatch.setattr(native_assets, "configure_ground", lambda root: None)
     path = tmp_path.resolve() / "worker-cache"
     monkeypatch.setenv("XDG_CACHE_HOME", str(path))
     return path
@@ -106,15 +112,25 @@ def fake_runtime(monkeypatch, root, *, token_escape=False):
     class Launcher:
         @staticmethod
         def add_app_launcher_args(parser):
+            class ExplicitHeadless(argparse.Action):
+                def __call__(self, parser, namespace, values, option_string=None):
+                    setattr(namespace, self.dest, True)
+                    namespace.headless_explicit = True
+
             for name in ("device", "viz", "livestream", "kit_args"):
                 parser.add_argument("--" + name)
-            for name in ("headless", "enable_cameras"):
-                parser.add_argument("--" + name, action="store_true")
+            parser.set_defaults(headless=False, headless_explicit=False)
+            parser.add_argument("--headless", action=ExplicitHeadless, nargs=0)
+            parser.add_argument("--enable_cameras", action="store_true")
 
         def __init__(self, args, **config):
             assert root.is_dir() and root.stat().st_mode & 0o777 == 0o700
             # Match the exact pinned Lab implementation's whitespace splitting.
             assert args.kit_args.split() == ["--portable", "--portable-root", str(root)]
+            # Pinned Lab's CLI headless handling disables visualizers even when
+            # --viz kit is explicit; programmatic headless preserves rendering.
+            if args.headless and args.headless_explicit and args.viz == "kit":
+                raise RuntimeError("Explicit Kit visualizer was disabled by --headless")
             observed.append(vars(args))
             app.fast_shutdown = config.get("fast_shutdown", True)
 
@@ -158,6 +174,7 @@ def test_shared_launcher_preserves_render_flags_and_proves_private_kit_paths(
     assert app.fast_shutdown is False
     args = observed[0]
     assert args["headless"] is headless
+    assert args["headless_explicit"] is False
     assert args["enable_cameras"] is True
     assert args["device"] == "cuda:0" and args["viz"] == "kit" and args["livestream"] == "0"
     paths = json.loads(capsys.readouterr().out.split("ACADEMY_KIT_PATHS=", 1)[1])
@@ -276,3 +293,72 @@ def test_studio_cli_persists_result_after_native_close(cache, monkeypatch, tmp_p
     assert report["passed"] is (not failed)
     if failed:
         assert report["error"] == "fixture native startup failure"
+
+
+@pytest.mark.parametrize(
+    "ending,status",
+    [
+        ("pass", 0),
+        ("raise RuntimeError('native failed')", 1),
+        ("raise SystemExit('probe failed')", 1),
+        ("raise SystemExit(7)", 7),
+        ("raise KeyboardInterrupt()", 130),
+    ],
+)
+def test_native_child_exits_after_saving_result_despite_extension_thread(tmp_path, ending, status):
+    output = tmp_path / "result.json"
+    script = "\n".join(
+        [
+            "import threading, sys",
+            "from pathlib import Path",
+            "from academy.native_kit import run_native_cli",
+            "def main():",
+            "    threading.Thread(target=threading.Event().wait, daemon=False).start()",
+            "    Path(sys.argv[1]).write_text('saved after native teardown')",
+            "    print('result saved', flush=False)",
+            "    " + ending,
+            "run_native_cli(main)",
+        ]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(output)],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        env=os.environ | {"PYTHONPATH": str(Path(native_kit.__file__).resolve().parents[1])},
+    )
+    assert result.returncode == status
+    assert output.read_text() == "saved after native teardown"
+    assert result.stdout == "result saved\n"
+    if "native failed" in ending:
+        assert "RuntimeError: native failed" in result.stderr
+    if "probe failed" in ending:
+        assert "probe failed" in result.stderr
+
+
+def test_camera_pose_reaches_renderer_without_a_viewport(monkeypatch):
+    calls = []
+    module = ModuleType("isaacsim.core.rendering_manager")
+    module.ViewportManager = SimpleNamespace(set_camera_view=lambda *a, **kw: calls.append((a, kw)))
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    env = SimpleNamespace(
+        num_envs=1,
+        cfg=SimpleNamespace(
+            viewer=SimpleNamespace(
+                origin_type="env",
+                env_index=0,
+                cam_prim_path="/OmniverseKit_Persp",
+                eye=(0.42, -1.10, 0.8),
+                lookat=(0, 0.3, 0.4),
+            )
+        ),
+        scene=SimpleNamespace(env_origins=[SimpleNamespace(tolist=lambda: [1, 2, 3])]),
+    )
+    native_kit.configure_native_camera(env)
+    assert calls[0][0] == ("/OmniverseKit_Persp",)
+    assert calls[0][1]["eye"] == pytest.approx([1.42, 0.9, 3.8])
+    assert calls[0][1]["target"] == pytest.approx([1, 2.3, 3.4])
+    env.num_envs = 2
+    with pytest.raises(RuntimeError, match="single-environment"):
+        native_kit.configure_native_camera(env)
+    assert len(calls) == 1

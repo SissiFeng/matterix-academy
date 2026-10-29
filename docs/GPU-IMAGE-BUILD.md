@@ -59,6 +59,18 @@ Native launchers disable Kit's process-terminating fast shutdown so probe caller
 can save results and propagate failures. Graceful Kit teardown has a 60-second
 watchdog; a timeout exits unsuccessfully and cannot qualify the image. Scene
 failures retain a negative report and traceback before teardown.
+Dedicated native child commands exit only after `main` has returned or raised,
+preserving its success/failure status and flushing logs. This prevents lingering
+extension threads from blocking Python exit after result persistence and graceful
+Kit teardown. The worker service and ordinary library calls never use this exit.
+
+For the pinned Lab 3 runtime, headless is an application setting, not the deprecated
+`--headless` CLI switch. That switch disables explicitly selected visualizers;
+Academy must retain the Kit visualizer for frame pumping and camera updates while
+the host window stays disabled. Camera rendering remains enabled. Native scene,
+nonblack frame, Studio workflow and reset probes must all pass on the GPU.
+The single-environment camera pose is applied directly through the rendering
+manager because a headless host has no viewport controller to apply it.
 
 Use a protected directory **outside all Academy, engine and asset checkouts**.
 The source export never copies credentials, hooks, untracked files or external
@@ -202,3 +214,22 @@ without another submission, reset/release, and run the second approved design.
 Local browser fixtures and a successful AMI build
 cannot substitute for that acceptance. Qualification additionally requires isolation
 and interruption/recovery review. Neither image preparation nor packaging records it.
+
+### Restricted-runtime asset preparation
+
+The native child now requires the pinned NVIDIA ground USD and its three textures
+in `/var/cache/academy-native/nvidia-ground`. Image finalization prepares them
+explicitly over HTTPS and native startup only verifies/reads them. This avoids
+Omni client's HTTP CDN fallback on the HTTPS-only pilot and temporary-download
+loss after reboot. For an existing stopped worker, run as its service user:
+
+```sh
+PYTHONPATH=/opt/academy-agent/app/backend /opt/academy-agent/.venv/bin/python \
+  -m academy.native_assets --prepare \
+  --cache-root /var/cache/academy-native/nvidia-ground
+```
+
+The cache must belong to the worker and remain private. Do not alter independent
+Matterix/Isaac files or open HTTP egress to work around this failure. See
+[the October 28 runtime recovery record](DEPLOYMENT-2026-10-28.md) for measured
+T4 timings and the separate browser qualification boundary.

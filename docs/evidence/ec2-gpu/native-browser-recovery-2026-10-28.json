@@ -1,0 +1,263 @@
+{
+  "schema": "academy.aws-browser-recovery/1",
+  "date": "2026-10-28",
+  "region": "ca-central-1",
+  "web_release_commit": "e54b4ac68e8d1883c1f1b668b44cefacf9965527",
+  "web_deployment_run": "40754236748",
+  "worker_adapter_commit": "1d0e7892d39ef6ce8081f44b1cfc37afbd07c9c1",
+  "instance_id": "i-0de8aa02fe37aa58d",
+  "instance_type": "g4dn.2xlarge",
+  "ami_id": "ami-01b1fd7bb2acde950",
+  "runtime_profile": {
+    "engine_repository": "ac-rad/Matterix-Internal",
+    "engine_commit": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+    "asset_repository": "ac-rad/Matterix_assets_internal",
+    "asset_commit": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+    "isaaclab_source_commit": "ffff603eafc6b74264a5261cc0183d6a65390d78",
+    "driver_version": "595.58.03",
+    "python_version": "3.12",
+    "isaaclab_version": "3.0.0b2.post1",
+    "isaacsim_version": "6.0.1.0",
+    "torch_version": "2.11.0+cu128",
+    "torchvision_version": "0.26.0+cu128",
+    "isaaclab_wheel_sha256": "dd32886588479ffd70f7348019aeac1582eb9ad16c40244f41d9f458f96f73c3"
+  },
+  "runtime_checks": {
+    "engine_pin": true,
+    "assets_pin": true,
+    "fixed_scene_source": true,
+    "asset_payloads_materialized": true,
+    "launcher_arguments": true,
+    "pip_check": true,
+    "isaaclab_artifact": true,
+    "runtime_versions": true,
+    "linux_x86_64": true,
+    "gpu_present": true,
+    "driver_version": true
+  },
+  "browser_status": "completed",
+  "submission_posts": 2,
+  "refresh_verified": true,
+  "browser_runs": [
+    {
+      "run_id": "ecc78311-528b-4a20-8c9d-83a84b590f3d",
+      "session_id": "7d5d6358-1f86-48d5-9ca6-4cf0f7338dc6",
+      "plan_hash": "d9dbe71f76dfeec3295ddec9030cae234f09d54a847098c4ff2ac0390054094b",
+      "scene": "workflow-studio-flex",
+      "instrument": "flex",
+      "frames_decoded": 3176,
+      "relay_verified": true,
+      "refresh_frames_decoded": 2359,
+      "completed_steps": 4
+    },
+    {
+      "run_id": "4c8b827d-52db-40e8-befa-9e91919847d9",
+      "session_id": "7d5d6358-1f86-48d5-9ca6-4cf0f7338dc6",
+      "plan_hash": "8203bc0598a4b12f601afeac21229d2007279db74d130600243ca18aa7aa3f94",
+      "scene": "workflow-studio-flex",
+      "instrument": "flex",
+      "frames_decoded": 5199,
+      "relay_verified": true,
+      "refresh_frames_decoded": 0,
+      "completed_steps": 4
+    }
+  ],
+  "evaluation": {
+    "browser_native_path_passed": true,
+    "checks": {
+      "runtime_inventory": true,
+      "operator_studio_approval": true,
+      "changed_studio_acceptance_pair": true,
+      "two_browser_runs": true,
+      "browser_refresh_without_resubmit": true,
+      "decoded_relay_video": true,
+      "live_harness_completed": true,
+      "bound_native_and_browser_artifacts": true
+    },
+    "runs": [
+      {
+        "run_id": "ecc78311-528b-4a20-8c9d-83a84b590f3d",
+        "artifacts_match": true
+      },
+      {
+        "run_id": "4c8b827d-52db-40e8-befa-9e91919847d9",
+        "artifacts_match": true
+      }
+    ],
+    "worker_qualified": false,
+    "scope": "Artifact consistency only. Studio volumes are native-semantic accounting, not fluid, chemical or hardware validation. Operator must review provenance, isolation, interruption/recovery and image identity before qualification."
+  },
+  "runs": [
+    {
+      "run_id": "ecc78311-528b-4a20-8c9d-83a84b590f3d",
+      "plan_hash": "d9dbe71f76dfeec3295ddec9030cae234f09d54a847098c4ff2ac0390054094b",
+      "status": "completed",
+      "confirmed_steps": 4,
+      "native_state": {
+        "revision": 278,
+        "observed_at": "2026-10-28T19:40:46.763283+00:00",
+        "simulation_tick": 1439,
+        "pipette_volume_ul": 0.0,
+        "tip_attached": false,
+        "well_volumes_ul": {
+          "stock": 900.0,
+          "A1": 100.0,
+          "A2": 0.0,
+          "A3": 0.0
+        },
+        "studio": {
+          "instrument": "flex",
+          "scene": "workflow-studio-flex",
+          "observation_model": "native-semantic",
+          "labware_slots": {
+            "stock": "D1",
+            "plate": "D2",
+            "tips": "B1",
+            "waste": "D3"
+          },
+          "native_action_index": 21,
+          "native_action_count": 21,
+          "native_action": "Saved workflow completed",
+          "waste_volume_ul": 0.0
+        }
+      },
+      "frame_proof": {
+        "run_id": "ecc78311-528b-4a20-8c9d-83a84b590f3d",
+        "native_session_id": "01cbf8e6-a0dd-4b82-bc29-6f63fc2e818b",
+        "plan_hash": "d9dbe71f76dfeec3295ddec9030cae234f09d54a847098c4ff2ac0390054094b",
+        "scene": "workflow-studio-flex",
+        "source": "native-renderer",
+        "nonblack_frames": 780,
+        "simulation_tick": 1439,
+        "rgb_sha256": "4b2246679dc415402a37c47f1b975964b21a01430951c6356fabc58b0c05a11f"
+      },
+      "reset_receipt": {
+        "command_id": "ac94270a-4a5e-441e-a4fa-de0dd2d1462f",
+        "native_session_id": "01cbf8e6-a0dd-4b82-bc29-6f63fc2e818b",
+        "engine_version": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+        "asset_version": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+        "reset_verified": true,
+        "checks": {
+          "objects": true,
+          "liquids": true,
+          "tips": true,
+          "controllers": true,
+          "stopped": true
+        }
+      },
+      "artifact_sha256": {
+        "native_media.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "frame-proof.json": "f3d3a115a0416039d4f41a2be8ffd7a04c874c237a9bb4fcbb4c14f09ade1a9d",
+        "released.json": "613d2db7076a7b994aa7364d515c0eb57d7fda971a17fb580463f934b49b6a85",
+        "snapshot.json": "1f2c6c2ef2f747a4d6340d192f34027d43a767c6fc8c13b11c18e21972411dbd",
+        "release-command.json": "b903638955191dd35a2055be4512f185a5d7954701e73ca87ee19ebc78db3eeb",
+        "studio-plan.json": "9bdddb1de00797c8f387eeca9c5bfd04104c42002652b50f21593180730ecd57",
+        "supervisor.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "manifest.json": "c7af7d080d0dd7cbbb0e1faa5e09c661c51a1e31e6dfce60e4845d3e957df58b",
+        "reset-proof.json": "bce7aba323137a2d09cb89c5c017f17188f6bc57cd79758ba9f38de8da6ef928"
+      }
+    },
+    {
+      "run_id": "4c8b827d-52db-40e8-befa-9e91919847d9",
+      "plan_hash": "8203bc0598a4b12f601afeac21229d2007279db74d130600243ca18aa7aa3f94",
+      "status": "completed",
+      "confirmed_steps": 4,
+      "native_state": {
+        "revision": 252,
+        "observed_at": "2026-10-28T19:45:42.761847+00:00",
+        "simulation_tick": 1285,
+        "pipette_volume_ul": 0.0,
+        "tip_attached": false,
+        "well_volumes_ul": {
+          "stock": 950.0000038146973,
+          "A1": 49.999996185302734,
+          "A2": 0.0,
+          "A3": 0.0
+        },
+        "studio": {
+          "instrument": "flex",
+          "scene": "workflow-studio-flex",
+          "observation_model": "native-semantic",
+          "labware_slots": {
+            "stock": "D1",
+            "plate": "D2",
+            "tips": "C1",
+            "waste": "D3"
+          },
+          "native_action_index": 21,
+          "native_action_count": 21,
+          "native_action": "Saved workflow completed",
+          "waste_volume_ul": 0.0
+        }
+      },
+      "frame_proof": {
+        "run_id": "4c8b827d-52db-40e8-befa-9e91919847d9",
+        "native_session_id": "6002198a-2773-481f-9bd5-de99d5f5d806",
+        "plan_hash": "8203bc0598a4b12f601afeac21229d2007279db74d130600243ca18aa7aa3f94",
+        "scene": "workflow-studio-flex",
+        "source": "native-renderer",
+        "nonblack_frames": 690,
+        "simulation_tick": 1285,
+        "rgb_sha256": "4575cbf79dd135c61e5cddc677e4c841311ef96f692f8f8121f6ab2b1fbfa5b7"
+      },
+      "reset_receipt": {
+        "command_id": "e3512177-2f4c-4479-a841-72621426e436",
+        "native_session_id": "6002198a-2773-481f-9bd5-de99d5f5d806",
+        "engine_version": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+        "asset_version": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+        "reset_verified": true,
+        "checks": {
+          "objects": true,
+          "liquids": true,
+          "tips": true,
+          "controllers": true,
+          "stopped": true
+        }
+      },
+      "artifact_sha256": {
+        "native_media.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "frame-proof.json": "683074ff823f83b530c5004701f536bf3544f5ecd8ef40412f02e7b97709d1f1",
+        "released.json": "fdbac2bcb1a60d5baf67cc325861d0f53b231c645352519bcd0670269ba06706",
+        "snapshot.json": "9a7868cc8af55966a04ae801f36b30e9fadfdeb981af777ec75d81146d47db69",
+        "release-command.json": "f3a4ee64f533d5a15c90154a0ee588e534b9ecbad22c8f7dedee461233716d50",
+        "studio-plan.json": "5f5c64a0048c030b78c5aa851d4bdc2a602b58daa95ae8d3fe899e09c030c2a9",
+        "supervisor.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "manifest.json": "d9940741d23184bef116006e22d5d6f8762004d8c2cca0daaa66d96f854e94a0",
+        "reset-proof.json": "f994657872ae3b026dc1d09deeb7ec6aba9803aa9d36632456c19d021df5987c"
+      }
+    }
+  ],
+  "prior_failed_window": {
+    "grant_id": "7c2bcdac-7e09-4270-b1fc-cab75eabe4c1",
+    "runs": [
+      "6c63cb07-a317-4461-bd76-a7ea4735f1ac",
+      "9518ca13-e4c6-4381-a44a-843ceecc53b0"
+    ],
+    "both_final_resets_verified": true,
+    "retired_with_expected_version": 4,
+    "retired_version": 5,
+    "original_authority_archived": true,
+    "original_runs_replayed": false
+  },
+  "successful_window": {
+    "grant_id": "bf232c4a-4745-4611-b9a7-70175acc3056",
+    "max_runs": 2,
+    "qualified": false
+  },
+  "global_remote_enabled": false,
+  "worker_qualified": false,
+  "physical_hardware_enabled": false,
+  "recording": {
+    "source": "Chrome Page.startScreencast; unmodified browser content",
+    "duration_seconds": 577.8,
+    "width": 1350,
+    "height": 940,
+    "fps": 15,
+    "full_video_sha256": "3bb1ca1ddd3d9af9f47df766dcd13d278b3ef2c35a03c120417a8605104478af",
+    "screenshots_visually_reviewed": [
+      430
+    ],
+    "full_file_decode_passed": true
+  },
+  "scope": "Two exact saved Studio designs, rendered native relay video, refresh without resubmit, and verified native cleanup. This is not general learner qualification, physical hardware, fluid physics, chemical validation, cold-boot benchmarking, or classroom capacity acceptance."
+}

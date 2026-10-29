@@ -42,7 +42,7 @@ def run(folder):
     plan = request["experiment"]
     root = Path(config["matterix_root"]).resolve()
     activate(root)
-    from .native_kit import close_native_app, launch_native_app
+    from .native_kit import close_native_app, configure_native_camera, launch_native_app
 
     app = launch_native_app(
         headless=config["headless"],
@@ -79,6 +79,7 @@ def run(folder):
     if getattr(builtins, "ISAACLAB_CALLBACK_EXCEPTION", None):
         raise RuntimeError("Isaac asset initialization failed")
     observations, _ = env.reset()
+    configure_native_camera(env)
     sm = StateMachine(num_envs=1, dt=env.step_dt, device=env.device)
     sequence = cfg.workflows[plan["workflow"]]
     sm.set_action_sequence(sequence)
@@ -404,4 +405,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from .native_kit import run_native_cli
+
+    run_native_cli(main)

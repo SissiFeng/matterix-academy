@@ -1,0 +1,169 @@
+{
+  "original_scene": {
+    "scene": "Matterix-Flex-Mixing-v1",
+    "seed": 42,
+    "engine_version": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+    "asset_version": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+    "nonblack_frames": 29,
+    "startup_scene_seconds": 417.237,
+    "render_probe_seconds": 5.576,
+    "reset_seconds": 0.025,
+    "scene_render_ready": true,
+    "workflow_verified": false,
+    "worker_qualified": false
+  },
+  "local_scene_probes": [
+    {
+      "scene": "Matterix-Flex-Mixing-v1",
+      "seed": 42,
+      "engine_version": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+      "asset_version": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+      "nonblack_frames": 29,
+      "startup_scene_seconds": 24.507,
+      "render_probe_seconds": 3.373,
+      "reset_seconds": 0.025,
+      "scene_render_ready": true,
+      "workflow_verified": false,
+      "worker_qualified": false
+    },
+    {
+      "scene": "Matterix-Flex-Mixing-v1",
+      "seed": 42,
+      "engine_version": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+      "asset_version": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+      "nonblack_frames": 29,
+      "startup_scene_seconds": 23.749,
+      "render_probe_seconds": 3.315,
+      "reset_seconds": 0.024,
+      "scene_render_ready": true,
+      "workflow_verified": false,
+      "worker_qualified": false
+    }
+  ],
+  "integrated_studio": {
+    "scope": "Local native render, execution and reset only; not browser qualification",
+    "scene": "workflow-studio-flex",
+    "nonblack_frames": 723,
+    "completed": true,
+    "workflow_verified": true,
+    "browser_qualified": false,
+    "reset_checks": {
+      "objects": true,
+      "liquids": true,
+      "tips": true,
+      "controllers": true
+    },
+    "passed": true,
+    "plan_hash": "4b3f5a29e57b8d3ac265aecbf561736ea72267a2ee72961ceb49f6accb775b84",
+    "artifacts": "/var/lib/academy-native/timing-20261028/studio-probe-9cce8cb2-04dd-43d7-9cd6-80a245eeee37"
+  },
+  "integrated_timing": "\tCommand being timed: \"/opt/matterix-isaac/bin/python -u -m academy.native_studio_isaac --probe --config /etc/academy-native/native-config.json --output /var/lib/academy-native/timing-20261028/integrated-studio2.json\"\n\tUser time (seconds): 237.99\n\tSystem time (seconds): 56.15\n\tPercent of CPU this job got: 136%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 3:34.82\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 9892256\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 93\n\tMinor (reclaiming a frame) page faults: 2425134\n\tVoluntary context switches: 4724616\n\tInvoluntary context switches: 4516574\n\tSwaps: 0\n\tFile system inputs: 34024\n\tFile system outputs: 7552\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+  "snapshot": {
+    "session_id": "18d04203-0969-4175-ab91-05c48293019b",
+    "run_id": "096342cc-f389-47b4-bfb9-ec6ca881acdf",
+    "plan_hash": "4b3f5a29e57b8d3ac265aecbf561736ea72267a2ee72961ceb49f6accb775b84",
+    "sequence": 260,
+    "session_revision": 260,
+    "engine": "matterix",
+    "evidence": "native",
+    "simulation_only": true,
+    "engine_version": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+    "asset_version": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+    "status": "completed",
+    "observed_at": "2026-10-28T18:17:19.002146+00:00",
+    "steps": [
+      {
+        "index": 0,
+        "status": "completed",
+        "completed_at": "2026-10-28T18:15:16.543194+00:00",
+        "observation_revision": 50
+      },
+      {
+        "index": 1,
+        "status": "completed",
+        "completed_at": "2026-10-28T18:16:01.139509+00:00",
+        "observation_revision": 125
+      },
+      {
+        "index": 2,
+        "status": "completed",
+        "completed_at": "2026-10-28T18:16:45.756104+00:00",
+        "observation_revision": 202
+      },
+      {
+        "index": 3,
+        "status": "completed",
+        "completed_at": "2026-10-28T18:17:18.998441+00:00",
+        "observation_revision": 259
+      }
+    ],
+    "native_state": {
+      "revision": 260,
+      "observed_at": "2026-10-28T18:17:19.002146+00:00",
+      "simulation_tick": 1439,
+      "pipette_volume_ul": 0.0,
+      "tip_attached": false,
+      "well_volumes_ul": {
+        "stock": 900.0,
+        "A1": 100.0,
+        "A2": 0.0,
+        "A3": 0.0
+      },
+      "studio": {
+        "instrument": "flex",
+        "scene": "workflow-studio-flex",
+        "observation_model": "native-semantic",
+        "labware_slots": {
+          "stock": "D1",
+          "plate": "D2",
+          "tips": "B1",
+          "waste": "D3"
+        },
+        "native_action_index": 21,
+        "native_action_count": 21,
+        "native_action": "Saved workflow completed",
+        "waste_volume_ul": 0.0
+      }
+    },
+    "error": null
+  },
+  "frame_proof": {
+    "run_id": "096342cc-f389-47b4-bfb9-ec6ca881acdf",
+    "native_session_id": "18d04203-0969-4175-ab91-05c48293019b",
+    "plan_hash": "4b3f5a29e57b8d3ac265aecbf561736ea72267a2ee72961ceb49f6accb775b84",
+    "scene": "workflow-studio-flex",
+    "source": "native-renderer",
+    "nonblack_frames": 720,
+    "simulation_tick": 1432,
+    "rgb_sha256": "3356e03624a946aa02bb1d1ea22559aef45e2275ed1295a17728238d81918bc1"
+  },
+  "reset_proof": {
+    "command_id": "local-studio-probe",
+    "native_session_id": "18d04203-0969-4175-ab91-05c48293019b",
+    "engine_version": "18a96b78ee989fbf4e480e9db6a588c148c6adbe",
+    "asset_version": "c57f12a04079a5f99405e1fcb818a3b7ccc52e5b",
+    "reset_verified": false,
+    "checks": {
+      "objects": true,
+      "liquids": true,
+      "tips": true,
+      "controllers": true,
+      "stopped": false
+    }
+  },
+  "adapter_sha256": {
+    "native_assets.py": "e5ad542e2863e6a37477db4fac8126492aebc8719951da78bb58b82c2208d5d2",
+    "native_kit.py": "595c4bb05aae41ad69d53fe64edc910e6e150e12c1bd542fbcad24ac79333937"
+  },
+  "schema": "academy.runtime-recovery/1",
+  "observed_date": "2026-10-28",
+  "account": "247893369214",
+  "region": "ca-central-1",
+  "instance_id": "i-0de8aa02fe37aa58d",
+  "instance_type": "g4dn.2xlarge",
+  "ssm_evidence_command": "6984ad09-900c-4644-a091-532a1ab11a67",
+  "global_native_enabled": false,
+  "worker_qualified": false,
+  "browser_acceptance": "deferred by user",
+  "comparison": "Warm-host local-resource measurements versus historical image probe; not controlled cold-boot GPU benchmarking"
+}

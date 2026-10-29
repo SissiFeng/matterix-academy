@@ -59,21 +59,31 @@ def verify_kit_paths(root, tokens):
 
 def launch_native_app(*, headless, protected_roots=()):
     root = prepare_kit_root(protected_roots)
+    from .native_assets import verified_ground
+
+    ground_root = root.parent / "nvidia-ground"
+    verified_ground(ground_root)
     from isaaclab.app import AppLauncher
 
     parser = argparse.ArgumentParser()
     AppLauncher.add_app_launcher_args(parser)
     flags = ["--enable_cameras", "--device", "cuda:0", "--viz", "kit", "--livestream", "0"]
-    if headless:
-        flags += ["--headless"]
     flags += ["--kit_args=--portable --portable-root " + str(root)]
+    args = parser.parse_args(flags)
+    # Lab 3's deprecated --headless CLI disables every visualizer, including the
+    # explicitly requested Kit renderer. Programmatic headless keeps Kit's frame
+    # pumping and camera updates while disabling the host application window.
+    args.headless = headless
     # Kit's default fast shutdown terminates Python with status 0 inside close().
     # Academy must return to its caller to persist probe results and propagate errors.
-    app = AppLauncher(parser.parse_args(flags), fast_shutdown=False).app
+    app = AppLauncher(args, fast_shutdown=False).app
     try:
         import carb.tokens
 
+        from .native_assets import configure_ground
+
         paths = verify_kit_paths(root, carb.tokens.get_tokens_interface())
+        configure_ground(ground_root)
         print("ACADEMY_KIT_PATHS=" + json.dumps(paths, sort_keys=True), flush=True)
     except BaseException:
         close_native_app(app)
@@ -92,3 +102,44 @@ def close_native_app(app):
         app.close()
     finally:
         faulthandler.cancel_dump_traceback_later()
+
+
+def configure_native_camera(env):
+    """Apply the saved view directly; Kit's viewport controller can be absent headless."""
+    from isaacsim.core.rendering_manager import ViewportManager
+
+    viewer = env.cfg.viewer
+    if viewer.origin_type != "env" or viewer.env_index != 0 or env.num_envs != 1:
+        raise RuntimeError("Native camera requires the qualified single-environment view")
+    origin = env.scene.env_origins[0].tolist()
+    ViewportManager.set_camera_view(
+        viewer.cam_prim_path,
+        eye=[float(viewer.eye[i]) + float(origin[i]) for i in range(3)],
+        target=[float(viewer.lookat[i]) + float(origin[i]) for i in range(3)],
+    )
+
+
+def run_native_cli(main):
+    """Exit a dedicated native child only after its main has saved final evidence.
+
+    Kit can leave non-daemon extension threads alive after graceful app.close().
+    Avoid an unbounded interpreter shutdown after the result and teardown finish;
+    preserve the real command status instead of Kit's unconditional fast exit 0.
+    Never use this inside a worker service or an imported library call.
+    """
+    status = 0
+    try:
+        main()
+    except SystemExit as exc:
+        if isinstance(exc.code, int):
+            status = exc.code
+        elif exc.code is not None:
+            print(exc.code, file=sys.stderr)
+            status = 1
+    except BaseException as exc:
+        traceback.print_exc()
+        status = 130 if isinstance(exc, KeyboardInterrupt) else 1
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    os._exit(status)
