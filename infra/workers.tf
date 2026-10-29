@@ -52,6 +52,9 @@ resource "aws_lambda_function" "worker" {
       ACADEMY_GPU_INSTANCE_ID    = each.key != "authorizer" ? var.gpu_instance_id : ""
       ACADEMY_GPU_WORKER_ID      = each.key != "authorizer" ? var.gpu_worker_id : ""
       ACADEMY_GPU_START_DOCUMENT = each.key != "authorizer" && var.gpu_instance_id != "" ? aws_ssm_document.gpu_start[0].name : ""
+      ACADEMY_PAIRING_ENABLED    = tostring(var.pairing_enabled)
+      ACADEMY_REAL_ENABLED       = tostring(var.real_execution_enabled)
+      ACADEMY_POLL_WAIT_S        = "8"
     }
   }
   depends_on = [aws_iam_role_policy.worker, aws_cloudwatch_log_group.worker]

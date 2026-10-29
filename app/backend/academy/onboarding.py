@@ -19,7 +19,7 @@ class DeviceUpdate(StrictModel):
     expected_version: int = Field(ge=0, strict=True)
     name: str = Field(min_length=1, max_length=80)
     workcell: str = Field(min_length=1, max_length=80)
-    model: Literal["opentrons_flex"] = "opentrons_flex"
+    model: Literal["opentrons_flex", "opentrons_ot2"] = "opentrons_flex"
     connection: Literal["", "native_api", "pylabrobot", "sila2", "custom"] = ""
     capabilities: list[Capability] = Field(default_factory=list, max_length=7)
     stage: int = Field(ge=1, le=3, strict=True)
@@ -44,8 +44,9 @@ class TwinCreate(StrictModel):
 
 
 class OnboardingService:
-    def __init__(self, store):
+    def __init__(self, store, pairing=None):
         self.store = store
+        self.pairing = pairing
 
     def get(self, owner: str, device_id: UUID):
         record = self.store.get(owner, f"device#{device_id}")
@@ -64,7 +65,13 @@ class OnboardingService:
             "version": data.expected_version + 1,
             "updated_at": datetime.now(UTC).isoformat(),
             "twin_session_id": previous["twin_session_id"] if previous else None,
+            # Server-owned: set only by an operator link to a registered instrument.
+            "instrument_id": previous.get("instrument_id") if previous else None,
         }
+        if record["instrument_id"] and previous and previous.get("model") != record["model"]:
+            raise HTTPException(
+                409, "This declaration is linked to an instrument; its model is fixed"
+            )
         self.store.put(owner, f"device#{device_id}", record, data.expected_version or None)
         return self.describe(owner, record)
 
@@ -76,6 +83,11 @@ class OnboardingService:
             raise HTTPException(409, "A teaching twin is already paired with this device")
         if record["stage"] != 3:
             raise HTTPException(409, "Complete the device, connection and capability steps first")
+        if record.get("model", "opentrons_flex") != "opentrons_flex":
+            raise HTTPException(
+                409,
+                "Teaching twins exist for the Flex lessons only; OT-2 evidence comes from a linked instrument",
+            )
         session = new_session(Experiment(title=f"{record['name'][:60]} · teaching trial"))
         record.update(
             version=record["version"] + 1,
@@ -130,35 +142,54 @@ class OnboardingService:
                 "scope": "teaching",
             },
         ]
-        for key, label, detail in [
-            (
-                "connection",
-                "Device connectivity",
-                "A planned adapter is not a verified connection.",
-            ),
-            ("hardware", "Physical capabilities", "No capabilities observed from a real device."),
-            (
-                "geometry",
-                "Geometry and reachability",
-                "The schematic has no collision or reachability checks.",
-            ),
-            (
-                "resources",
-                "Physical resources",
-                "Real liquid volumes and tip inventory have not been observed.",
-            ),
-            ("calibration", "Calibration", "No physical calibration record is available."),
-            (
-                "sync",
-                "State consistency",
-                "Physical state is absent; a state difference cannot be calculated.",
-            ),
-            (
-                "authorization",
-                "Physical execution",
-                "Supervised hardware execution is not connected in this application.",
-            ),
-        ]:
+        instrument_id = record.get("instrument_id")
+        physical = None
+        if instrument_id and self.pairing is not None:
+            from .sim2real_api import physical_checks
+
+            try:
+                physical = physical_checks(self.pairing, instrument_id)
+            except HTTPException:
+                physical = None
+        if physical is not None:
+            checks.extend(physical)
+        for key, label, detail in (
+            []
+            if physical is not None
+            else [
+                (
+                    "connection",
+                    "Device connectivity",
+                    "A planned adapter is not a verified connection.",
+                ),
+                (
+                    "hardware",
+                    "Physical capabilities",
+                    "No capabilities observed from a real device.",
+                ),
+                (
+                    "geometry",
+                    "Geometry and reachability",
+                    "The schematic has no collision or reachability checks.",
+                ),
+                (
+                    "resources",
+                    "Physical resources",
+                    "Real liquid volumes and tip inventory have not been observed.",
+                ),
+                ("calibration", "Calibration", "No physical calibration record is available."),
+                (
+                    "sync",
+                    "State consistency",
+                    "Physical state is absent; a state difference cannot be calculated.",
+                ),
+                (
+                    "authorization",
+                    "Physical execution",
+                    "Supervised hardware execution is not connected in this application.",
+                ),
+            ]
+        ):
             checks.append(
                 {
                     "id": key,
@@ -172,9 +203,14 @@ class OnboardingService:
             **record,
             "session": present(session) if session else None,
             "checks": checks,
-            "physical_ready": False,
+            "physical_ready": bool(physical) and all(c["status"] == "passed" for c in physical),
             "physical_state": None,
-            "evidence": "synthetic" if session else "declaration_only",
+            "instrument_id": instrument_id,
+            "evidence": "physical"
+            if physical and any(c["status"] == "passed" for c in physical)
+            else "synthetic"
+            if session
+            else "declaration_only",
         }
 
     def list(self, owner: str):

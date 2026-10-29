@@ -17,6 +17,24 @@ variable "remote_execution_enabled" {
   description = "Enable only after installed Ubuntu native qualification; worker registry must also be qualified."
 }
 
+variable "pairing_enabled" {
+  type        = bool
+  default     = false
+  description = "Enable sim-to-real coordination (simulation workers, device gateways, pair runs)."
+}
+
+variable "real_execution_enabled" {
+  type        = bool
+  default     = false
+  description = "Enable operator-approved physical execution. Requires pairing_enabled and a qualified gateway."
+}
+
+variable "operator_group" {
+  type        = string
+  default     = "lab-operators"
+  description = "Cognito group whose members may approve physical runs and reconcile instruments."
+}
+
 variable "reserve_lambda_concurrency" {
   description = "Enable per-function reservations only when the account quota leaves AWS's required unreserved capacity."
   type        = bool

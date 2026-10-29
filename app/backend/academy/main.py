@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from . import sim2real_api
 from ._version import __version__
 from .auth import identify, local_signer
 from .connections import ConnectionService
@@ -20,6 +21,7 @@ from .media import MediaService, ViewerRequest
 from .mock_connector import router as mock_connector_router
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
 from .onboarding import DeviceUpdate, OnboardingService, TwinCreate
+from .pairing import PairRunService
 from .recipes import MIXING, CreateMixing, MixingPlan, mixing_session
 from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
@@ -49,7 +51,12 @@ def create_app(settings: Settings | None = None, store=None):
         enabled=settings.remote_enabled,
         gpu=configured_gpu(app.state.store) if settings.runtime == "aws" else None,
     )
-    app.state.onboarding = OnboardingService(app.state.store)
+    app.state.pairing = PairRunService(
+        app.state.store,
+        pairing_enabled=settings.pairing_enabled,
+        real_enabled=settings.real_enabled,
+    )
+    app.state.onboarding = OnboardingService(app.state.store, pairing=app.state.pairing)
     app.state.connections = ConnectionService(
         app.state.store, enabled=settings.connector_real_enabled, approved_release=approved_release
     )
@@ -441,6 +448,7 @@ def create_app(settings: Settings | None = None, store=None):
                 )
         return save(owner, control(session, command), data.version)
 
+    sim2real_api.install(app, store=app.state.store, pairing=app.state.pairing)
     return app
 
 
