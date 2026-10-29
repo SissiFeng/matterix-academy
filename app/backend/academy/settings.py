@@ -21,10 +21,16 @@ class Settings:
     remote_enabled: bool = False
     connector_real_enabled: bool = False
     self_signup_email_domains: tuple[str, ...] = ()
+    twin_region: str = ""
+    twin_api_key: str = ""
 
     def __post_init__(self):
         if self.runtime not in {"local", "aws"}:
             raise ValueError("ACADEMY_RUNTIME must be local or aws")
+        if self.twin_region not in {"", "us-east-1", "us-west-2"}:
+            raise ValueError(
+                "ACADEMY_TWIN_REGION must be a Bedrock Mantle region serving GPT-6 Astra"
+            )
         if self.runtime == "aws" and (
             self.allow_demo
             or not all([self.table, self.issuer, self.client_id, self.cognito_domain])
@@ -70,4 +76,6 @@ class Settings:
             self_signup_email_domains=tuple(
                 json.loads(os.getenv("ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS", "[]"))
             ),
+            twin_region=os.getenv("ACADEMY_TWIN_REGION", ""),
+            twin_api_key=os.getenv("ACADEMY_TWIN_API_KEY", ""),
         )

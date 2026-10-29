@@ -54,6 +54,7 @@ import {
 
 const WorkflowStudio = lazy(() => import("./WorkflowStudio"));
 const SimulationLab = lazy(() => import("./SimulationLab"));
+const InstrumentStudio = lazy(() => import("./InstrumentStudio"));
 const WorkflowCourse = lazy(() => import("./WorkflowCourse"));
 const LearningLab = lazy(() => import("./LearningLab"));
 const ConnectorExplorer = lazy(() => import("./ConnectorExplorer"));
@@ -979,6 +980,9 @@ export default function App() {
               ) : view === "instruments" ? (
                 <div className={s.instrumentPage}>
                   <InstrumentStories onDesign={createStudio} busy={busy} />
+                  <Suspense fallback={null}>
+                    <InstrumentStudio />
+                  </Suspense>
                 </div>
               ) : view === "sim" ? (
                 <SimulationLab />
