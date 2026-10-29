@@ -20,6 +20,9 @@ KEY = "host"
 IDLE_SECONDS = 3600
 FRESH_SECONDS = 45
 STARTUP_SECONDS = 600
+# Exceeds both callers' hard Lambda lifetimes (API 15s, reaper 30s), including
+# DynamoDB response delays after its conditional transaction has committed.
+OPERATION_SECONDS = 90
 MESSAGES = {
     "sleeping": "The digital twin is asleep. Running a saved workflow will wake it.",
     "starting": "Starting the GPU. Your saved workflow is queued.",
@@ -90,6 +93,7 @@ class GpuLifecycle:
         old = self.record()
         if old and (
             old.get("operation_until", 0) > self.clock()
+            or old.get("stop_requested")
             or old.get("state") in {"stopping", "sleeping", "capacity_wait", "error"}
         ):
             return None
@@ -130,7 +134,7 @@ class GpuLifecycle:
             **old,
             "version": old["version"] + 1,
             "operation": token,
-            "operation_until": now + 25,
+            "operation_until": now + OPERATION_SECONDS,
             "desired_until": desired,
         }
         # Serialize against worker claims/heartbeats as well as concurrent demand.
@@ -201,11 +205,21 @@ class GpuLifecycle:
         wanted = record.get("desired_until", 0) > now
         if power == "stopped":
             if wanted:
+                self.mutation_intent(
+                    record,
+                    state="starting",
+                    stop_requested=False,
+                    boot_after=now,
+                    startup_deadline=now + STARTUP_SECONDS,
+                    command_id=None,
+                    service_requested=False,
+                )
                 self.client("ec2").start_instances(InstanceIds=[self.instance])
             return {
                 "state": "starting" if wanted else "sleeping",
                 "command_id": None,
                 "service_requested": False,
+                "stop_requested": False,
                 "boot_after": now,
                 "startup_deadline": now + STARTUP_SECONDS,
                 "retry_at": now + 10,
@@ -218,12 +232,17 @@ class GpuLifecycle:
             return {"state": "stopping", "retry_at": now + 10}
         if power != "running":
             return {"state": "error", "retry_at": now + 300}
+        if record.get("stop_requested"):
+            # EC2's running observation is not proof that an accepted stop won't
+            # propagate. Keep claims fenced until stopped or operator recovery.
+            return {"state": "error", "retry_at": now + 30, "error_code": "stop_not_confirmed"}
         fresh = bool(
             worker
             and worker.get("last_seen", 0) > max(now - FRESH_SECONDS, record.get("boot_after", 0))
         )
         if not wanted and not queued and not busy and fresh:
             # The operation lock blocks new native claims before this API call.
+            self.mutation_intent(record, state="stopping", stop_requested=True)
             self.client("ec2").stop_instances(InstanceIds=[self.instance])
             return {
                 "state": "stopping",
@@ -248,17 +267,10 @@ class GpuLifecycle:
                 return {"state": "error", "retry_at": now + 300}
             return {"state": "preparing", "retry_at": now + 10}
         # Persist intent before SendCommand. A lost response must not replay it.
-        latest = self.record()
-        self.store.put(
-            PARTITION,
-            KEY,
-            {
-                **latest,
-                "version": latest["version"] + 1,
-                "service_requested": True,
-                "startup_deadline": record.get("startup_deadline") or now + STARTUP_SECONDS,
-            },
-            latest["version"],
+        self.mutation_intent(
+            record,
+            service_requested=True,
+            startup_deadline=record.get("startup_deadline") or now + STARTUP_SECONDS,
         )
         response = self.client("ssm").send_command(
             InstanceIds=[self.instance],
@@ -273,3 +285,18 @@ class GpuLifecycle:
             "startup_deadline": record.get("startup_deadline") or now + STARTUP_SECONDS,
             "retry_at": now + 10,
         }
+
+    def mutation_intent(self, record, **changes):
+        latest = self.record()
+        if (
+            not latest
+            or latest.get("operation") != record["operation"]
+            or latest.get("operation_until", 0) <= self.clock() + 5
+        ):
+            raise Conflict
+        self.store.put(
+            PARTITION,
+            KEY,
+            {**latest, **changes, "version": latest["version"] + 1},
+            latest["version"],
+        )

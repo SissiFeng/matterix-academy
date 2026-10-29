@@ -249,3 +249,113 @@ def test_successful_ssm_without_worker_heartbeat_has_bounded_preparation(managed
     gpu.reconcile()
     assert gpu.status()["state"] == "error"
     ec2.stop_instances.assert_not_called()
+
+
+def test_power_fence_exceeds_all_callers_hard_lifetimes():
+    import re
+    from pathlib import Path
+
+    from academy.gpu_lifecycle import OPERATION_SECONDS
+
+    root = Path(__file__).resolve().parents[3]
+    configuration = (root / "infra/main.tf").read_text() + (root / "infra/workers.tf").read_text()
+    assert OPERATION_SECONDS > max(
+        int(x) for x in re.findall(r"timeout\s*=\s*(\d+)", configuration)
+    )
+
+
+def test_delayed_idle_reaper_cannot_lose_fence_while_original_lambda_can_live(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    power(ec2, "running")
+    now[0] += 3601
+    heartbeat(gpu, now)
+
+    def delayed_stop(**kwargs):
+        # Old 25s lease could be replaced while a 30s reaper was still alive.
+        now[0] += 31
+        demand(gpu)
+        assert gpu.claim_writes() is None
+        gpu.reconcile()
+
+    ec2.stop_instances.side_effect = delayed_stop
+    gpu.reconcile()
+    ec2.stop_instances.assert_called_once()
+    assert gpu.claim_writes() is None
+
+
+def test_superseded_controller_rechecks_token_before_power_mutation(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    power(ec2, "running")
+    now[0] += 3601
+    heartbeat(gpu, now)
+
+    def replace_controller(**kwargs):
+        old = gpu.record()
+        gpu.store.put(
+            PARTITION,
+            KEY,
+            {
+                **old,
+                "version": old["version"] + 1,
+                "operation": "new-controller",
+                "operation_until": now[0] + 90,
+            },
+            old["version"],
+        )
+        return {"Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]}
+
+    ec2.describe_instances.side_effect = replace_controller
+    gpu.reconcile()
+    ec2.stop_instances.assert_not_called()
+
+
+def test_unknown_stop_fences_claims_despite_running_observation_and_fresh_worker(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    power(ec2, "running")
+    now[0] += 3601
+    heartbeat(gpu, now)
+    ec2.stop_instances.side_effect = ReadTimeoutError(endpoint_url="https://ec2.invalid")
+    gpu.reconcile()
+    assert gpu.record()["stop_requested"] is True
+    now[0] += 61
+    demand(gpu)
+    heartbeat(gpu, now)
+    gpu.reconcile()
+    assert gpu.status()["state"] == "error"
+    assert gpu.claim_writes() is None
+    now[0] += 61
+    power(ec2, "stopped")
+    gpu.reconcile()
+    ec2.start_instances.assert_called_once()
+    assert gpu.record()["stop_requested"] is False
+
+
+def test_unknown_start_clears_old_boot_metadata_before_reconciling_running(managed):
+    gpu, ec2, ssm, now = managed
+    demand(gpu)
+    old = gpu.record()
+    gpu.store.put(
+        PARTITION,
+        KEY,
+        {
+            **old,
+            "version": old["version"] + 1,
+            "service_requested": True,
+            "command_id": "previous-boot",
+            "startup_deadline": now[0] - 1,
+        },
+        old["version"],
+    )
+    ec2.start_instances.side_effect = ReadTimeoutError(endpoint_url="https://ec2.invalid")
+    gpu.reconcile()
+    assert gpu.record()["command_id"] is None
+    assert gpu.record()["startup_deadline"] == now[0] + 600
+    now[0] += 61
+    power(ec2, "running")
+    gpu.reconcile()
+    ec2.start_instances.assert_called_once()
+    ssm.send_command.assert_called_once()
+    assert gpu.status()["state"] == "preparing"
