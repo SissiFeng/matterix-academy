@@ -2,7 +2,7 @@ region                   = "ca-central-1"
 environment              = "dev"
 expected_account_id      = "247893369214"
 remote_execution_enabled = false
-self_signup_email_domains = ["utoronto.ca"]
+self_signup_email_domains = ["utoronto.ca", "mail.utoronto.ca"]
 # Account quota is currently 10 total: reservations require unreserved headroom.
 reserve_lambda_concurrency = false
 learner_request_rate       = 5
@@ -15,3 +15,7 @@ github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@139333201
 # gpu_instance_id = "i-0123456789abcdef0"
 # gpu_worker_id   = "ec2-flex-pilot-1"
 # monthly_budget_usd = 100
+
+# GPU host region (EC2/SSM only; Cognito, DynamoDB, KVS stay in `region`).
+# Set together with the us-east-2 gpu_instance_id, never with a Canadian one.
+# gpu_region = "us-east-2"

@@ -41,13 +41,23 @@ def configured(store, clock=time.time):
     document = os.getenv("ACADEMY_GPU_START_DOCUMENT", "")
     if not all((instance, worker, document)):
         return None
-    return GpuLifecycle(store, instance, worker, document, clock=clock)
+    return GpuLifecycle(
+        store,
+        instance,
+        worker,
+        document,
+        region=os.getenv("ACADEMY_GPU_REGION") or None,
+        clock=clock,
+    )
 
 
 class GpuLifecycle:
-    def __init__(self, store, instance, worker, document, *, ec2=None, ssm=None, clock=time.time):
+    def __init__(
+        self, store, instance, worker, document, *, region=None, ec2=None, ssm=None, clock=time.time
+    ):
         self.store, self.instance, self.worker, self.document = store, instance, worker, document
         self.clock, self._ec2, self._ssm = clock, ec2, ssm
+        self.region = region
 
     def client(self, name):
         attr = "_" + name
@@ -57,6 +67,7 @@ class GpuLifecycle:
                 attr,
                 boto3.client(
                     name,
+                    region_name=self.region,
                     config=Config(
                         connect_timeout=2, read_timeout=4, retries={"total_max_attempts": 1}
                     ),

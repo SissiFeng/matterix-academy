@@ -176,6 +176,7 @@ resource "aws_lambda_function" "api" {
       ACADEMY_PAIRING_ENABLED           = tostring(var.pairing_enabled)
       ACADEMY_REAL_ENABLED              = tostring(var.real_execution_enabled)
       ACADEMY_OPERATOR_GROUP            = var.operator_group
+      ACADEMY_GPU_REGION                = local.gpu_region
       ACADEMY_GPU_INSTANCE_ID           = var.gpu_instance_id
       ACADEMY_GPU_WORKER_ID             = var.gpu_worker_id
       ACADEMY_GPU_START_DOCUMENT        = var.gpu_instance_id != "" ? aws_ssm_document.gpu_start[0].name : ""

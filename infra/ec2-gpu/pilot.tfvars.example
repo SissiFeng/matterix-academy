@@ -1,6 +1,6 @@
 # Preparation only. No account, subnet or AMI has been selected.
 enabled                = false
-region                 = "ca-central-1"
+region                 = "us-east-2"
 instance_type          = "g6.4xlarge"
 root_volume_gib        = 300
 worker_id              = "ec2-flex-pilot-1"

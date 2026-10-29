@@ -14,7 +14,11 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 BASE = "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current"
-LOCATIONS = {"ca-central-1": "Canada (Central)", "us-east-1": "US East (N. Virginia)"}
+LOCATIONS = {
+    "ca-central-1": "Canada (Central)",
+    "us-east-1": "US East (N. Virginia)",
+    "us-east-2": "US East (Ohio)",
+}
 CANDIDATES = ("g6.2xlarge", "g6.4xlarge", "g6e.2xlarge")
 IPV4_HOURLY = Decimal("0.005")
 

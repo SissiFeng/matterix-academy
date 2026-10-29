@@ -209,7 +209,7 @@ def main():
         parser.error("Paid build and NVIDIA license acceptance must both be explicitly authorized")
     if config.get("confirm_paid_build") is not True or config.get("accept_nvidia_eula") is not True:
         parser.error("Protected build config must also explicitly enable both opt-ins")
-    if config.get("region") not in {"ca-central-1", "us-east-1"}:
+    if config.get("region") not in {"ca-central-1", "us-east-1", "us-east-2"}:
         parser.error("Build only in the reviewed pilot regions")
     import boto3
 
