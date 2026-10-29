@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-for (const domains of [["utoronto.ca"], []]) {
-  test(`Cognito welcome explains ${domains.length ? "university registration" : "invited access"}`, async ({
+for (const domains of [["utoronto.ca", "mail.utoronto.ca"], []]) {
+  test(`Cognito welcome explains ${domains.length ? "university and student registration" : "invited access"}`, async ({
     page,
   }) => {
     await page.route("**/api/config", async (route) => {
@@ -26,7 +26,7 @@ for (const domains of [["utoronto.ca"], []]) {
       ).toBeEnabled();
       await expect(
         page.getByText(
-          "New learners can sign up with @utoronto.ca. Verify your email to start learning.",
+          "New learners can sign up with @utoronto.ca or @mail.utoronto.ca. Verify your email to start learning.",
         ),
       ).toBeVisible();
     } else {

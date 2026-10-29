@@ -1,4 +1,13 @@
 # Power management for one existing GPU. Does not create/replace a GPU or qualify it.
+variable "gpu_region" {
+  description = "EC2/SSM region only; blank uses the application's region. Identity and learner data stay put."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.gpu_region == "" || contains(["ca-central-1", "us-east-1", "us-east-2"], var.gpu_region)
+    error_message = "Use a GPU region that infra/ec2-gpu and the image build also allow."
+  }
+}
 variable "gpu_instance_id" {
   type    = string
   default = ""
@@ -12,6 +21,7 @@ variable "gpu_worker_id" {
   default = "ec2-flex-pilot-1"
 }
 resource "aws_ssm_document" "gpu_start" {
+  provider      = aws.gpu
   count         = var.gpu_instance_id != "" ? 1 : 0
   name          = "${local.name}-start-native"
   document_type = "Command"
@@ -25,7 +35,8 @@ resource "aws_ssm_document" "gpu_start" {
   })
 }
 locals {
-  gpu_arn = "arn:aws:ec2:${var.region}:${local.suffix}:instance/${var.gpu_instance_id}"
+  gpu_region = var.gpu_region != "" ? var.gpu_region : var.region
+  gpu_arn    = "arn:aws:ec2:${local.gpu_region}:${local.suffix}:instance/${var.gpu_instance_id}"
 }
 resource "aws_iam_role_policy" "gpu_control" {
   for_each = var.gpu_instance_id != "" ? {
@@ -33,9 +44,9 @@ resource "aws_iam_role_policy" "gpu_control" {
   } : {}
   role = each.value
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["ec2:DescribeInstances"], Resource = "*", Condition = { StringEquals = { "aws:RequestedRegion" = var.region } } },
+    { Effect = "Allow", Action = ["ec2:DescribeInstances"], Resource = "*", Condition = { StringEquals = { "aws:RequestedRegion" = local.gpu_region } } },
     { Effect = "Allow", Action = ["ec2:StartInstances", "ec2:StopInstances"], Resource = local.gpu_arn },
     { Effect = "Allow", Action = ["ssm:SendCommand"], Resource = [local.gpu_arn, aws_ssm_document.gpu_start[0].arn] },
-    { Effect = "Allow", Action = ["ssm:GetCommandInvocation"], Resource = "*", Condition = { StringEquals = { "aws:RequestedRegion" = var.region } } }
+    { Effect = "Allow", Action = ["ssm:GetCommandInvocation"], Resource = "*", Condition = { StringEquals = { "aws:RequestedRegion" = local.gpu_region } } }
   ] })
 }

@@ -6,7 +6,7 @@ The repository contains a standalone serverless deployment. The AC environment u
 
 - S3 private, encrypted, versioned frontend bucket with CloudFront Origin Access Control.
 - CloudFront HTTPS frontend and same-origin `/api/*` routing; API responses are never cached. SPA rewriting applies only to frontend paths, so API 401/403 responses remain errors.
-- Cognito user pool with configurable email-domain admission and a public browser client using authorization code + PKCE. AC dev admits verified `@utoronto.ca` learners; other deployments default to invitation-only.
+- Cognito user pool with configurable email-domain admission and a public browser client using authorization code + PKCE. AC dev admits verified `@utoronto.ca` and student `@mail.utoronto.ca` learners; other deployments default to invitation-only.
 - API Gateway HTTP API with JWT authorization and a custom access-token scope.
 - Python 3.12 x86_64 Lambda running FastAPI through Mangum; no public Lambda function URL.
 - Separate worker HTTP API, zero-cache machine authorizer, worker Lambda and scheduled lease reaper. Workers initiate outbound HTTPS; AWS needs no inbound connection to Ubuntu. Native execution defaults off, and each worker requires operator qualification.
@@ -61,7 +61,7 @@ terraform -chdir=infra output
 | `APP_URL` | `app_url` |
 
 6. Every push/merge to `main` automatically starts **Deploy academy to AWS**. Its build job packages and tests the exact commit without AWS credentials, then uploads a checksum-bound release artifact. The separate, serialized deployment job receives short-lived OIDC credentials only after tests pass, publishes that artifact to all four Lambda functions and S3, invalidates CloudFront, and verifies `/version.json`, health and unauthenticated denial. A superseded main commit is skipped before publishing. Manual reruns remain available. The workflow does not run Terraform or create infrastructure. See [CONTINUOUS-DEPLOYMENT.md](CONTINUOUS-DEPLOYMENT.md).
-7. In AC dev, register using an actual `@utoronto.ca` mailbox and confirm its email code, or invite a test learner through the Cognito console. Confirm Hosted UI login, first-run onboarding, create/run/reset, refresh persistence and sign-out at the deployed URL. Use two distinct accounts to check isolation. Public health checks alone do not prove login or classroom readiness.
+7. In AC dev, register using an actual `@utoronto.ca` or `@mail.utoronto.ca` mailbox and confirm its email code, or invite a test learner through the Cognito console. Confirm Hosted UI login, first-run onboarding, create/run/reset, refresh persistence and sign-out at the deployed URL. Use two distinct accounts to check isolation. Public health checks alone do not prove login or classroom readiness.
 
 Terraform bootstraps application Lambda code and owns resources, configuration and IAM. The separate Cognito admission Lambda is entirely Terraform-owned, including its deterministic `build/cognito-signup.zip`; application deployment credentials cannot update it. After bootstrap, the workflow owns application code; Terraform ignores `filename`/`source_code_hash` changes so an infrastructure apply cannot silently republish an older local package. For initial publication use the tested release workflow with verified output values. Do not open API CORS broadly; requests use the CloudFront origin. Add a custom hostname only after updating Cognito callback/logout URLs and the application's configured URL together.
 
@@ -96,7 +96,7 @@ The legacy direct gateway status route is diagnostic only; this deployment does 
 
 ## Learner registration
 
-AC dev sets `self_signup_email_domains = ["utoronto.ca"]`. On the welcome page, choose **Sign in or create an account**, then **Sign up** in Cognito. Use an email whose domain is exactly `utoronto.ca`, choose a password, and enter the code received at that mailbox. Cognito confirms the account after email verification, so no administrator approval is required. This is email-based registration, not University of Toronto SSO.
+AC dev sets `self_signup_email_domains = ["utoronto.ca", "mail.utoronto.ca"]`. On the welcome page, choose **Sign in or create an account**, then **Sign up** in Cognito. Use an email whose domain is exactly `utoronto.ca` or the student domain `mail.utoronto.ca` (subdomains such as `x.mail.utoronto.ca` are refused), choose a password, and enter the code received at that mailbox. Cognito confirms the account after email verification, so no administrator approval is required. This is email-based registration, not University of Toronto SSO.
 
 The pre-sign-up trigger rejects other domains, subdomains and suffix lookalikes. It never auto-confirms users or auto-verifies email, and client metadata cannot grant a role. Every admitted account receives the existing ordinary learner experience: its own progress and teaching exercises, with no teacher/admin role or native-device access. IAM-authorized operators can still invite external learners through Cognito. The rule controls admission; it does not periodically verify university affiliation or revoke existing accounts. Email changes require verification before replacing the current address.
 
@@ -140,3 +140,24 @@ scene. The ordinary application deployment does not apply it or enable native
 execution. Current pricing evidence, image inputs and commissioning/browser
 acceptance steps are recorded there. `bash scripts/verify-ec2-gpu.sh` is an
 offline zero-resource check; it needs no selected AWS account.
+
+### Moving the GPU host to us-east-2
+
+ca-central-1 G-family supply has been unreliable, so the GPU host may run in
+`us-east-2` (Ohio) on `g6.2xlarge`/`g6.4xlarge` (L4). Only EC2 and SSM move:
+Cognito, DynamoDB, the APIs and KVS signaling stay in `region`. The host already
+reaches the worker API and KVS endpoints over HTTPS, so the only cost added is
+inter-region transfer. Allowed GPU regions are the same in
+`infra/ec2-gpu`, `infra/gpu-lifecycle.tf` and `scripts/ec2-gpu-build.py`:
+`ca-central-1`, `us-east-1` and `us-east-2`.
+
+1. Request a G/VT On-Demand vCPU quota in us-east-2. It is separate from the
+   Canadian 8-vCPU quota, and `g6.4xlarge` needs 16 vCPU.
+2. Rebuild the AMI there (AMIs are regional): set `"region": "us-east-2"` and an
+   Ohio `source_ami`/VPC/subnet in the build config, then run `ec2-gpu-build.py`.
+3. Apply `infra/ec2-gpu` with `region = "us-east-2"` and enroll the new worker;
+   the qualification and commissioning gates apply again.
+4. In the application tfvars, set `gpu_region = "us-east-2"` **together with** the
+   new `gpu_instance_id`. A Canadian instance ID with an Ohio region would fail
+   every wake call. Then apply the application root.
+5. Retire the Canadian host only after the Ohio worker passes commissioning.

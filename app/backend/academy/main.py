@@ -17,6 +17,7 @@ from .gateway import GatewayUnavailable, MatterixGateway
 from .gpu_lifecycle import configured as configured_gpu
 from .learning import present, readiness
 from .media import MediaService, ViewerRequest
+from .mock_connector import router as mock_connector_router
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
 from .onboarding import DeviceUpdate, OnboardingService, TwinCreate
 from .recipes import MIXING, CreateMixing, MixingPlan, mixing_session
@@ -61,6 +62,7 @@ def create_app(settings: Settings | None = None, store=None):
     app.state.connections = ConnectionService(
         app.state.store, enabled=settings.connector_real_enabled, approved_release=approved_release
     )
+    app.include_router(mock_connector_router)
     app.include_router(connector_router)
     app.include_router(catalog_router)
     app.state.media = MediaService(app.state.runs)

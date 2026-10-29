@@ -7,7 +7,7 @@ The interface is in English. No software installation is needed for the teaching
    Select a chapter to revisit deck placement, tip pickup or liquid transfer.
 2. Choose **Transfer**, **Distribute** or **Serial dilution**, then **Use this workflow**.
    You can also **Start with a blank deck**.
-3. Sign in, or create an account with your `@utoronto.ca` email and complete email
+3. Sign in, or create an account with your `@utoronto.ca` or `@mail.utoronto.ca` email and complete email
    verification. Complete your learner profile when prompted.
 4. In **Workflow studio**, arrange the deck, combine steps and change the volumes.
    Save your design, run the teaching model and inspect the result. Change one

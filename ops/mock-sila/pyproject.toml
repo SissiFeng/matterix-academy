@@ -1,0 +1,22 @@
+[project]
+name = "academy-mock-sila"
+version = "0.1.0"
+description = "Loopback-only mock SiLA2 connector for offline Academy workflows. Synthetic results only."
+requires-python = ">=3.12,<3.15"
+dependencies = ["matterix-academy", "unitelabs-cdk==0.16.0"]
+
+[project.scripts]
+academy-mock-sila = "academy_mock_sila.server:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3,<10"]
+
+[tool.uv.sources]
+matterix-academy = { path = "../..", editable = true }
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

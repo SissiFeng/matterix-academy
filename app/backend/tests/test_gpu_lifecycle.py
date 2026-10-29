@@ -4,7 +4,7 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from academy.gpu_lifecycle import KEY, PARTITION, GpuLifecycle
+from academy.gpu_lifecycle import KEY, PARTITION, GpuLifecycle, configured
 from academy.runs import RunService, SubmitRun, revised
 from botocore.exceptions import ClientError, ReadTimeoutError
 from fastapi import HTTPException
@@ -359,3 +359,21 @@ def test_unknown_start_clears_old_boot_metadata_before_reconciling_running(manag
     ec2.start_instances.assert_called_once()
     ssm.send_command.assert_called_once()
     assert gpu.status()["state"] == "preparing"
+
+
+def test_clients_target_configured_gpu_region(store, monkeypatch):
+    monkeypatch.setenv("ACADEMY_GPU_INSTANCE_ID", "i-pinned")
+    monkeypatch.setenv("ACADEMY_GPU_WORKER_ID", "lab-1")
+    monkeypatch.setenv("ACADEMY_GPU_START_DOCUMENT", "fixed-document")
+    monkeypatch.setenv("ACADEMY_GPU_REGION", "us-east-2")
+    created = []
+    monkeypatch.setattr(
+        "academy.gpu_lifecycle.boto3.client",
+        lambda name, **kwargs: created.append((name, kwargs["region_name"])) or Mock(),
+    )
+    gpu = configured(store)
+    gpu.client("ec2")
+    gpu.client("ssm")
+    assert created == [("ec2", "us-east-2"), ("ssm", "us-east-2")]
+    monkeypatch.delenv("ACADEMY_GPU_REGION")
+    assert configured(store).region is None  # boto3 falls back to the Lambda's own region

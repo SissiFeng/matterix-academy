@@ -7,8 +7,8 @@ variable "region" {
   type    = string
   default = "ca-central-1"
   validation {
-    condition     = contains(["ca-central-1", "us-east-1"], var.region)
-    error_message = "This pilot was evaluated only in ca-central-1 and us-east-1."
+    condition     = contains(["ca-central-1", "us-east-1", "us-east-2"], var.region)
+    error_message = "This pilot was evaluated in ca-central-1, us-east-1 and us-east-2."
   }
 }
 variable "expected_account_id" {
