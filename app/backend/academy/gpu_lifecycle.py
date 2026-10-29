@@ -205,7 +205,15 @@ class GpuLifecycle:
         wanted = record.get("desired_until", 0) > now
         if power == "stopped":
             if wanted:
-                self.mutation_intent(record, state="starting", stop_requested=False)
+                self.mutation_intent(
+                    record,
+                    state="starting",
+                    stop_requested=False,
+                    boot_after=now,
+                    startup_deadline=now + STARTUP_SECONDS,
+                    command_id=None,
+                    service_requested=False,
+                )
                 self.client("ec2").start_instances(InstanceIds=[self.instance])
             return {
                 "state": "starting" if wanted else "sleeping",

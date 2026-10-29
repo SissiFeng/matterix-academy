@@ -331,3 +331,31 @@ def test_unknown_stop_fences_claims_despite_running_observation_and_fresh_worker
     gpu.reconcile()
     ec2.start_instances.assert_called_once()
     assert gpu.record()["stop_requested"] is False
+
+
+def test_unknown_start_clears_old_boot_metadata_before_reconciling_running(managed):
+    gpu, ec2, ssm, now = managed
+    demand(gpu)
+    old = gpu.record()
+    gpu.store.put(
+        PARTITION,
+        KEY,
+        {
+            **old,
+            "version": old["version"] + 1,
+            "service_requested": True,
+            "command_id": "previous-boot",
+            "startup_deadline": now[0] - 1,
+        },
+        old["version"],
+    )
+    ec2.start_instances.side_effect = ReadTimeoutError(endpoint_url="https://ec2.invalid")
+    gpu.reconcile()
+    assert gpu.record()["command_id"] is None
+    assert gpu.record()["startup_deadline"] == now[0] + 600
+    now[0] += 61
+    power(ec2, "running")
+    gpu.reconcile()
+    ec2.start_instances.assert_called_once()
+    ssm.send_command.assert_called_once()
+    assert gpu.status()["state"] == "preparing"
