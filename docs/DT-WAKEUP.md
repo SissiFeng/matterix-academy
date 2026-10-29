@@ -41,12 +41,20 @@ this timer. The controller stops only with an empty queue, no active/unresolved
 worker run, and a fresh worker poll from an empty local journal. An expired lease
 or missing worker is not sufficient cleanup evidence.
 
-Power operations acquire a 25-second versioned operation fence against worker
+Power operations acquire a 90-second versioned operation fence against worker
 claims. A workflow submitted during shutdown remains queued and renews demand;
 it cannot claim until shutdown completes and power has been restored. An unknown
 SSM result is latched and is not replayed. Worker startup has a ten-minute bound;
 failure becomes operator attention, not an endless preparation message. Stale
 workers retain the shutdown guard and require operator reconciliation.
+
+The fence exceeds the hard timeout of both calling Lambdas (15/30 seconds), so
+an expired invocation cannot later stop a newly claimed run. Before issuing a
+power mutation the controller rechecks its token and persists intent. A lost stop
+response keeps a separate claim fence even if EC2 still reports running. It is
+released only after the controller observes stopped; operator recovery can stop
+the host after verifying no active run, then let the normal reconciler observe
+that postcondition. Do not clear the fence solely because the worker is polling.
 
 ## Deployment
 
