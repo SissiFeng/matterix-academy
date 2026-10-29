@@ -72,7 +72,7 @@ class CommissioningRequest(StrictModel):
     worker_id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,63}$")
     engine_version: str = Field(pattern=r"^[a-f0-9]{40}$")
     asset_version: str = Field(pattern=r"^[a-f0-9]{40}$")
-    duration_seconds: int = Field(default=1800, ge=300, le=3600, strict=True)
+    duration_seconds: int = Field(default=3600, ge=300, le=3600, strict=True)
     max_runs: int = Field(default=2, ge=1, le=2, strict=True)
     studio: StudioCommissioningScope | None = None
 

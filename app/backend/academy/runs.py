@@ -140,10 +140,11 @@ def worker_credential(store, authorization: str, now=None):
 
 
 class RunService:
-    def __init__(self, store, enabled=False, clock=time.time):
+    def __init__(self, store, enabled=False, clock=time.time, gpu=None):
         self.store = store
         self.enabled = enabled
         self.clock = clock
+        self.gpu = gpu
 
     def commissioning(self, owner=None, worker=None, run=None):
         return active_grant(self.store, self.clock(), subject=owner, worker=worker, run=run)
@@ -192,6 +193,7 @@ class RunService:
                 "reason",
             )
         } | {
+            "gpu": self.gpu.status() if self.gpu else None,
             "scene": run.get("scene", run["plan"]["course_id"]),
             "instrument": run["plan"].get("instrument", "flex"),
             "evidence": "native" if snapshot else "pending",
@@ -293,6 +295,7 @@ class RunService:
             raise HTTPException(409, str(exc)) from exc
         self.store.transact(
             [
+                *([self.gpu.demand_write()] if self.gpu else []),
                 *commission_write,
                 Write(
                     owner,
@@ -355,7 +358,10 @@ class RunService:
             and not worker.get("revoked", True)
             and worker.get("credential_expires", 0) > self.clock()
             and scene in worker.get("scenes", [])
-            and worker.get("state") in {"ready", "busy"}
+            and (
+                worker.get("state") in {"ready", "busy"}
+                or (self.gpu and worker["worker_id"] == self.gpu.worker)
+            )
         ]
         closest = None
         for worker in candidates:
@@ -390,6 +396,7 @@ class RunService:
             "instrument": plan.instrument,
             "scene": scene,
             "enabled": enabled,
+            "gpu": self.gpu.status() if self.gpu else None,
             "commissioning": bool(scope),
             "ready": not issues,
             "issues": [issue.model_dump() for issue in issues],
@@ -438,6 +445,14 @@ class RunService:
 
     def claim(self, worker_id):
         worker = self.worker(worker_id)
+        managed = self.gpu and worker_id == self.gpu.worker
+        if managed:
+            # Only called with an empty local journal (or to recover its exact run).
+            # Heartbeat is liveness, never qualification or evidence of execution.
+            self.store.put(
+                WORKERS, worker_id, revised(worker, last_seen=self.clock()), worker["version"]
+            )
+            worker = self.worker(worker_id)
         grant = self.commissioning(worker=worker)
         if not (self.enabled and worker.get("qualified")) and not grant:
             raise HTTPException(
@@ -448,8 +463,14 @@ class RunService:
             return self.machine_view(self.raw(worker["active_run"]), worker_id)
         if worker["state"] != "ready" and not (grant and worker["state"] == "quarantined"):
             return None
+        power_writes = self.gpu.claim_writes() if managed else []
+        if power_writes is None:
+            return None
         for candidate in self.store.partition(QUEUE):
             run = self.raw(candidate["run_id"])
+            if self.clock() - run["created_at"] >= 3600:
+                # The scheduled reaper releases it; never dispatch in the tick gap.
+                continue
             if run["status"] != "queued" or not self.execution_allowed(worker, run):
                 continue
             if not run.get("commissioning_id") and run.get(
@@ -485,6 +506,7 @@ class RunService:
             try:
                 self.store.transact(
                     [
+                        *power_writes,
                         Write(RUNS, run["run_id"], claimed, run["version"]),
                         Write(WORKERS, worker_id, updated_worker, worker["version"]),
                         Write(QUEUE, run["queue_key"], None, 1),
@@ -770,6 +792,7 @@ class RunService:
                     worker,
                     state="ready" if verified and worker.get("qualified") else "quarantined",
                     active_run=None if verified else run["run_id"],
+                    last_cleanup_at=self.clock() if verified else worker.get("last_cleanup_at", 0),
                 ),
                 worker["version"],
             ),
@@ -781,6 +804,34 @@ class RunService:
 
     def reap(self):
         changed = 0
+        for candidate in self.store.partition(QUEUE):
+            run = self.raw(candidate["run_id"])
+            if run["status"] != "queued":
+                continue
+            expired = self.clock() - run["created_at"] >= 3600
+            revoked = run.get("commissioning_id") and not self.commissioning(run=run)
+            if expired or revoked:
+                # No worker ever claimed this job: no native side effect needs reset.
+                failed = revised(
+                    run,
+                    status="failed",
+                    updated_at=self.clock(),
+                    reason="GPU queue wait expired"
+                    if expired
+                    else "Run authorization expired before dispatch",
+                    cleanup={"reset_verified": True, "never_started": True},
+                )
+                try:
+                    self.store.transact(
+                        [
+                            Write(RUNS, run["run_id"], failed, run["version"]),
+                            Write(QUEUE, run["queue_key"], None, candidate["version"]),
+                            *self.release_lock(run),
+                        ]
+                    )
+                    changed += 1
+                except Conflict:
+                    continue
         for worker in self.store.partition(WORKERS):
             if not worker.get("active_run"):
                 continue

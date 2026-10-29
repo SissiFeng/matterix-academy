@@ -59,6 +59,44 @@ function preflight(session: Session, ready = true) {
   };
 }
 
+test("queued DT shows wakeup and capacity states without resubmitting after refresh", async ({
+  page,
+}) => {
+  const session = await savedStudio(page);
+  const gpu = {
+    state: "starting",
+    message: "Starting the GPU. Your saved workflow is queued.",
+    idle_seconds: 3600,
+    retry_at: null,
+    updated_at: null,
+  };
+  const run = { ...fixtureRun(session, crypto.randomUUID()), gpu };
+  let posts = 0;
+  await page.route(`**/api/sessions/${session.id}/native-preflight`, (route) =>
+    route.fulfill({ json: { ...preflight(session, false), gpu } }),
+  );
+  await page.route(`**/api/sessions/${session.id}/remote-run`, (route) =>
+    route.fulfill({ json: run }),
+  );
+  await page.route("**/api/runs", (route) => {
+    posts += 1;
+    return route.fulfill({ json: run });
+  });
+  await page.goto(`/#/lab/${session.id}`);
+  await page.reload();
+  const status = page.getByRole("status", {
+    name: "Digital twin availability",
+  });
+  await expect(status).toContainText("Starting the GPU");
+  gpu.state = "capacity_wait";
+  gpu.message =
+    "AWS GPU capacity is unavailable. Your workflow stays queued; retrying shortly.";
+  await expect(status).toContainText("AWS GPU capacity is unavailable");
+  await page.reload();
+  await expect(status).toContainText("Your workflow stays queued");
+  expect(posts).toBe(0);
+});
+
 test("commissioning export preserves attempted submission across reload and labels missing video incomplete", async ({
   page,
 }) => {

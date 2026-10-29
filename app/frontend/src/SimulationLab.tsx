@@ -225,6 +225,15 @@ export default function SimulationLab() {
           </small>
         </div>
       </header>
+      {run?.gpu && (
+        <p
+          className={s.notice}
+          role="status"
+          aria-label="Digital twin availability"
+        >
+          {run.gpu.message} GPU idle timeout: one hour.
+        </p>
+      )}
       {catalog?.commissioning && (
         <p className={s.notice}>
           Operator commissioning window · fixed seed 42 · at most two runs. This
@@ -432,11 +441,13 @@ export default function SimulationLab() {
             <strong>Run receipt</strong>
             <span>{run.run_id}</span>
             <small>
-              {run.cleanup?.reset_verified
-                ? "Reset verified · lab released"
-                : hasEnded
-                  ? "Lab remains reserved until reset is verified"
-                  : "Reserved for this experiment"}
+              {run.cleanup?.never_started
+                ? "Not dispatched · reservation released"
+                : run.cleanup?.reset_verified
+                  ? "Reset verified · lab released"
+                  : hasEnded
+                    ? "Lab remains reserved until reset is verified"
+                    : "Reserved for this experiment"}
             </small>
           </div>
           <details>

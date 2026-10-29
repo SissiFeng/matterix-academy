@@ -8,7 +8,11 @@ import {
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
 import IsaacViewport from "./IsaacViewport";
-import { terminalRuns, type SimulationRun } from "./simulationTypes";
+import {
+  terminalRuns,
+  type SimulationRun,
+  type GpuStatus,
+} from "./simulationTypes";
 import { INSTRUMENT_NAMES } from "./studioContent";
 import type { Session } from "./types";
 import {
@@ -24,6 +28,7 @@ import {
 import s from "./NativeStudioRun.module.css";
 
 type Preflight = {
+  gpu?: GpuStatus | null;
   session_id: string;
   session_version: number;
   plan_hash: string;
@@ -478,6 +483,19 @@ export default function NativeStudioRun({
             : "No native result yet"}
         </span>
       </header>
+      {(run?.gpu ?? preflight?.gpu) && (
+        <div
+          className={s.notice}
+          role="status"
+          aria-label="Digital twin availability"
+        >
+          <strong>{(run?.gpu ?? preflight?.gpu)?.message}</strong>
+          <p>
+            The GPU stays available for one hour after its last run. Active runs
+            and unverified cleanup prevent automatic shutdown.
+          </p>
+        </div>
+      )}
       <div className={s.preflight} aria-live="polite">
         <strong>
           {!loaded
@@ -652,7 +670,9 @@ export default function NativeStudioRun({
           </p>
           {terminalRuns.has(run.status) && (
             <p className={run.cleanup?.reset_verified ? s.confirmed : s.notice}>
-              {run.cleanup?.reset_verified ? (
+              {run.cleanup?.never_started ? (
+                "This workflow was not dispatched. No native state was created; the reservation is released."
+              ) : run.cleanup?.reset_verified ? (
                 <>
                   <CheckCircle2 size={16} /> Native reset verified. The saved
                   workflow can be checked for another run.

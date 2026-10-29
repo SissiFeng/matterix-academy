@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from .gpu_lifecycle import configured as configured_gpu
 from .media import MediaService
 from .models import StrictModel
 from .runs import (
@@ -69,7 +70,12 @@ def create_worker_app(store=None, *, runtime=None, enabled=None, clock=None):
         if enabled is not None
         else os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true"
     )
-    service = RunService(store, enabled, **({"clock": clock} if clock else {}))
+    service = RunService(
+        store,
+        enabled,
+        gpu=configured_gpu(store) if runtime == "aws" else None,
+        **({"clock": clock} if clock else {}),
+    )
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.state.runs = service
     app.state.media = MediaService(service)
@@ -198,7 +204,13 @@ handler = Mangum(app, lifespan="off")
 
 
 def reap_handler(event, context):
+    store = machine_store()
     runs = RunService(
-        machine_store(), enabled=os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true"
+        store,
+        enabled=os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true",
+        gpu=configured_gpu(store),
     )
-    return {"expired_runs": runs.reap(), "closed_viewports": MediaService(runs).reap()}
+    result = {"expired_runs": runs.reap(), "closed_viewports": MediaService(runs).reap()}
+    if runs.gpu:
+        result["gpu"] = runs.gpu.reconcile()
+    return result
