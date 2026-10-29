@@ -109,6 +109,11 @@ def test_ssm_not_online_retries_only_definitively_rejected_command(managed):
     gpu.reconcile()
     assert ssm.send_command.call_count == 2
     assert gpu.status()["state"] == "preparing"
+    # Definitive retry must not keep extending the initial worker-start bound.
+    now[0] += 601
+    gpu.reconcile()
+    assert ssm.send_command.call_count == 2
+    assert gpu.status()["state"] == "error"
 
 
 def test_idle_shutdown_requires_one_hour_no_active_run_and_fresh_journal_empty_worker(managed):

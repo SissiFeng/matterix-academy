@@ -256,7 +256,7 @@ class GpuLifecycle:
                 **latest,
                 "version": latest["version"] + 1,
                 "service_requested": True,
-                "startup_deadline": now + STARTUP_SECONDS,
+                "startup_deadline": record.get("startup_deadline") or now + STARTUP_SECONDS,
             },
             latest["version"],
         )
@@ -270,6 +270,6 @@ class GpuLifecycle:
             "state": "preparing",
             "command_id": response["Command"]["CommandId"],
             "service_requested": True,
-            "startup_deadline": now + STARTUP_SECONDS,
+            "startup_deadline": record.get("startup_deadline") or now + STARTUP_SECONDS,
             "retry_at": now + 10,
         }
