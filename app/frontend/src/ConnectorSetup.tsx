@@ -24,6 +24,7 @@ import type {
   PhysicalRun,
 } from "./connectorTypes";
 import s from "./ConnectorSetup.module.css";
+import MockConnector from "./MockConnector";
 
 const modelName = (model: ConnectorInstrument) =>
   model === "flex" ? "Opentrons Flex" : "Opentrons OT-2";
@@ -609,6 +610,7 @@ export default function ConnectorSetup({
           {notice}
         </div>
       )}
+      {!loading && <MockConnector sessions={sessions} />}
       {loading ? (
         <p role="status">
           Loading connector releases and your saved connections…

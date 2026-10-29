@@ -4,6 +4,7 @@ import importlib.util
 import json
 from copy import deepcopy
 from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 from academy.native_runner import NativeConfig
@@ -92,7 +93,7 @@ def test_public_price_capture_handles_absent_candidates_and_never_needs_account(
                     for location in costs.LOCATIONS.values()
                 },
             }, "fixture-hash"
-        location = "Canada (Central)" if "Canada" in url else "US East (N. Virginia)"
+        location = next(name for name in costs.LOCATIONS.values() if quote(name, safe="") in url)
         return {
             "manifest": {"source": "fixture"},
             "regions": {
@@ -110,9 +111,9 @@ def test_public_price_capture_handles_absent_candidates_and_never_needs_account(
 
     monkeypatch.setattr(costs, "fetch", fake_fetch)
     result = costs.capture()
-    assert len(result["candidates"]) == 6
+    assert len(result["candidates"]) == 9
     missing = [row for row in result["candidates"] if not row["listed"]]
-    assert len(missing) == 4
+    assert len(missing) == 6
     assert all(row["price_record"] is None and row["estimates"] == [] for row in missing)
     assert "no account" in result["scope"].lower()
 

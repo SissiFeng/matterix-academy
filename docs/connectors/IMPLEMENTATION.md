@@ -27,6 +27,25 @@ This is not advertised as a SiLA whole-workflow command. Unsupported instruments
 firmware, labware, actions and unqualified profiles fail closed. No raw motor
 coordinates or arbitrary user code are accepted from the browser.
 
+## Offline mock SiLA2 connector
+
+Learners can run a saved Studio workflow without an instrument, companion, GPU or
+network. **Connect an instrument → Try an offline connector** uses an in-process
+adapter (`academy/mock_connector.py`, `/api/connector-mock`). Its runs are
+owner-scoped and versioned, like other session mutations. Results are labelled
+synthetic and never feed native, hardware or receipt gates.
+
+Connector developers can run the same model behind actual SiLA2 on loopback:
+
+```bash
+cd ops/mock-sila && uv run academy-mock-sila --port 50052
+```
+
+It exposes `SiLAService`, a `SimulationController` that refuses Real Mode, and
+`MockWorkflowRunner.RunWorkflow` (Studio experiment JSON in, synthetic result
+JSON out). It has no TLS, binds only to loopback and has no discovery or cloud
+connection. `uv run pytest` in that directory exercises it over gRPC.
+
 ## Implementation ownership
 
 - Backend: connection records, atomic single-use pairing, dedicated machine token,

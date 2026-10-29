@@ -24,10 +24,18 @@ def event(email="learner@utoronto.ca", trigger="PreSignUp_SignUp"):
 
 @pytest.fixture(autouse=True)
 def allowed_domains(monkeypatch):
-    monkeypatch.setenv("SELF_SIGNUP_EMAIL_DOMAINS", '["utoronto.ca"]')
+    monkeypatch.setenv("SELF_SIGNUP_EMAIL_DOMAINS", '["utoronto.ca", "mail.utoronto.ca"]')
 
 
-@pytest.mark.parametrize("email", ["learner@utoronto.ca", "Learner+course@UTORONTO.CA"])
+@pytest.mark.parametrize(
+    "email",
+    [
+        "learner@utoronto.ca",
+        "Learner+course@UTORONTO.CA",
+        "student@mail.utoronto.ca",
+        "Student@MAIL.UTORONTO.CA",
+    ],
+)
 def test_eligible_learners_still_require_email_confirmation(email):
     result = signup.handler(event(email), None)
     assert result["response"] == {
@@ -42,7 +50,9 @@ def test_eligible_learners_still_require_email_confirmation(email):
     "email",
     [
         "learner@gmail.com",
-        "learner@mail.utoronto.ca",
+        "learner@sub.mail.utoronto.ca",
+        "learner@mail.utoronto.ca.evil.example",
+        "learner@notmail.utoronto.ca",
         "learner@utoronto.ca.evil.example",
         "learner@notutoronto.ca",
         "learner@utоronto.ca",  # Cyrillic o
@@ -73,7 +83,7 @@ def test_absent_policy_and_email_fail_closed(monkeypatch):
     monkeypatch.delenv("SELF_SIGNUP_EMAIL_DOMAINS")
     with pytest.raises(ValueError):
         signup.handler(event(), None)
-    monkeypatch.setenv("SELF_SIGNUP_EMAIL_DOMAINS", '["utoronto.ca"]')
+    monkeypatch.setenv("SELF_SIGNUP_EMAIL_DOMAINS", '["utoronto.ca", "mail.utoronto.ca"]')
     request = event()
     del request["request"]["userAttributes"]["email"]
     with pytest.raises(ValueError):

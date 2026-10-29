@@ -168,6 +168,7 @@ resource "aws_lambda_function" "api" {
       ACADEMY_CONNECTOR_BUCKET          = var.connector_artifact_bucket
       ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
       ACADEMY_MEDIA_PREFIX              = local.media_prefix
+      ACADEMY_GPU_REGION                = local.gpu_region
       ACADEMY_GPU_INSTANCE_ID           = var.gpu_instance_id
       ACADEMY_GPU_WORKER_ID             = var.gpu_worker_id
       ACADEMY_GPU_START_DOCUMENT        = var.gpu_instance_id != "" ? aws_ssm_document.gpu_start[0].name : ""
