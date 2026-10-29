@@ -14,6 +14,7 @@ from .connector_catalog import approved_release
 from .connector_catalog import router as catalog_router
 from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
+from .gpu_lifecycle import configured as configured_gpu
 from .learning import present, readiness
 from .media import MediaService, ViewerRequest
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
@@ -42,7 +43,11 @@ def create_app(settings: Settings | None = None, store=None):
         if settings.runtime == "aws"
         else SQLiteStore(settings.data_path)
     )
-    app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
+    app.state.runs = RunService(
+        app.state.store,
+        enabled=settings.remote_enabled,
+        gpu=configured_gpu(app.state.store) if settings.runtime == "aws" else None,
+    )
     app.state.onboarding = OnboardingService(app.state.store)
     app.state.connections = ConnectionService(
         app.state.store, enabled=settings.connector_real_enabled, approved_release=approved_release
@@ -286,7 +291,11 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.post("/api/runs", status_code=201)
     def submit_run(data: SubmitRun, owner: str = Depends(identify)):
-        return app.state.runs.submit(owner, data)
+        result = app.state.runs.submit(owner, data)
+        if app.state.runs.gpu and result["status"] == "queued":
+            app.state.runs.gpu.reconcile()
+            result = app.state.runs.get(owner, result["run_id"])
+        return result
 
     @app.get("/api/runs/{run_id}")
     def read_run(run_id: UUID, owner: str = Depends(identify)):

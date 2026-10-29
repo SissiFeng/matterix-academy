@@ -110,8 +110,8 @@ resource "aws_cognito_user_pool_client" "web" {
   logout_urls                          = ["https://${aws_cloudfront_distribution.web.domain_name}"]
   prevent_user_existence_errors        = "ENABLED"
   enable_token_revocation              = true
-  access_token_validity                = 15
-  id_token_validity                    = 15
+  access_token_validity                = 60
+  id_token_validity                    = 60
   refresh_token_validity               = 1
   token_validity_units {
     access_token  = "minutes"
@@ -168,6 +168,9 @@ resource "aws_lambda_function" "api" {
       ACADEMY_CONNECTOR_BUCKET          = var.connector_artifact_bucket
       ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
       ACADEMY_MEDIA_PREFIX              = local.media_prefix
+      ACADEMY_GPU_INSTANCE_ID           = var.gpu_instance_id
+      ACADEMY_GPU_WORKER_ID             = var.gpu_worker_id
+      ACADEMY_GPU_START_DOCUMENT        = var.gpu_instance_id != "" ? aws_ssm_document.gpu_start[0].name : ""
 
     }
   }

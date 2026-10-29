@@ -19,7 +19,8 @@ type Grant = {
 export type ViewportRun = Pick<
   SimulationRun,
   "run_id" | "session_id" | "plan_hash" | "status"
->;
+> &
+  Pick<SimulationRun, "gpu">;
 
 export default function IsaacViewport({
   run,
@@ -39,6 +40,7 @@ export default function IsaacViewport({
   const planHash = run?.plan_hash;
   const ended = !!run && terminalRuns.has(run.status);
   const started = !!run && !["queued", "claimed"].includes(run.status);
+  const waitingMessage = !started && !ended ? run?.gpu?.message : undefined;
   useEffect(() => {
     setConnected(false);
     if (!runId || !sessionId || !planHash || !started || ended) {
@@ -46,7 +48,7 @@ export default function IsaacViewport({
         ended
           ? "Live view ended"
           : runId
-            ? "Waiting for Isaac"
+            ? (waitingMessage ?? "Waiting for Isaac")
             : "Waiting for a run",
       );
       return;
@@ -259,7 +261,7 @@ export default function IsaacViewport({
       abort.abort();
       close();
     };
-  }, [runId, sessionId, planHash, started, ended, attempt]);
+  }, [runId, sessionId, planHash, started, ended, attempt, waitingMessage]);
 
   return (
     <section className={s.viewport} aria-label="Isaac live viewport">

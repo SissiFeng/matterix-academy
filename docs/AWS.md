@@ -111,7 +111,7 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 - DynamoDB stores profiles and experiments durably. A Lambda restart does not lose teaching state. Monitor Lambda errors/throttles, API Gateway errors, DynamoDB throttling and budget alarms before inviting a cohort.
 - AC dev operational error/throttle alarms now use a confirmed SNS email destination. Controlled alarm and recovery emails were observed on 2026-10-23. The user canceled the additional US$400 account budget; keep Academy budget creation disabled and preserve the organization's existing budget. Application-scoped budgets require verified payer-side activation of the cost allocation tag.
 - Session data is keyed by Cognito subject; never reuse a user identity for multiple students. The first release has no teacher administration UI or cross-user data access.
-- Source maps and tokens are not published in diagnostics. Browser tokens are short-lived and stored in session storage; users sign in again after expiration.
+- Source maps and tokens are not published in diagnostics. Browser access/ID tokens last 60 minutes and are stored in session storage; users sign in again after expiration. Tokens issued before the configuration change retain their old expiration.
 - Retain a known-good application commit. For application rollback, rebuild that reviewed commit and publish its Lambda artifact and `index.html`; hashed assets from previous deployments are retained. Infrastructure changes require a separate reviewed Terraform plan.
 - Use DynamoDB point-in-time recovery for data incidents, restoring into a separate table and inspecting it before switching the application. Do not destroy/recreate a user pool to fix login.
 - Infrastructure teardown is intentionally guarded by table/user-pool deletion protection and a non-empty, versioned S3 bucket. Archive required learner records first and explicitly review removal outside the application release process.
@@ -124,6 +124,10 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 Primary references: [Cognito PKCE authorization](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html), [API Gateway JWT validation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html), [DynamoDB concurrency](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BestPractices_OptimisticLocking.html), [Isaac Sim streaming](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/manual_livestream_clients.html).
 
 ## Prepared single EC2 GPU pilot (not deployed)
+
+The existing pilot can be configured for [on-demand wakeup](DT-WAKEUP.md) using
+`gpu_instance_id` and `gpu_worker_id`. This adds power management only; native
+qualification and user execution authority remain independently enforced.
 
 The [AC GPU blueprint audit](AC-GPU-BLUEPRINT.md) confirms that AC's shared modules
 support ECS on EC2 GPU inputs. Those inputs do not apply to this serverless root.

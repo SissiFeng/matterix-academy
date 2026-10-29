@@ -30,6 +30,7 @@ export type MixingState = {
   native_action: string;
 };
 export type SimulationRun = {
+  gpu?: GpuStatus | null;
   run_id: string;
   session_id: string;
   version: number;
@@ -39,7 +40,7 @@ export type SimulationRun = {
   total_steps: number;
   stale_seconds: number;
   reason?: string;
-  cleanup: { reset_verified: boolean } | null;
+  cleanup: { reset_verified: boolean; never_started?: boolean } | null;
   snapshot: {
     session_id: string;
     run_id: string;
@@ -71,6 +72,13 @@ export type SimulationRun = {
       } | null;
     } | null;
   } | null;
+};
+export type GpuStatus = {
+  state: string;
+  message: string;
+  idle_seconds: number;
+  retry_at: number | null;
+  updated_at: number | null;
 };
 export const terminalRuns = new Set([
   "completed",
