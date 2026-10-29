@@ -57,3 +57,11 @@ def client(app):
     with TestClient(app) as client:
         assert client.post("/api/auth/guest", json={"name": "Ada"}).status_code == 200
         yield client
+
+
+@pytest.fixture
+def lab(store, tmp_path):
+    """Lab Onboarding APIs, a qualified simulation worker and a Flex gateway (all fakes)."""
+    from tests.sim2real_support import build_lab
+
+    return build_lab(store, tmp_path)

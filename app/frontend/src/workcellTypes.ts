@@ -45,7 +45,7 @@ export const connections: Record<string, { name: string; detail: string }> = {
 export type DeviceDraft = {
   name: string;
   workcell: string;
-  model: "opentrons_flex";
+  model: "opentrons_flex" | "opentrons_ot2";
   connection: string;
   capabilities: string[];
   stage: number;
@@ -64,9 +64,10 @@ export type Device = DeviceDraft & {
   twin_session_id: string | null;
   session: Session | null;
   checks: ReadinessCheck[];
-  physical_ready: false;
+  physical_ready: boolean;
   physical_state: null;
-  evidence: "synthetic" | "declaration_only";
+  instrument_id: string | null;
+  evidence: "physical" | "synthetic" | "declaration_only";
 };
 export function draftOf(device?: Device): DeviceDraft {
   return device

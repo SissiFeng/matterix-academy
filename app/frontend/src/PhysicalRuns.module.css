@@ -1,0 +1,200 @@
+.panel {
+  background: var(--surface);
+  border: var(--hairline) solid var(--line);
+  border-radius: 7px;
+  padding: 25px;
+  margin: 22px 0;
+  min-width: 0;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.primary,
+.secondary,
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border-radius: 5px;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.primary {
+  background: var(--green);
+  color: var(--on-brand);
+  border: 1px solid var(--green);
+}
+.primary:hover:not(:disabled) {
+  background: var(--brand-strong);
+}
+.secondary,
+.icon {
+  background: var(--surface);
+  border: var(--hairline) solid var(--line);
+}
+.icon {
+  width: 40px;
+  padding: 0;
+}
+.secondary:hover:not(:disabled),
+.icon:hover:not(:disabled) {
+  background: var(--soft);
+}
+.alert {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 5px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 12px;
+}
+.gateway {
+  border-left: 3px solid var(--line-emph);
+  padding: 10px 14px;
+  margin: 14px 0;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+.gateway[data-state="online"] {
+  border-left-color: var(--ok);
+}
+.gateway[data-state="held"] {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.inline input,
+.approval input:not([type]) {
+  flex: 1 1 220px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: var(--hairline) solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-1);
+  color: var(--ink);
+}
+.inline small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin: 16px 0 4px;
+}
+.modes legend {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.modes label {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: var(--hairline) solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.modes label[data-selected="true"] {
+  border-color: var(--green);
+  background: var(--brand-soft);
+}
+.modes span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.empty,
+.footnote {
+  color: var(--muted);
+  font-size: 12px;
+}
+.run {
+  border-top: var(--hairline) solid var(--line);
+  padding: 16px 0 6px;
+}
+.run header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.run header div {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+.run header span,
+.run header small {
+  color: var(--muted);
+}
+.run[data-status="outcome_unknown"] header strong,
+.run[data-status="failed"] header strong,
+.run[data-status="diverged"] header strong {
+  color: var(--danger);
+}
+.approval {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: 6px;
+  background: var(--warn-soft);
+  font-size: 12px;
+}
+.approval label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.scroll {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+.scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.scroll th,
+.scroll td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px;
+  border-bottom: var(--hairline) solid var(--line);
+}
+.scroll th small {
+  display: block;
+  color: var(--muted);
+}
+.scroll td strong,
+.scroll td span,
+.scroll td small {
+  display: block;
+}
+.scroll td span,
+.scroll td small {
+  color: var(--muted);
+}
+.scroll td[data-state="failed"],
+.scroll td[data-state="unknown"],
+.scroll td[data-state="held"] {
+  color: var(--danger);
+}

@@ -14,6 +14,7 @@ import {
   Unplug,
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
+import PhysicalRuns from "./PhysicalRuns";
 import type { Session } from "./types";
 import {
   capabilityLabels,
@@ -909,9 +910,22 @@ export default function Workcell({
                           </label>
                           <label>
                             Device model
-                            <select value={draft.model} disabled>
+                            <select
+                              value={draft.model}
+                              disabled={
+                                busy || Boolean(selected?.instrument_id)
+                              }
+                              onChange={(e) =>
+                                patch({
+                                  model: e.target.value as DeviceDraft["model"],
+                                })
+                              }
+                            >
                               <option value="opentrons_flex">
                                 Opentrons Flex · teaching template available
+                              </option>
+                              <option value="opentrons_ot2">
+                                Opentrons OT-2 · instrument evidence only
                               </option>
                             </select>
                           </label>
@@ -1005,7 +1019,14 @@ export default function Workcell({
                           </fieldset>
                         </>
                       )}
-                      {step === 3 && (
+                      {step === 3 && draft.model === "opentrons_ot2" && (
+                        <p>
+                          The teaching lessons model the Flex only. An OT-2
+                          gathers its evidence from a linked instrument and its
+                          registered home/readback workflow instead.
+                        </p>
+                      )}
+                      {step === 3 && draft.model !== "opentrons_ot2" && (
                         <>
                           <p>
                             Pair this record with a saved Flex serial-dilution
@@ -1061,7 +1082,9 @@ export default function Workcell({
                               (step === 2 && !draft.capabilities.length)
                             }
                             onClick={() =>
-                              step === 3 && selected?.twin_session_id
+                              step === 3 &&
+                              (selected?.twin_session_id ||
+                                draft.model === "opentrons_ot2")
                                 ? setStep(4)
                                 : void mutate(step === 3)
                             }
@@ -1242,13 +1265,23 @@ export default function Workcell({
                 <>
                   <section className={s.readinessHero}>
                     <div>
-                      <h2>Physical readiness is unverified.</h2>
+                      <h2>
+                        {selected.physical_ready
+                          ? "Physical evidence is complete."
+                          : "Physical readiness is unverified."}
+                      </h2>
                       <p>
                         Passing a teaching trial does not clear these checks.
                       </p>
                     </div>
                     <div className={s.readinessCount}>
-                      <strong>{missingPhysical.length}</strong>
+                      <strong>
+                        {
+                          missingPhysical.filter(
+                            (check) => check.status !== "passed",
+                          ).length
+                        }
+                      </strong>
                       <span>evidence gaps</span>
                     </div>
                   </section>
@@ -1266,10 +1299,15 @@ export default function Workcell({
                   <section className={s.panel}>
                     <div className={s.sectionHeading}>
                       <h2>Physical qualification</h2>
-                      <span className={s.tag}>Not connected</span>
+                      <span className={s.tag}>
+                        {selected.instrument_id
+                          ? `Linked · ${selected.instrument_id}`
+                          : "Not connected"}
+                      </span>
                     </div>
                     <Checks checks={missingPhysical} />
                   </section>
+                  <PhysicalRuns device={selected} />
                   <div className={s.execution}>
                     <div className={s.actions}>
                       {selected.session ? (
@@ -1287,18 +1325,20 @@ export default function Workcell({
                           Create a teaching twin <ArrowRight size={16} />
                         </button>
                       )}
-                      <button
-                        className={s.secondary}
-                        disabled
-                        aria-describedby="physical-reason"
-                      >
-                        Execute on real lab
-                      </button>
+                      {!selected.instrument_id && (
+                        <button
+                          className={s.secondary}
+                          disabled
+                          aria-describedby="physical-reason"
+                        >
+                          Execute on real lab
+                        </button>
+                      )}
                     </div>
                     <p id="physical-reason">
-                      Physical execution requires a separately qualified
-                      connection and operator authorization. It is not available
-                      here.
+                      {selected.instrument_id
+                        ? "Physical execution runs only the instrument's registered workflow, through its qualified gateway, after an operator approves and confirms the physical site."
+                        : "Physical execution requires a linked, qualified instrument and operator authorization. It is not available for this declaration yet."}
                     </p>
                   </div>
                 </>

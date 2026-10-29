@@ -466,6 +466,10 @@ class RunService:
         power_writes = self.gpu.claim_writes() if managed else []
         if power_writes is None:
             return None
+        target = self.store.get("system#targets", f"sim:{worker_id}")
+        if target and target.get("reservation"):
+            # Reserved by a sim-to-real run; never interleave a learner run on that runtime.
+            return None
         for candidate in self.store.partition(QUEUE):
             run = self.raw(candidate["run_id"])
             if self.clock() - run["created_at"] >= 3600:

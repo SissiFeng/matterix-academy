@@ -139,6 +139,11 @@ resource "aws_lambda_function" "api" {
   # Terraform bootstraps code; the tested GitHub release owns later code updates.
   lifecycle {
     ignore_changes = [filename, source_code_hash]
+    # Cross-variable rule; variable validation can reference other variables only from Terraform 1.9.
+    precondition {
+      condition     = !var.real_execution_enabled || var.pairing_enabled
+      error_message = "real_execution_enabled requires pairing_enabled."
+    }
     precondition {
       condition     = !var.connector_real_execution_enabled || var.connector_companion_enabled
       error_message = "Physical execution requires the dedicated companion API."
@@ -168,6 +173,9 @@ resource "aws_lambda_function" "api" {
       ACADEMY_CONNECTOR_BUCKET          = var.connector_artifact_bucket
       ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
       ACADEMY_MEDIA_PREFIX              = local.media_prefix
+      ACADEMY_PAIRING_ENABLED           = tostring(var.pairing_enabled)
+      ACADEMY_REAL_ENABLED              = tostring(var.real_execution_enabled)
+      ACADEMY_OPERATOR_GROUP            = var.operator_group
       ACADEMY_GPU_REGION                = local.gpu_region
       ACADEMY_GPU_INSTANCE_ID           = var.gpu_instance_id
       ACADEMY_GPU_WORKER_ID             = var.gpu_worker_id

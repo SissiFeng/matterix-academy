@@ -8,3 +8,4 @@ output "records_table" { value = aws_dynamodb_table.records.name }
 output "worker_lambda_functions" { value = [for item in aws_lambda_function.worker : item.function_name] }
 output "remote_execution_enabled" { value = var.remote_execution_enabled }
 output "github_role_arn" { value = try(aws_iam_role.github_deploy[0].arn, null) }
+output "sim2real_lambda_functions" { value = [for item in aws_lambda_function.sim2real_authorizer : item.function_name] }

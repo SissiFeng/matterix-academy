@@ -171,3 +171,31 @@ def test_native_gate_must_match_declared_state(release, monkeypatch, declared, a
         with pytest.raises(ValueError, match="NATIVE_EXECUTION_EXPECTED"):
             release.publish()
         assert session.functions.updated == []
+
+
+def test_physical_gate_must_match_its_declared_state(release, monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setenv("SIM2REAL_LAMBDA_FUNCTIONS", '["gateway-authorizer"]')
+
+    class RealGateLambda(FakeLambda):
+        def get_function_configuration(self, FunctionName):
+            return {
+                "Environment": {
+                    "Variables": {"ACADEMY_REMOTE_ENABLED": "false", "ACADEMY_REAL_ENABLED": "true"}
+                }
+            }
+
+    session = FakeSession("false")
+    session.functions = RealGateLambda("false")
+    monkeypatch.setattr(release.boto3, "Session", lambda **kw: session)
+    with pytest.raises(ValueError, match="Physical execution gate"):
+        release.publish()
+    assert session.functions.updated == []
+
+
+def test_sim2real_functions_must_be_distinct(release, monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setenv("SIM2REAL_LAMBDA_FUNCTIONS", '["academy"]')
+    monkeypatch.setattr(release.boto3, "Session", lambda **kw: pytest.fail("AWS was accessed"))
+    with pytest.raises(ValueError):
+        release.publish()
