@@ -15,3 +15,7 @@ github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@139333201
 # gpu_instance_id = "i-0123456789abcdef0"
 # gpu_worker_id   = "ec2-flex-pilot-1"
 # monthly_budget_usd = 100
+# Optional photo-to-twin (GPT-6 Astra). Enable model access in the region and store the
+# Bedrock API key in an existing ca-central-1 secret first; Terraform never sees the key.
+# twin_region             = "us-east-1"
+# twin_api_key_secret_arn = "arn:aws:secretsmanager:ca-central-1:247893369214:secret:matterix-academy/dev/bedrock-twin-key-AbCdEf"

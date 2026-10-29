@@ -16,7 +16,9 @@ from typing import Literal
 from uuid import UUID, uuid4
 from xml.sax.saxutils import escape
 
+import boto3
 import httpx
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 from pydantic import Field, ValidationError, model_validator
 
@@ -317,10 +319,36 @@ class BedrockTwins:
 
     def __init__(self, settings):
         self.settings = settings
+        self._key = settings.twin_api_key
 
     @property
     def available(self):
-        return bool(self.settings.twin_region and self.settings.twin_api_key)
+        return bool(
+            self.settings.twin_region
+            and (self.settings.twin_api_key or self.settings.twin_api_key_secret)
+        )
+
+    def api_key(self):
+        """Read the Bedrock API key from Secrets Manager once per Lambda container."""
+        if self._key:
+            return self._key
+        arn = self.settings.twin_api_key_secret
+        try:
+            value = (
+                boto3.client("secretsmanager", region_name=arn.split(":")[3])
+                .get_secret_value(SecretId=arn)["SecretString"]
+                .strip()
+            )
+        except (BotoCoreError, ClientError, KeyError) as exc:
+            raise HTTPException(
+                503, "Astra image generation is temporarily unavailable. Use a USD template."
+            ) from exc
+        if not value:
+            raise HTTPException(
+                503, "Astra image generation is temporarily unavailable. Use a USD template."
+            )
+        self._key = value
+        return value
 
     def request(self, method, path, **kwargs):
         if not self.available:
@@ -333,7 +361,7 @@ class BedrockTwins:
             response = httpx.request(
                 method,
                 f"https://bedrock-mantle.{self.settings.twin_region}.api.aws/openai/v1/{path}",
-                headers={"Authorization": f"Bearer {self.settings.twin_api_key}"},
+                headers={"Authorization": f"Bearer {self.api_key()}"},
                 timeout=httpx.Timeout(8, connect=3),
                 **kwargs,
             )
@@ -822,6 +850,9 @@ class SimpleTwinService:
             }
             if not 12 <= len(raw) <= 1_000_000 or not signatures[data.mime]:
                 raise HTTPException(422, "Upload a PNG, JPEG or WebP image up to 1 MB")
+            if hasattr(self.provider, "api_key"):
+                # Fail before claiming: an unreadable key means nothing was submitted.
+                self.provider.api_key()
         twin = {
             "id": str(data.id),
             "status": "starting" if data.image else "draft",

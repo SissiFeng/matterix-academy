@@ -9,65 +9,69 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
   await page.getByPlaceholder("Your first name").fill("Ada");
   await page.getByRole("button", { name: "Enter the learning lab" }).click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "This is my first time" }).click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
-  await page.getByRole("button", { name: "Meet the instruments" }).click();
+  await page
+    .getByRole("button", { name: "Meet the instruments", exact: true })
+    .click();
+  // The twin builder sits below the Flex/OT-2 introductions on the same page.
+  await expect(page.getByTestId("instrument-stories")).toBeVisible();
+  const studio = page.getByRole("region", {
+    name: "Photograph an instrument. Run it as a twin.",
+  });
+  await expect(studio).toBeVisible();
   await expect(
-    page.getByRole("heading", {
-      name: "Photograph an instrument. Run it as a twin.",
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Astra is not configured on this server."),
+    studio.getByText("Astra is not configured on this server."),
   ).toBeVisible();
 
   for (const name of ["Heating station", "Plate reader", "Transfer robot"]) {
-    await page.getByRole("button", { name }).click();
+    await studio.getByRole("button", { name }).click();
   }
-  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  const confirm = studio.getByRole("button", { name: "Confirm twin" });
   await expect(confirm).toHaveCount(3);
   for (let i = 3; i > 0; i--) {
     await confirm.first().click();
     await expect(confirm).toHaveCount(i - 1);
   }
   await page.reload();
-  await expect(page.getByText("Confirmed")).toHaveCount(3);
+  await expect(studio.getByText("Confirmed")).toHaveCount(3);
 
-  await page.getByRole("tab", { name: "2 · Workflow" }).click();
-  const add = page.getByRole("button", { name: "Add step" });
+  await studio.getByRole("tab", { name: "2 · Workflow" }).click();
+  const add = studio.getByRole("button", { name: "Add step" });
   await add.click();
   await add.click();
-  await page.getByLabel("Step 2 operation").selectOption("heat");
-  await page.getByLabel("Step 2 temperature").fill("42");
+  await studio.getByLabel("Step 2 operation").selectOption("heat");
+  await studio.getByLabel("Step 2 temperature").fill("42");
   await add.click();
-  await page
+  await studio
     .getByLabel("Step 3 instrument")
     .selectOption({ label: "Sample transfer robot" });
-  await expect(page.getByLabel("Step 3 to")).toHaveValue(/.+/);
+  await expect(studio.getByLabel("Step 3 to")).toHaveValue(/.+/);
   await add.click();
-  await page
+  await studio
     .getByLabel("Step 4 instrument")
     .selectOption({ label: "Plate reader" });
-  await page.getByLabel("Step 4 operation").selectOption("read");
+  await studio.getByLabel("Step 4 operation").selectOption("read");
   // The heater's deep-well plate holds 500 µL; the reader's plate does not.
-  await page.getByLabel("Step 1 volume").fill("500");
-  await page.getByRole("button", { name: "Save workflow" }).click();
-  await expect(page.getByRole("alert")).toContainText(
+  await studio.getByLabel("Step 1 volume").fill("500");
+  await studio.getByRole("button", { name: "Save workflow" }).click();
+  await expect(studio.getByRole("alert")).toContainText(
     "500 µL exceeds Plate reader's 300 µL limit",
   );
-  await page.getByLabel("Step 1 volume").fill("150");
-  await page.getByRole("button", { name: "Save workflow" }).click();
-  await page.getByRole("button", { name: "Run on mock connectors" }).click();
+  await studio.getByLabel("Step 1 volume").fill("150");
+  await studio.getByRole("button", { name: "Save workflow" }).click();
+  await studio.getByRole("button", { name: "Run on mock connectors" }).click();
   await expect(
-    page.getByText("4. Plate reader · Read → 150 µL, 42 °C, not mixed"),
+    studio.getByText("4. Plate reader · Read → 150 µL, 42 °C, not mixed"),
   ).toBeVisible();
   await expect(
-    page.getByText("Synthetic · mock SiLA 2 connectors"),
+    studio.getByText("Synthetic · mock SiLA 2 connectors"),
   ).toBeVisible();
 
   // Detail is added only against a recorded failure residual.
-  await page.getByRole("tab", { name: "1 · Instruments" }).click();
-  const reader = page.locator("article", { hasText: "Plate reader" });
+  await studio.getByRole("tab", { name: "1 · Instruments" }).click();
+  const reader = studio.locator("article", { hasText: "Plate reader" });
   const addConsumable = reader.getByRole("button", { name: "Add consumable" });
   await expect(addConsumable).toBeDisabled();
   await reader
@@ -89,22 +93,22 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
     reader.getByText("Academy USD template · revision 2"),
   ).toBeVisible();
 
-  await page.getByRole("tab", { name: "3 · Connectors" }).click();
+  await studio.getByRole("tab", { name: "3 · Connectors" }).click();
   await expect(
-    page.getByRole("radio", { name: /Real device/ }).first(),
+    studio.getByRole("radio", { name: /Real device/ }).first(),
   ).toBeDisabled();
-  await page
+  await studio
     .getByRole("button", { name: "View mock connector" })
     .first()
     .click();
   await expect(
-    page.getByText("HeatingStationMock.sila.xml", { exact: true }),
+    studio.getByText("HeatingStationMock.sila.xml", { exact: true }),
   ).toBeVisible();
-  await expect(page.locator("pre").first()).toContainText(
+  await expect(studio.locator("pre").first()).toContainText(
     "<Identifier>Heat</Identifier>",
   );
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("tab", { name: "2 · Workflow" }).click();
+  await studio.getByRole("tab", { name: "2 · Workflow" }).click();
   await expect
     .poll(() =>
       page.evaluate(
