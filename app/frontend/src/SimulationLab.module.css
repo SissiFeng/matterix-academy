@@ -10,12 +10,6 @@
   align-items: flex-end;
   margin-bottom: 28px;
 }
-.eyebrow {
-  color: var(--green);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-}
 .heading h1 {
   font-size: clamp(28px, 2.8vw, 40px);
   letter-spacing: -1.4px;

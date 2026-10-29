@@ -13,8 +13,10 @@ from botocore.auth import SigV4QueryAuth
 from botocore.awsrequest import AWSRequest
 from botocore.exceptions import ClientError
 from fastapi import HTTPException
+from pydantic import Field
 
 from .models import StrictModel
+from .native_studio import STUDIO
 from .runs import TERMINAL, RunService, revised
 from .store import Conflict, Write
 
@@ -26,6 +28,7 @@ VIEWER_SECONDS = 35
 class ViewerRequest(StrictModel):
     client_id: UUID
     frame_received: bool = False
+    frames_decoded: int = Field(default=0, ge=0, le=10000000)
 
 
 class KinesisTransport:
@@ -115,10 +118,19 @@ class MediaService:
         return self.transport
 
     def active(self, run):
-        if not self.runs.enabled or not run.get("binding") or run["status"] in TERMINAL:
+        worker = self.store.get("system#workers", run.get("worker_id", ""))
+        if (
+            not worker
+            or not self.runs.execution_allowed(worker, run)
+            or not run.get("binding")
+            or run["status"] in TERMINAL
+        ):
             raise HTTPException(409, "This run has no active viewport")
         self.runs.owned(run["worker_id"], run["run_id"], run["claim_token"])
-        if run["plan"]["course_id"] != "flex-mixing":
+        studio = (
+            run["plan"]["course_id"] == STUDIO and self.runs.studio_run_issues(worker, run) == []
+        )
+        if run["plan"]["course_id"] != "flex-mixing" and not studio:
             raise HTTPException(409, "This scene has no qualified viewport")
 
     def publisher(self, worker_id, run_id, claim_token):
@@ -156,7 +168,9 @@ class MediaService:
             "plan_hash": run["plan_hash"],
         }
 
-    def viewer(self, owner, run_id, client_id, *, connect=True, frame_received=False):
+    def viewer(
+        self, owner, run_id, client_id, *, connect=True, frame_received=False, frames_decoded=0
+    ):
         self.runs.get(owner, run_id)  # 404 before any media information is returned.
         run = self.runs.raw(run_id)
         self.active(run)
@@ -178,6 +192,21 @@ class MediaService:
             expires=min(self.runs.clock() + VIEWER_SECONDS, run["lease_expires"], run["deadline"]),
         )
         self.store.put(VIEWERS, key, next_viewer, old["version"] if old else None)
+        if run.get("commissioning_id") and frame_received and frames_decoded > 0:
+            # Persist separately: the ordinary media reaper may remove viewer grants.
+            proof = self.store.get("system#browser-evidence", key)
+            proof_record = {
+                "version": (proof["version"] if proof else 0) + 1,
+                "run_id": key,
+                "native_session_id": run["binding"]["native_session_id"],
+                "plan_hash": run["plan_hash"],
+                "source": "browser-report",
+                "frames_decoded": max(frames_decoded, (proof or {}).get("frames_decoded", 0)),
+                "observed_at": self.runs.clock(),
+            }
+            self.store.put(
+                "system#browser-evidence", key, proof_record, proof["version"] if proof else None
+            )
         binding = dict(
             run_id=key,
             session_id=run["session_id"],

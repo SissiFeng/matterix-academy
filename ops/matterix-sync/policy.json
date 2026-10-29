@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "repositories": {
+    "engine": { "repository": "ac-rad/Matterix-Internal", "ref": "main" },
+    "assets": { "repository": "ac-rad/Matterix_assets_internal", "ref": "main" }
+  },
+  "limits": {
+    "max_tree_entries": 20000,
+    "max_source_files": 1000,
+    "max_source_bytes": 20000000,
+    "max_changed_files": 10000
+  },
+  "required_paths": {
+    "engine": [
+      "source/matterix_tasks/matterix_tasks/test_dev_tasks/matterix_flex_mixing.py",
+      "source/matterix_sm/matterix_sm/compositional_actions/flex_mixing.py",
+      "source/matterix/matterix/managers/semantics/primitive_semantics/flex/mixing.py",
+      "source/matterix_assets/matterix_assets/labware/flex_mixing.py"
+    ],
+    "assets": [
+      "robots/flex/Opentrons Flex_gripper_final.usd",
+      "labware/flex_mixing/trash_collision.usda",
+      "labware/flex_mixing/mix_plate.usda",
+      "labware/flex_mixing/vial_rack.usda",
+      "labware/flex_mixing/vial_lid.usda",
+      "labware/flex_mixing/lid_staging.usda",
+      "labware/flex_mixing/reservoir.usda",
+      "labware/flex_mixing/rack_50.usda",
+      "labware/flex_mixing/rack_1000.usda",
+      "labware/flex_mixing/tip_50.usda",
+      "labware/flex_mixing/tip_1000.usda"
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "tasks-and-workflows",
+      "label": "Tasks and workflow recipes",
+      "repository": "engine",
+      "prefixes": ["source/matterix_tasks/"],
+      "academy_paths": ["app/backend/academy/recipes.py", "app/backend/academy/native_isaac.py", "app/frontend/src/SimulationLab.tsx"],
+      "required_gates": ["adapter-and-versioned-recipe-review", "english-course-coverage", "native-workflow", "browser-video-refresh-reset-second-run"]
+    },
+    {
+      "id": "actions-and-semantics",
+      "label": "Actions, observations and semantics",
+      "repository": "engine",
+      "prefixes": ["source/matterix_sm/", "source/matterix/"],
+      "academy_paths": ["app/backend/academy/native_isaac.py", "app/backend/academy/native_plan.py", "app/backend/academy/commissioning.py"],
+      "required_gates": ["adapter-contract-tests", "native-workflow", "isolation-and-interruption-recovery"]
+    },
+    {
+      "id": "devices-and-assets",
+      "label": "Devices and asset configurations",
+      "repository": "engine",
+      "prefixes": ["source/matterix_assets/", ".gitmodules"],
+      "academy_paths": ["app/backend/academy/native_isaac.py", "app/backend/academy/runtime_inventory.py", "app/backend/academy/onboarding.py"],
+      "required_gates": ["independent-internal-assets-pairing", "scene-and-observations", "english-device-coverage"]
+    },
+    {
+      "id": "runtime-and-packaging",
+      "label": "Runtime and installation compatibility",
+      "repository": "engine",
+      "prefixes": ["docker/", "pyproject.toml", "requirements", "setup", "source/"],
+      "academy_paths": ["app/backend/academy/runtime_inventory.py", "ops/ec2-gpu/runtime-linux-x86_64.lock", "ops/ec2-gpu/agent-requirements.lock", "ops/ec2-gpu/image-manifest.example.json"],
+      "required_gates": ["runtime-lock-review", "immutable-image-build", "gpu-capacity-and-isolation", "cold-start"]
+    },
+    {
+      "id": "internal-asset-payloads",
+      "label": "Independent internal asset payloads",
+      "repository": "assets",
+      "prefixes": [""],
+      "academy_paths": ["app/backend/academy/runtime_inventory.py", "app/backend/academy/native_isaac.py", "ops/ec2-gpu/image-manifest.example.json"],
+      "required_gates": ["independent-internal-assets-pairing", "materialized-lfs-hashes", "scene-and-observations", "native-workflow"]
+    }
+  ]
+}

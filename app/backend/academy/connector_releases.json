@@ -1,0 +1,20 @@
+{
+  "schema": "academy.connector-catalog/1",
+  "reviewed_on": "2026-10-24",
+  "sources": {
+    "ot2": {
+      "commit": "87e87f413bd608dfa18c369f2bfdbe97a365509c",
+      "version": "0.5.0",
+      "reason": "Source candidate only: the upstream binary build passed but the Test workflow failed. Robot installation and rollback are not qualified.",
+      "evidence": "https://github.com/AccelerationConsortium/opentrons-ot2/actions/runs/38636176217"
+    },
+    "flex": {
+      "commit": "c4c766a1f860109eaf7d72ce04c714697e34c244",
+      "version": "0.9.1",
+      "reason": "Source candidate only: the available wheel bundle was built from an earlier commit. Exact-source build and robot qualification are required.",
+      "artifact_source_commit": "4d711a53330d27f79e3e2e3a308eb92cf21f0dfc",
+      "evidence": "https://github.com/AccelerationConsortium/opentrons-flex/actions/runs/38907334470"
+    }
+  },
+  "artifacts": []
+}

@@ -7,9 +7,15 @@ from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import sim2real_api
+from ._version import __version__
 from .auth import identify, local_signer
+from .connections import ConnectionService
+from .connector_api import router as connector_router
+from .connector_catalog import approved_release
+from .connector_catalog import router as catalog_router
 from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
+from .gpu_lifecycle import configured as configured_gpu
 from .learning import present, readiness
 from .media import MediaService, ViewerRequest
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
@@ -20,13 +26,15 @@ from .runs import RunControl, RunService, SubmitRun
 from .settings import Settings
 from .store import Conflict, DynamoStore, SQLiteStore
 from .teaching import InvalidTransition, control, execute_step, initial_state, new_session
+from .workflow_course import KEY as COURSE_KEY
+from .workflow_course import CourseCommand, initial, transition
 
 
 def create_app(settings: Settings | None = None, store=None):
     settings = settings or Settings.from_env()
     app = FastAPI(
         title="Lab Onboarding",
-        version="0.1.0",
+        version=__version__,
         docs_url="/api/docs" if settings.runtime == "local" else None,
         redoc_url=None,
         openapi_url="/api/openapi.json" if settings.runtime == "local" else None,
@@ -37,13 +45,22 @@ def create_app(settings: Settings | None = None, store=None):
         if settings.runtime == "aws"
         else SQLiteStore(settings.data_path)
     )
-    app.state.runs = RunService(app.state.store, enabled=settings.remote_enabled)
+    app.state.runs = RunService(
+        app.state.store,
+        enabled=settings.remote_enabled,
+        gpu=configured_gpu(app.state.store) if settings.runtime == "aws" else None,
+    )
     app.state.pairing = PairRunService(
         app.state.store,
         pairing_enabled=settings.pairing_enabled,
         real_enabled=settings.real_enabled,
     )
     app.state.onboarding = OnboardingService(app.state.store, pairing=app.state.pairing)
+    app.state.connections = ConnectionService(
+        app.state.store, enabled=settings.connector_real_enabled, approved_release=approved_release
+    )
+    app.include_router(connector_router)
+    app.include_router(catalog_router)
     app.state.media = MediaService(app.state.runs)
     if settings.runtime == "local":
         app.add_middleware(
@@ -82,7 +99,7 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": "0.1.0"}
+        return {"status": "ok", "version": __version__}
 
     @app.post("/api/runs/{run_id}/viewer")
     def viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):
@@ -91,7 +108,12 @@ def create_app(settings: Settings | None = None, store=None):
     @app.post("/api/runs/{run_id}/viewer/renew")
     def renew_viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):
         return app.state.media.viewer(
-            owner, run_id, data.client_id, connect=False, frame_received=data.frame_received
+            owner,
+            run_id,
+            data.client_id,
+            connect=False,
+            frame_received=data.frame_received,
+            frames_decoded=data.frames_decoded,
         )
 
     @app.get("/api/config")
@@ -179,6 +201,19 @@ def create_app(settings: Settings | None = None, store=None):
         app.state.store.put(owner, "discovery", notebook, data.expected_version or None)
         return notebook
 
+    @app.get("/api/workflow-course")
+    def workflow_course(owner: str = Depends(identify)):
+        return app.state.store.get(owner, COURSE_KEY) or initial()
+
+    @app.post("/api/workflow-course")
+    def workflow_course_command(data: CourseCommand, owner: str = Depends(identify)):
+        saved = app.state.store.get(owner, COURSE_KEY) or initial()
+        if saved["version"] != data.expected_version:
+            raise Conflict
+        result = transition(saved, data)
+        app.state.store.put(owner, COURSE_KEY, result, data.expected_version or None)
+        return result
+
     @app.get("/api/courses")
     def courses(owner: str = Depends(identify)):
         return COURSES
@@ -228,6 +263,30 @@ def create_app(settings: Settings | None = None, store=None):
             "missing_actions": missing,
         }
 
+    @app.get("/api/commissioning/report")
+    def commissioning_report(owner: str = Depends(identify)):
+        from .commissioning import KEY, PARTITION
+
+        grant = app.state.store.get(PARTITION, KEY)
+        if not grant or grant["request"]["subject"] != owner:
+            raise HTTPException(404, "Commissioning window not found")
+        return {
+            "grant_id": grant["request"]["grant_id"],
+            "expires": grant["expires"],
+            "worker_qualified": bool(
+                (app.state.store.get("system#workers", grant["request"]["worker_id"]) or {}).get(
+                    "qualified"
+                )
+            ),
+            "runs": [
+                {
+                    "run": app.state.runs.get(owner, run_id),
+                    "browser": app.state.store.get("system#browser-evidence", run_id),
+                }
+                for run_id in grant["run_ids"]
+            ],
+        }
+
     @app.get("/api/runs/status")
     def run_status(owner: str = Depends(identify)):
         return {
@@ -239,7 +298,11 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.post("/api/runs", status_code=201)
     def submit_run(data: SubmitRun, owner: str = Depends(identify)):
-        return app.state.runs.submit(owner, data)
+        result = app.state.runs.submit(owner, data)
+        if app.state.runs.gpu and result["status"] == "queued":
+            app.state.runs.gpu.reconcile()
+            result = app.state.runs.get(owner, result["run_id"])
+        return result
 
     @app.get("/api/runs/{run_id}")
     def read_run(run_id: UUID, owner: str = Depends(identify)):
@@ -253,6 +316,10 @@ def create_app(settings: Settings | None = None, store=None):
     def session_run(session_id: UUID, owner: str = Depends(identify)):
         return app.state.runs.for_session(owner, session_id)
 
+    @app.get("/api/sessions/{session_id}/native-preflight")
+    def native_preflight(session_id: UUID, owner: str = Depends(identify)):
+        return app.state.runs.studio_preflight(owner, str(session_id))
+
     @app.get("/api/sessions")
     def sessions(owner: str = Depends(identify)):
         return [
@@ -264,7 +331,7 @@ def create_app(settings: Settings | None = None, store=None):
     @app.get("/api/simulations")
     def simulations(owner: str = Depends(identify)):
         return {
-            "enabled": settings.remote_enabled,
+            **app.state.runs.availability(owner),
             "recipe": MixingPlan().model_dump(mode="json"),
             "sessions": [
                 session
@@ -324,6 +391,8 @@ def create_app(settings: Settings | None = None, store=None):
             raise InvalidTransition("Reset the experiment before editing it")
         if data.experiment.course_id != session["experiment"]["course_id"]:
             raise InvalidTransition("Create a new experiment to change courses")
+        if data.experiment.instrument != session["experiment"].get("instrument", "flex"):
+            raise InvalidTransition("Create a new experiment to change instruments")
         session["experiment"] = data.experiment.model_dump()
         session["state"] = initial_state(session["experiment"])
         if data.experiment.course_id == "flex-first-transfer":
@@ -362,9 +431,12 @@ def create_app(settings: Settings | None = None, store=None):
             try:
                 Experiment.model_validate(session["experiment"])
             except ValueError as exc:
-                raise InvalidTransition(
-                    "Review the deck: the Flex waste chute must be fixed at D3, then save the experiment"
-                ) from exc
+                message = (
+                    "Review the deck: the OT-2 fixed trash must be at position 12, then save the experiment"
+                    if session["experiment"].get("instrument", "flex") == "ot2"
+                    else "Review the deck: the Flex waste chute must be fixed at D3, then save the experiment"
+                )
+                raise InvalidTransition(message) from exc
             if (
                 session["experiment"]["course_id"] == "flex-first-transfer"
                 and not readiness(session)["ready"]

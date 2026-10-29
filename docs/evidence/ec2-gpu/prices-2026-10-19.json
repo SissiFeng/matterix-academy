@@ -1,0 +1,313 @@
+{
+  "retrieved_at": "2026-10-19T16:56:08.045062+00:00",
+  "currency": "USD",
+  "scope": "Public Linux On-Demand prices; no account, quota or capacity verification",
+  "ipv4_hourly_usd": "0.005",
+  "ipv4_source": "https://aws.amazon.com/vpc/pricing/",
+  "volume_gib": 300,
+  "exclusions": [
+    "Taxes, FX, Marketplace or image-build fees",
+    "Snapshots, logs, artifacts and existing control-plane usage",
+    "KVS channels, signaling, TURN minutes, internet and inter-region data transfer",
+    "NAT or VPC endpoints (not provisioned by this design)"
+  ],
+  "sources": [
+    {
+      "url": "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ebs.json",
+      "sha256": "990c88421964e39f47eee572b93aef46c2a0e5ab4cc4e40a1beb8f2b228b30fb",
+      "manifest": {
+        "serviceId": "ec2",
+        "accessType": "publish",
+        "esIndex": "plc-ec2-usd-20261015191316",
+        "hawkFilePublicationDate": "2026-10-15T19:13:16Z",
+        "ETLIngestionTriggerDate": "2026-10-15T19:13:16Z",
+        "currencyCode": "USD",
+        "source": "ebs",
+        "isMapped": "true"
+      }
+    },
+    {
+      "url": "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/Canada%20%28Central%29/Linux/index.json",
+      "sha256": "7038f2542e638e24c3d0559462ec22d393328beb98d4fc6093d9aa1da5467486",
+      "manifest": {
+        "serviceId": "ec2",
+        "accessType": "publish",
+        "hawkFilePublicationDate": "2026-10-15T19:13:16Z",
+        "ETLIngestionTriggerDate": "2026-10-15T19:13:16Z",
+        "currencyCode": "USD",
+        "source": "ec2-ondemand-without-sec-sel"
+      }
+    },
+    {
+      "url": "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/US%20East%20%28N.%20Virginia%29/Linux/index.json",
+      "sha256": "ff7156fb0797118a942ca4810bd6d64b2727fccf5b9e90b02f38f9aeebd5f5bd",
+      "manifest": {
+        "serviceId": "ec2",
+        "accessType": "publish",
+        "hawkFilePublicationDate": "2026-10-15T19:13:16Z",
+        "ETLIngestionTriggerDate": "2026-10-15T19:13:16Z",
+        "currencyCode": "USD",
+        "source": "ec2-ondemand-without-sec-sel"
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "region": "ca-central-1",
+      "instance_type": "g6.2xlarge",
+      "listed": true,
+      "price_record": {
+        "rateCode": "TEK7UCKHNPHAABMG.JRTCKXETXF.6YS6EN2CT7",
+        "price": "1.0854700000",
+        "Location": "Canada (Central)",
+        "Instance Family": "GPU instance",
+        "vCPU": "8",
+        "Instance Type": "g6.2xlarge",
+        "Memory": "32 GiB",
+        "Storage": "1 x 450 GB NVMe SSD",
+        "Network Performance": "Up to 10 Gigabit",
+        "plc:OperatingSystem": "Linux",
+        "plc:InstanceFamily": "Accelerated Computing",
+        "Operating System": "Linux",
+        "Pre Installed S/W": "NA",
+        "License Model": "No License required"
+      },
+      "gp3_record": {
+        "rateCode": "DQ3VBGBXYAYM4JS5.JRTCKXETXF.6YS6EN2CT7",
+        "price": "0.0880000000",
+        "RegionlessRateCode": "rfOvvXHDAJRZK8rCe8ThxmpU_7SjA3m6T5_yeV0z0FQ"
+      },
+      "estimates": [
+        {
+          "running_hours": 8,
+          "compute_usd": "8.68",
+          "ipv4_usd": "0.04",
+          "retained_ebs_month_usd": "26.40",
+          "subtotal_usd": "35.12"
+        },
+        {
+          "running_hours": 40,
+          "compute_usd": "43.42",
+          "ipv4_usd": "0.20",
+          "retained_ebs_month_usd": "26.40",
+          "subtotal_usd": "70.02"
+        },
+        {
+          "running_hours": 730,
+          "compute_usd": "792.39",
+          "ipv4_usd": "3.65",
+          "retained_ebs_month_usd": "26.40",
+          "subtotal_usd": "822.44"
+        }
+      ]
+    },
+    {
+      "region": "ca-central-1",
+      "instance_type": "g6.4xlarge",
+      "listed": true,
+      "price_record": {
+        "rateCode": "7HEG7ECA9BF8DK34.JRTCKXETXF.6YS6EN2CT7",
+        "price": "1.4692000000",
+        "Location": "Canada (Central)",
+        "Instance Family": "GPU instance",
+        "vCPU": "16",
+        "Instance Type": "g6.4xlarge",
+        "Memory": "64 GiB",
+        "Storage": "1 x 600 GB NVMe SSD",
+        "Network Performance": "Up to 25 Gigabit",
+        "plc:OperatingSystem": "Linux",
+        "plc:InstanceFamily": "Accelerated Computing",
+        "Operating System": "Linux",
+        "Pre Installed S/W": "NA",
+        "License Model": "No License required"
+      },
+      "gp3_record": {
+        "rateCode": "DQ3VBGBXYAYM4JS5.JRTCKXETXF.6YS6EN2CT7",
+        "price": "0.0880000000",
+        "RegionlessRateCode": "rfOvvXHDAJRZK8rCe8ThxmpU_7SjA3m6T5_yeV0z0FQ"
+      },
+      "estimates": [
+        {
+          "running_hours": 8,
+          "compute_usd": "11.75",
+          "ipv4_usd": "0.04",
+          "retained_ebs_month_usd": "26.40",
+          "subtotal_usd": "38.19"
+        },
+        {
+          "running_hours": 40,
+          "compute_usd": "58.77",
+          "ipv4_usd": "0.20",
+          "retained_ebs_month_usd": "26.40",
+          "subtotal_usd": "85.37"
+        },
+        {
+          "running_hours": 730,
+          "compute_usd": "1072.52",
+          "ipv4_usd": "3.65",
+          "retained_ebs_month_usd": "26.40",
+          "subtotal_usd": "1102.57"
+        }
+      ]
+    },
+    {
+      "region": "ca-central-1",
+      "instance_type": "g6e.2xlarge",
+      "listed": false,
+      "price_record": null,
+      "gp3_record": {
+        "rateCode": "DQ3VBGBXYAYM4JS5.JRTCKXETXF.6YS6EN2CT7",
+        "price": "0.0880000000",
+        "RegionlessRateCode": "rfOvvXHDAJRZK8rCe8ThxmpU_7SjA3m6T5_yeV0z0FQ"
+      },
+      "estimates": []
+    },
+    {
+      "region": "us-east-1",
+      "instance_type": "g6.2xlarge",
+      "listed": true,
+      "price_record": {
+        "rateCode": "XCA3J9EEM739PU6M.JRTCKXETXF.6YS6EN2CT7",
+        "price": "0.9776000000",
+        "Location": "US East (N. Virginia)",
+        "Instance Family": "GPU instance",
+        "vCPU": "8",
+        "Instance Type": "g6.2xlarge",
+        "Memory": "32 GiB",
+        "Storage": "1 x 450 GB NVMe SSD",
+        "Network Performance": "Up to 10 Gigabit",
+        "plc:OperatingSystem": "Linux",
+        "plc:InstanceFamily": "Accelerated Computing",
+        "Operating System": "Linux",
+        "Pre Installed S/W": "NA",
+        "License Model": "No License required"
+      },
+      "gp3_record": {
+        "rateCode": "JG3KUJMBRGHV3N8G.JRTCKXETXF.6YS6EN2CT7",
+        "price": "0.0800000000",
+        "RegionlessRateCode": "rfOvvXHDAJRZK8rCe8ThxmpU_7SjA3m6T5_yeV0z0FQ"
+      },
+      "estimates": [
+        {
+          "running_hours": 8,
+          "compute_usd": "7.82",
+          "ipv4_usd": "0.04",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "31.86"
+        },
+        {
+          "running_hours": 40,
+          "compute_usd": "39.10",
+          "ipv4_usd": "0.20",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "63.30"
+        },
+        {
+          "running_hours": 730,
+          "compute_usd": "713.65",
+          "ipv4_usd": "3.65",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "741.30"
+        }
+      ]
+    },
+    {
+      "region": "us-east-1",
+      "instance_type": "g6.4xlarge",
+      "listed": true,
+      "price_record": {
+        "rateCode": "KXDXMVEY4HRJRGG4.JRTCKXETXF.6YS6EN2CT7",
+        "price": "1.3232000000",
+        "Location": "US East (N. Virginia)",
+        "Instance Family": "GPU instance",
+        "vCPU": "16",
+        "Instance Type": "g6.4xlarge",
+        "Memory": "64 GiB",
+        "Storage": "1 x 600 GB NVMe SSD",
+        "Network Performance": "Up to 25 Gigabit",
+        "plc:OperatingSystem": "Linux",
+        "plc:InstanceFamily": "Accelerated Computing",
+        "Operating System": "Linux",
+        "Pre Installed S/W": "NA",
+        "License Model": "No License required"
+      },
+      "gp3_record": {
+        "rateCode": "JG3KUJMBRGHV3N8G.JRTCKXETXF.6YS6EN2CT7",
+        "price": "0.0800000000",
+        "RegionlessRateCode": "rfOvvXHDAJRZK8rCe8ThxmpU_7SjA3m6T5_yeV0z0FQ"
+      },
+      "estimates": [
+        {
+          "running_hours": 8,
+          "compute_usd": "10.59",
+          "ipv4_usd": "0.04",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "34.63"
+        },
+        {
+          "running_hours": 40,
+          "compute_usd": "52.93",
+          "ipv4_usd": "0.20",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "77.13"
+        },
+        {
+          "running_hours": 730,
+          "compute_usd": "965.94",
+          "ipv4_usd": "3.65",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "993.59"
+        }
+      ]
+    },
+    {
+      "region": "us-east-1",
+      "instance_type": "g6e.2xlarge",
+      "listed": true,
+      "price_record": {
+        "rateCode": "HK3A8PU2TSC6EKP6.JRTCKXETXF.6YS6EN2CT7",
+        "price": "2.2420800000",
+        "Location": "US East (N. Virginia)",
+        "Instance Family": "GPU instance",
+        "vCPU": "8",
+        "Instance Type": "g6e.2xlarge",
+        "Memory": "64 GiB",
+        "Storage": "1 x 450 GB NVMe SSD",
+        "Network Performance": "Up to 20 Gigabit",
+        "plc:OperatingSystem": "Linux",
+        "plc:InstanceFamily": "Accelerated Computing",
+        "Operating System": "Linux",
+        "Pre Installed S/W": "NA",
+        "License Model": "No License required"
+      },
+      "gp3_record": {
+        "rateCode": "JG3KUJMBRGHV3N8G.JRTCKXETXF.6YS6EN2CT7",
+        "price": "0.0800000000",
+        "RegionlessRateCode": "rfOvvXHDAJRZK8rCe8ThxmpU_7SjA3m6T5_yeV0z0FQ"
+      },
+      "estimates": [
+        {
+          "running_hours": 8,
+          "compute_usd": "17.94",
+          "ipv4_usd": "0.04",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "41.98"
+        },
+        {
+          "running_hours": 40,
+          "compute_usd": "89.68",
+          "ipv4_usd": "0.20",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "113.88"
+        },
+        {
+          "running_hours": 730,
+          "compute_usd": "1636.72",
+          "ipv4_usd": "3.65",
+          "retained_ebs_month_usd": "24.00",
+          "subtotal_usd": "1664.37"
+        }
+      ]
+    }
+  ]
+}

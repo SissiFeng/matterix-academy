@@ -67,6 +67,27 @@ Terraform bootstraps application Lambda code and owns resources, configuration a
 
 ## AC environment
 
+### Find Academy in the AWS console
+
+Open CloudFront in account **SDL0-DEV1 / 247893369214**. CloudFront distributions
+are global; changing the console's regional selection does not select another
+account. Search for distribution **E3UW98EHZSA0FU**, domain
+**d2m3yolcjdy6d2.cloudfront.net**, or its configured name
+**matterix-academy-dev**. The student interface is branded **Lab Onboarding**;
+AWS resource names retain **Matterix Academy**. The
+[distribution console](https://console.aws.amazon.com/cloudfront/v4/home#/distributions/E3UW98EHZSA0FU)
+and [student site](https://d2m3yolcjdy6d2.cloudfront.net/) point to this deployment.
+The console link uses the currently signed-in AWS account; it does not switch
+accounts for you.
+
+Terraform sets the distribution's `Name` tag and comment to the same
+`matterix-academy-dev` identifier used by AC's blueprint. AWS uses the
+[`Name` tag for the distribution name](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-creating-console.html).
+Publishing application code does not apply this infrastructure metadata;
+review and apply the saved Terraform plan, then verify the name and tags in the
+console. Keep the existing distribution ID, origins and state key. If the plan
+proposes replacement or unrelated changes, resolve those before applying it.
+
 The account was selected by the user and verified against both Chrome and STS. Authenticate with `aws sso login --profile pas-sdl0-dev`, then use `AWS_PROFILE=pas-sdl0-dev-terraform` for Terraform 1.5.7. This existing profile uses AWS CLI `credential_process` to obtain the refreshed SSO session; direct SSO cache reading by this older Terraform backend failed even though AWS CLI authentication succeeded. No credentials are copied into the repository. `infra/ac-dev.backend.hcl` records the discovered existing state resources and an Academy-only state key; `infra/ac-dev.tfvars.example` pins the expected account and keeps remote execution disabled. Copy the example to ignored `infra/ac-dev.tfvars`, initialize with `-backend-config=ac-dev.backend.hcl`, and plan using `-var-file=ac-dev.tfvars`. Do not alter the shared bucket or lock-table configuration as part of an application deployment.
 
 `remote_execution_enabled=true` requires the native acceptance evidence and operator enrollment described in [WORKER-CONTROL.md](WORKER-CONTROL.md). The account currently has only 10 total Lambda concurrent executions, so AC dev disables reservations (`reserve_lambda_concurrency=false`) and uses a 5 requests/second learner throttle, burst 10. Functions share this capacity with existing account workloads. This is a development environment; raise the quota and qualify capacity before classroom use.
@@ -88,9 +109,9 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 ## Operations and rollback
 
 - DynamoDB stores profiles and experiments durably. A Lambda restart does not lose teaching state. Monitor Lambda errors/throttles, API Gateway errors, DynamoDB throttling and budget alarms before inviting a cohort.
-- The error alarm exists without an SNS destination. Attach an operator-owned notification channel and set an account budget before production use.
+- AC dev operational error/throttle alarms now use a confirmed SNS email destination. Controlled alarm and recovery emails were observed on 2026-10-23. The user canceled the additional US$400 account budget; keep Academy budget creation disabled and preserve the organization's existing budget. Application-scoped budgets require verified payer-side activation of the cost allocation tag.
 - Session data is keyed by Cognito subject; never reuse a user identity for multiple students. The first release has no teacher administration UI or cross-user data access.
-- Source maps and tokens are not published in diagnostics. Browser tokens are short-lived and stored in session storage; users sign in again after expiration.
+- Source maps and tokens are not published in diagnostics. Browser access/ID tokens last 60 minutes and are stored in session storage; users sign in again after expiration. Tokens issued before the configuration change retain their old expiration.
 - Retain a known-good application commit. For application rollback, rebuild that reviewed commit and publish its Lambda artifact and `index.html`; hashed assets from previous deployments are retained. Infrastructure changes require a separate reviewed Terraform plan.
 - Use DynamoDB point-in-time recovery for data incidents, restoring into a separate table and inspecting it before switching the application. Do not destroy/recreate a user pool to fix login.
 - Infrastructure teardown is intentionally guarded by table/user-pool deletion protection and a non-empty, versioned S3 bucket. Archive required learner records first and explicitly review removal outside the application release process.
@@ -101,3 +122,21 @@ References: [Cognito pre-sign-up trigger](https://docs.aws.amazon.com/cognito/la
 `terraform validate` verifies provider schema and internal references. It does not establish IAM entitlement, regional capacity, account quota, successful apply, OAuth behavior or live service health. Tests use mocked DynamoDB. A real plan/apply and deployed two-user exercise are required before claiming AWS deployment success.
 
 Primary references: [Cognito PKCE authorization](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html), [API Gateway JWT validation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html), [DynamoDB concurrency](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BestPractices_OptimisticLocking.html), [Isaac Sim streaming](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/manual_livestream_clients.html).
+
+## Prepared single EC2 GPU pilot (not deployed)
+
+The existing pilot can be configured for [on-demand wakeup](DT-WAKEUP.md) using
+`gpu_instance_id` and `gpu_worker_id`. This adds power management only; native
+qualification and user execution authority remain independently enforced.
+
+The [AC GPU blueprint audit](AC-GPU-BLUEPRINT.md) confirms that AC's shared modules
+support ECS on EC2 GPU inputs. Those inputs do not apply to this serverless root.
+The current Matterix acceptance uses the dedicated Ubuntu worker below; it does
+not replace the student application or take ownership of shared ECS capacity.
+
+The [EC2 GPU pilot plan](EC2-GPU-PILOT.md) adds a separate, default-disabled
+Terraform root at `infra/ec2-gpu/`. It reuses the worker API for one fixed native
+scene. The ordinary application deployment does not apply it or enable native
+execution. Current pricing evidence, image inputs and commissioning/browser
+acceptance steps are recorded there. `bash scripts/verify-ec2-gpu.sh` is an
+offline zero-resource check; it needs no selected AWS account.

@@ -30,6 +30,7 @@ export type MixingState = {
   native_action: string;
 };
 export type SimulationRun = {
+  gpu?: GpuStatus | null;
   run_id: string;
   session_id: string;
   version: number;
@@ -39,7 +40,7 @@ export type SimulationRun = {
   total_steps: number;
   stale_seconds: number;
   reason?: string;
-  cleanup: { reset_verified: boolean } | null;
+  cleanup: { reset_verified: boolean; never_started?: boolean } | null;
   snapshot: {
     session_id: string;
     run_id: string;
@@ -59,8 +60,25 @@ export type SimulationRun = {
       tip_attached: boolean | null;
       well_volumes_ul: Record<string, number | null>;
       mixing: MixingState | null;
+      studio?: {
+        instrument: "flex" | "ot2";
+        scene: "workflow-studio-flex" | "workflow-studio-ot2";
+        observation_model: "native-semantic";
+        labware_slots: Record<"tips" | "stock" | "plate" | "waste", string>;
+        waste_volume_ul: number;
+        native_action_index: number;
+        native_action_count: number;
+        native_action: string;
+      } | null;
     } | null;
   } | null;
+};
+export type GpuStatus = {
+  state: string;
+  message: string;
+  idle_seconds: number;
+  retry_at: number | null;
+  updated_at: number | null;
 };
 export const terminalRuns = new Set([
   "completed",

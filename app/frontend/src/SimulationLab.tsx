@@ -24,6 +24,8 @@ const labels: Record<string, string> = {
 };
 
 type Catalog = {
+  commissioning?: boolean;
+  commissioning_expires?: number | null;
   enabled: boolean;
   recipe: MixingPlan;
   sessions: SimulationSession[];
@@ -194,12 +196,8 @@ export default function SimulationLab() {
     <div className={s.page}>
       <header className={s.heading}>
         <div>
-          <span className={s.eyebrow}>SIMULATION LAB / OT FLEX</span>
           <h1>Four sources. One mixture.</h1>
-          <p>
-            Watch a saved workflow prepare a 40 µL sample, then inspect what the
-            simulator observed.
-          </p>
+          <p>Opentrons Flex · 40 µL mixture</p>
         </div>
         <div className={s.launch}>
           {hasEnded && run.cleanup?.reset_verified ? (
@@ -227,6 +225,21 @@ export default function SimulationLab() {
           </small>
         </div>
       </header>
+      {run?.gpu && (
+        <p
+          className={s.notice}
+          role="status"
+          aria-label="Digital twin availability"
+        >
+          {run.gpu.message} GPU idle timeout: one hour.
+        </p>
+      )}
+      {catalog?.commissioning && (
+        <p className={s.notice}>
+          Operator commissioning window · fixed seed 42 · at most two runs. This
+          host is not yet qualified for general learner access.
+        </p>
+      )}
       {error && (
         <div role="alert" className={s.alert}>
           {error}
@@ -336,10 +349,7 @@ export default function SimulationLab() {
       </div>
       <section className={s.observations}>
         <div className={s.sectionTitle}>
-          <div>
-            <span className={s.eyebrow}>OBSERVED IN ISAAC</span>
-            <h2>Inside this run</h2>
-          </div>
+          <h2>Native observations</h2>
           <span>
             {state
               ? `Revision ${state.revision} · tick ${state.simulation_tick}`
@@ -431,11 +441,13 @@ export default function SimulationLab() {
             <strong>Run receipt</strong>
             <span>{run.run_id}</span>
             <small>
-              {run.cleanup?.reset_verified
-                ? "Reset verified · lab released"
-                : hasEnded
-                  ? "Lab remains reserved until reset is verified"
-                  : "Reserved for this experiment"}
+              {run.cleanup?.never_started
+                ? "Not dispatched · reservation released"
+                : run.cleanup?.reset_verified
+                  ? "Reset verified · lab released"
+                  : hasEnded
+                    ? "Lab remains reserved until reset is verified"
+                    : "Reserved for this experiment"}
             </small>
           </div>
           <details>

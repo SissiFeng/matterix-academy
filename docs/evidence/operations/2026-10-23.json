@@ -1,0 +1,19 @@
+{
+  "checked_at": "2026-10-23T14:21:01.847480+00:00",
+  "account": "247893369214",
+  "region": "ca-central-1",
+  "alarm_count": 13,
+  "all_alarms_have_sns_target": true,
+  "sns_subscription_confirmed": true,
+  "controlled_alarm_action": "success",
+  "controlled_alarm_email_observed_at": "2026-10-23 10:17 America/Toronto",
+  "controlled_recovery_email_observed_at": "2026-10-23 10:18 America/Toronto",
+  "academy_budget": "removed-at-user-request",
+  "existing_organization_budget_preserved": true,
+  "terraform_post_apply": "no-changes",
+  "applied_gpu_vcpu_quota": 8.0,
+  "applied_lambda_concurrency": 10,
+  "lambda_quota_request": "209df9a3cc9940ba8adbe5f47e9ee2e4Y7CXjacq",
+  "real_learner_acceptance": "deferred-by-user",
+  "native_browser_acceptance": "not-run"
+}

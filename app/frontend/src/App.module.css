@@ -201,6 +201,51 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 48px;
+}
+.welcomeAccess p {
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 62ch;
+}
+.welcomeAccess {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: 48px;
+  padding: 48px 0;
+  margin-top: 36px;
+  border-top: var(--hairline) solid var(--line);
+  align-items: center;
+}
+.welcomeAccess h2 {
+  font-size: clamp(24px, 2.6vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  margin: 16px 0;
+}
+.welcomeAccess .starterNotice {
+  color: var(--ink-brand);
+  font-weight: 600;
+  border-left: 3px solid var(--brand);
+  padding-left: 14px;
+}
+.instrumentPage {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 38px 4.3% 60px;
+}
+@media (max-width: 700px) {
+  .welcome > header {
+    margin-bottom: 32px;
+  }
+  .welcomeAccess {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+  .instrumentPage {
+    padding: 24px 16px 40px;
+  }
 }
 .welcomeGrid {
   display: grid;
@@ -546,10 +591,6 @@
   gap: 25px;
   margin-top: 30px;
 }
-.onboarding > .caption {
-  text-align: center;
-  margin-top: auto;
-}
 .choices {
   display: grid;
   gap: 10px;
@@ -571,12 +612,6 @@
 .choices strong {
   display: block;
   font-size: 14px;
-}
-.choices small {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 5px;
 }
 .safetyNote {
   display: flex;
@@ -661,23 +696,6 @@
 .sidebarBottom {
   margin-top: auto;
 }
-.sidebarTip {
-  padding: 20px 10px;
-  margin-top: 40px;
-}
-.sidebarTip > svg {
-  color: var(--muted);
-}
-.sidebarTip strong {
-  display: block;
-  font-size: 12px;
-  margin: 13px 0 8px;
-}
-.sidebarTip p {
-  font-size: 11px;
-  line-height: 1.7;
-  color: var(--muted);
-}
 .helpButton {
   display: flex;
   align-items: center;
@@ -713,12 +731,6 @@
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.user small {
-  display: block;
-  font-size: 9px;
-  margin-top: 3px;
-  color: var(--muted);
 }
 .user button {
   border: 0;
@@ -766,10 +778,6 @@
   font-size: 29px;
   letter-spacing: -1px;
   margin: 12px 0;
-}
-.pageHeading p {
-  font-size: 13px;
-  color: var(--muted);
 }
 .dayLabel {
   white-space: nowrap;
@@ -1795,7 +1803,6 @@
     display: none;
   }
   .sidebarLabel,
-  .sidebarTip,
   .helpButton,
   .user div {
     display: none;
@@ -1915,9 +1922,6 @@
   .appFooter {
     padding: 18px 22px;
   }
-  .appFooter > span:nth-child(2) {
-    display: none;
-  }
 }
 @media (max-width: 550px) {
   .welcome {
@@ -1999,10 +2003,6 @@
   .pageHeading h1 {
     font-size: 24px;
     line-height: 1.35;
-  }
-  .pageHeading p {
-    line-height: 1.8;
-    font-size: 12px;
   }
   .courseFeature > section {
     padding: 24px 20px;

@@ -27,10 +27,6 @@ variable "real_execution_enabled" {
   type        = bool
   default     = false
   description = "Enable operator-approved physical execution. Requires pairing_enabled and a qualified gateway."
-  validation {
-    condition     = !var.real_execution_enabled || var.pairing_enabled
-    error_message = "real_execution_enabled requires pairing_enabled."
-  }
 }
 
 variable "operator_group" {

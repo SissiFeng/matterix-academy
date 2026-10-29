@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Monitor, RefreshCw } from "lucide-react";
 import { api, ApiError, json } from "./api";
 import { terminalRuns, type SimulationRun } from "./simulationTypes";
+import { measureVideo, type VideoReceipt } from "./commissioningEvidence";
 import s from "./SimulationLab.module.css";
 
 type Grant = {
@@ -15,8 +16,22 @@ type Grant = {
   ice_servers: RTCIceServer[];
 };
 
-export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
+export type ViewportRun = Pick<
+  SimulationRun,
+  "run_id" | "session_id" | "plan_hash" | "status"
+> &
+  Pick<SimulationRun, "gpu">;
+
+export default function IsaacViewport({
+  run,
+  onEvidence,
+}: {
+  run: ViewportRun | null;
+  onEvidence?: (receipt: VideoReceipt) => void;
+}) {
   const video = useRef<HTMLVideoElement>(null);
+  const evidence = useRef(onEvidence);
+  evidence.current = onEvidence;
   const [status, setStatus] = useState("Waiting for a run");
   const [connected, setConnected] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -25,6 +40,7 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
   const planHash = run?.plan_hash;
   const ended = !!run && terminalRuns.has(run.status);
   const started = !!run && !["queued", "claimed"].includes(run.status);
+  const waitingMessage = !started && !ended ? run?.gpu?.message : undefined;
   useEffect(() => {
     setConnected(false);
     if (!runId || !sessionId || !planHash || !started || ended) {
@@ -32,7 +48,7 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
         ended
           ? "Live view ended"
           : runId
-            ? "Waiting for Isaac"
+            ? (waitingMessage ?? "Waiting for Isaac")
             : "Waiting for a run",
       );
       return;
@@ -49,6 +65,8 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
     let lastFrames = -1;
     let hasFrame = false;
     let stillSince = Date.now();
+    let frameBaseline = 0;
+    let measuring = false;
     const close = () => {
       window.clearTimeout(renewTimer);
       window.clearTimeout(retryTimer);
@@ -68,7 +86,12 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
     const renew = async () => {
       try {
         await api(`/runs/${runId}/viewer/renew`, {
-          ...json({ client_id: clientId, frame_received: hasFrame }),
+          ...json({
+            client_id: clientId,
+            frame_received: hasFrame,
+            frames_decoded:
+              video.current?.getVideoPlaybackQuality().totalVideoFrames ?? 0,
+          }),
           signal: abort.signal,
         });
         if (alive) renewTimer = window.setTimeout(renew, 10000);
@@ -124,6 +147,8 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
       };
       peer.ontrack = (event) => {
         if (!alive || !video.current) return;
+        frameBaseline =
+          video.current.getVideoPlaybackQuality().totalVideoFrames;
         video.current.srcObject = new MediaStream([event.track]);
         void video.current
           .play()
@@ -145,6 +170,9 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
       // Serialize SDP and ICE operations: WebSocket event callbacks can overlap.
       let messages = Promise.resolve();
       socket.onmessage = (event) => {
+        // KVS can send empty text frames between signaling messages. They have
+        // no SDP/ICE payload and must not tear down a valid negotiation.
+        if (event.data === "") return;
         messages = messages
           .then(async () => {
             if (!alive || !peer) return;
@@ -193,6 +221,38 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
           setStatus("Video stalled · state may still be updating");
         }
         lastFrames = frames;
+        // Optional operator evidence: this observes the existing stream only.
+        // A reconnect may reset the element counter; never count its old frames.
+        if (frames < frameBaseline) frameBaseline = frames;
+        if (evidence.current && peer && video.current && !measuring) {
+          const currentPeer = peer;
+          const currentVideo = video.current;
+          measuring = true;
+          void measureVideo(currentPeer, currentVideo, frameBaseline)
+            .then((sample) => {
+              if (
+                alive &&
+                sample &&
+                peer === currentPeer &&
+                video.current === currentVideo
+              )
+                evidence.current?.({
+                  ...sample,
+                  run_id: runId,
+                  session_id: sessionId,
+                  plan_hash: planHash,
+                  native_session_id: grant.native_session_id,
+                  client_id: clientId,
+                  observed_at: Date.now(),
+                });
+            })
+            .catch(() => {
+              /* Missing statistics never imply successful evidence. */
+            })
+            .finally(() => {
+              measuring = false;
+            });
+        }
       }, 1000);
     };
     void connect();
@@ -201,14 +261,14 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
       abort.abort();
       close();
     };
-  }, [runId, sessionId, planHash, started, ended, attempt]);
+  }, [runId, sessionId, planHash, started, ended, attempt, waitingMessage]);
 
   return (
     <section className={s.viewport} aria-label="Isaac live viewport">
       <div className={s.viewportBar}>
         <span>
           <i className={connected ? s.liveDot : s.waitDot} />
-          {status}
+          {connected ? status : "Simulation video"}
         </span>
         <span>ISAAC / MATTERIX</span>
       </div>
@@ -225,11 +285,15 @@ export default function IsaacViewport({ run }: { run: SimulationRun | null }) {
           <div className={s.videoEmpty}>
             <Monitor size={40} strokeWidth={1} />
             <strong>{status}</strong>
-            <p>
-              {ended
-                ? "The observed result is saved beside this view."
-                : "The Ubuntu GPU renders this view. A run must be connected before experiment motion begins."}
-            </p>
+            {ended ? (
+              <p>The observed result is saved beside this view.</p>
+            ) : !started ? (
+              <p>
+                {run
+                  ? "Video appears when rendering starts."
+                  : "Start a simulation to see live video."}
+              </p>
+            ) : null}
             {started && !ended && (
               <button onClick={() => setAttempt((n) => n + 1)}>
                 <RefreshCw size={15} /> Reconnect video

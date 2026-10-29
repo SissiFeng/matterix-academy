@@ -1,0 +1,15 @@
+{
+  "checked_on": "2026-10-19",
+  "runtime_packages": 245,
+  "agent_packages": 39,
+  "runtime_target": "CPython3.12 manylinux_2_35_x86_64",
+  "linux_install_dry_run": "passed hash-enforced, no dependency re-resolution; no install",
+  "source_restore": "passed exact internal commits, clean trees, materialized LFS assets",
+  "packer_version": "1.16.1",
+  "amazon_plugin_version": "1.8.3",
+  "packer_schema": "passed offline synthetic credentials/inputs with cloud connectivity blocked",
+  "gpu_execution": false,
+  "image_built": false,
+  "worker_qualified": false,
+  "browser_native_accepted": false
+}

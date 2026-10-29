@@ -1,0 +1,442 @@
+.page {
+  --device-blue: #275cc5;
+  --device-blue-soft: color-mix(in srgb, var(--device-blue) 8%, var(--surface));
+  --setup-gap: 24px;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 38px 4.3% 72px;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--setup-gap);
+  margin-bottom: 30px;
+}
+.heading h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  letter-spacing: -1.5px;
+  font-weight: 600;
+  margin: 12px 0;
+}
+.page p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.page h2 {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  margin: 0 0 8px;
+}
+.page h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.primary,
+.secondary,
+.textButton,
+.danger {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.primary {
+  color: #fff;
+  border: 1px solid var(--device-blue);
+  background: var(--device-blue);
+}
+.secondary {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.textButton {
+  border: 0;
+  background: transparent;
+  color: var(--info);
+  padding-left: 0;
+}
+.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--line);
+}
+.page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.page :is(button, input, select, a, summary):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 36px;
+}
+.rail {
+  align-self: start;
+  position: sticky;
+  top: 24px;
+}
+.rail ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.rail li {
+  border-left: 1px solid var(--line-strong);
+  padding: 0 0 28px 24px;
+  position: relative;
+}
+.rail li:last-child {
+  border-color: transparent;
+}
+.rail a {
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+.stepMarker {
+  position: absolute;
+  left: -12px;
+  top: -4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  background: var(--surface-0);
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  font-size: 10px;
+}
+.stepMarker[data-done="true"] {
+  color: var(--info);
+  border-color: var(--info);
+  background: var(--device-blue-soft);
+}
+.sections {
+  min-width: 0;
+}
+.section {
+  padding: 26px 0 32px;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 22px;
+}
+.section:first-child {
+  border-top: 3px solid var(--device-blue);
+  padding-top: 23px;
+}
+.sectionHeading {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  margin-bottom: 18px;
+}
+.sectionNumber {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--info);
+  font-weight: 700;
+}
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin: 22px 0;
+}
+.field {
+  display: grid;
+  gap: 7px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 0;
+}
+.field input,
+.field select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-xs);
+  min-height: 42px;
+  padding: 10px;
+  font: inherit;
+}
+.models {
+  display: flex;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin: 20px 0;
+}
+.models legend {
+  font-size: 12px;
+  margin-bottom: 10px;
+  color: var(--ink-2);
+}
+.models label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+}
+.models label:has(input:checked) {
+  border-color: var(--device-blue);
+  background: var(--device-blue-soft);
+}
+.models input {
+  accent-color: var(--device-blue);
+}
+.release {
+  border-block: 1px solid var(--line);
+  padding: 12px 0;
+  margin: 18px 0;
+  font-size: 12px;
+}
+.release summary {
+  cursor: pointer;
+  color: var(--ink-2);
+}
+.release summary .status {
+  margin-left: 10px;
+}
+.release p {
+  margin: 5px 0;
+}
+.release code,
+.binding code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+.checkLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.65;
+  margin-top: 17px;
+}
+.checkLabel input {
+  flex-shrink: 0;
+  margin-top: 4px;
+  accent-color: var(--device-blue);
+}
+.alert,
+.notice {
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.alert {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.notice {
+  background: var(--info-soft);
+  color: var(--ink);
+}
+.pairCode {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 22px;
+  margin: 20px 0;
+}
+.pairCode output {
+  display: block;
+  font-family: monospace;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  margin: 9px 0;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  padding: 6px 9px;
+  background: var(--surface-3);
+  border-radius: var(--radius-xs);
+  color: var(--ink-2);
+  text-transform: capitalize;
+}
+.status[data-ready="true"] {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+.checks {
+  margin: 20px 0;
+  padding: 0;
+  list-style: none;
+}
+.checks li {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.checks svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--muted);
+}
+.checks [data-passed="true"] svg {
+  color: var(--ok);
+}
+.checks strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+}
+.section > .checks li > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  width: 100%;
+}
+.checks small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.binding {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 18px 0;
+  font-size: 11px;
+}
+.binding dt {
+  color: var(--muted);
+}
+.binding dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.workflow {
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  margin-top: 18px;
+}
+.workflow p {
+  margin: 6px 0;
+}
+.workflow ol {
+  padding-left: 20px;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.9;
+}
+.run {
+  border-top: 2px solid var(--ink-2);
+  margin-top: 26px;
+  padding-top: 22px;
+}
+.details {
+  margin-top: 18px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.details summary {
+  cursor: pointer;
+}
+.details pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-sunken);
+  padding: 14px;
+  font-size: 11px;
+  max-height: 280px;
+  overflow: auto;
+}
+@media (max-width: 1050px) {
+  .layout {
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .page {
+    padding: 28px 20px 50px;
+  }
+  .layout {
+    display: block;
+  }
+  .rail {
+    position: static;
+  }
+  .rail ol {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 8px 0 24px 12px;
+  }
+  .rail li {
+    padding: 0 0 0 20px;
+    border: 0;
+  }
+  .heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .fields {
+    grid-template-columns: 1fr;
+  }
+  .section > .checks li > div {
+    display: grid;
+    justify-content: start;
+    gap: 2px;
+  }
+  .binding {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .binding dd {
+    margin-bottom: 8px;
+  }
+  .models {
+    flex-wrap: wrap;
+  }
+  .pairCode output {
+    letter-spacing: 2px;
+    font-size: 23px;
+  }
+}

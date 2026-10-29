@@ -19,7 +19,8 @@ export type Action = {
 };
 export type Experiment = {
   title: string;
-  course_id: "flex-foundations" | "flex-first-transfer";
+  course_id: "flex-foundations" | "flex-first-transfer" | "workflow-sandbox";
+  instrument?: "flex" | "ot2";
   transfer_volume?: number;
   layout: Record<string, string>;
   source_volume: number;
@@ -27,6 +28,7 @@ export type Experiment = {
   actions: Action[];
 };
 export type Assessment = {
+  scope?: "lesson-goal" | "model-checks";
   passed: boolean;
   checks: { label: string; passed: boolean }[];
   concentrations: Record<string, number>;

@@ -445,7 +445,6 @@ export default function ConnectorExplorer() {
     <div className={styles.explorer}>
       <header className={styles.hero}>
         <div>
-          <span className={styles.eyebrow}>Inside the automation</span>
           <h1>
             From an idea
             <br />
@@ -453,8 +452,7 @@ export default function ConnectorExplorer() {
           </h1>
           <p>
             Follow an action, compare the native API with its SiLA contract, and
-            see how to build and verify a connector. Start with the guided
-            course or open the developer views.
+            see how to build and verify a connector.
           </p>
         </div>
         <div className={styles.heroStamp}>
@@ -464,11 +462,6 @@ export default function ConnectorExplorer() {
             <br />
             explorer
           </strong>
-          <span>
-            Learn · Compare · Build
-            <br />
-            Inspect the real source
-          </span>
         </div>
       </header>
       <div className={styles.courseBar}>

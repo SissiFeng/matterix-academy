@@ -26,6 +26,8 @@ import {
   type WorkspaceView,
 } from "./workcellTypes";
 import s from "./Workcell.module.css";
+import InstrumentStories from "./InstrumentStories";
+import type { Instrument, Starter } from "./studioContent";
 
 type Props = {
   view: WorkspaceView;
@@ -34,6 +36,8 @@ type Props = {
   onOpen: (session: Session) => void;
   onFirstLesson: () => void;
   onCreate: () => void;
+  onDesign: (instrument: Instrument, starter: Starter) => void;
+  creationBusy: boolean;
   onSessionsLoaded: (sessions: Session[]) => void;
   onSessionSaved: (session: Session) => void;
   registerLeaveGuard: (guard: (() => boolean) | null) => void;
@@ -46,11 +50,11 @@ const steps = [
   "Validate",
 ];
 const titles = {
-  overview: "Your workcell, from intent to evidence.",
-  onboard: "Bring a device into your workspace.",
-  twin: "Two sides. One clear view.",
-  readiness: "Know what is ready. See what is missing.",
-  runs: "Every run has a story.",
+  overview: "Your workcell",
+  onboard: "Onboard a device",
+  twin: "Teaching twin",
+  readiness: "Sim → Real",
+  runs: "Teaching runs",
 };
 const actionName = (action: Session["experiment"]["actions"][number]) =>
   `${capabilityLabels[action.kind]}${["aspirate", "dispense"].includes(action.kind) ? ` ${action.volume} µL · ${action.well}` : ""}`;
@@ -182,6 +186,8 @@ export default function Workcell({
   onOpen,
   onFirstLesson,
   onCreate,
+  onDesign,
+  creationBusy,
   onSessionsLoaded,
   onSessionSaved,
   registerLeaveGuard,
@@ -424,26 +430,11 @@ export default function Workcell({
     <div className={s.page}>
       <header className={s.heading}>
         <div>
-          <span className={s.kicker}>
-            WORKCELL /{" "}
-            {view === "readiness" ? "SIM → REAL" : view.toUpperCase()}
-          </span>
           <h1>
             {view === "overview"
               ? `Welcome to the lab, ${name}.`
               : titles[view]}
           </h1>
-          <p>
-            {view === "overview"
-              ? "Onboard a device. Build its teaching twin. Find the evidence still needed for the real lab."
-              : view === "onboard"
-                ? "Five steps from a device record to an honest validation checklist."
-                : view === "twin"
-                  ? "Compare saved teaching state with what is known about the physical device."
-                  : view === "readiness"
-                    ? "Teaching progress and physical readiness are assessed separately."
-                    : "Trace saved teaching steps alongside the physical observations still to come."}
-          </p>
         </div>
         <button
           className={s.iconButton}
@@ -454,6 +445,19 @@ export default function Workcell({
           <RefreshCw size={17} />
         </button>
       </header>
+      {view === "readiness" && (
+        <div className={s.actions}>
+          <button className={s.primary} onClick={() => onNavigate("connect")}>
+            <Unplug size={16} /> Connect an instrument
+          </button>
+          <button
+            className={s.textButton}
+            onClick={() => onNavigate("connector")}
+          >
+            Explore how connectors work <ArrowRight size={15} />
+          </button>
+        </div>
+      )}
       {error && (
         <div className={s.alert} role="alert">
           {error}
@@ -473,58 +477,58 @@ export default function Workcell({
         <>
           {view === "overview" ? (
             <>
-              <section className={s.hero}>
-                <div>
-                  <span className={s.kicker}>CURRENT OPERATING STATE</span>
-                  <h2>
-                    Practice is available.
-                    <br />
-                    <em>Physical execution is not connected.</em>
-                  </h2>
-                  <p>
-                    Build your workcell here, then use its missing evidence as a
-                    guide to qualification.
-                  </p>
-                  <button
-                    className={s.primary}
-                    onClick={() => onNavigate("onboard")}
-                  >
-                    Onboard a device <ArrowRight size={16} />
-                  </button>
-                </div>
-                <div className={s.lifecycle}>
-                  {[
-                    "01 / ONBOARD",
-                    "02 / TWIN",
-                    "03 / VALIDATE",
-                    "04 / RUN & LEARN",
-                  ].map((label, i) => (
+              <InstrumentStories
+                onDesign={onDesign}
+                busy={creationBusy}
+                compact
+              />
+              <details className={s.setupDetails}>
+                <summary>Workcell setup and connection status</summary>
+                <section className={s.hero}>
+                  <div>
+                    <h2>Synthetic practice is available.</h2>
+                    <p>Physical execution is not connected.</p>
                     <button
-                      key={label}
-                      onClick={() =>
-                        onNavigate(["onboard", "twin", "readiness", "runs"][i])
-                      }
+                      className={s.primary}
+                      onClick={() => onNavigate("onboard")}
                     >
-                      <span>{label}</span>
-                      {i === 2 ? (
-                        <CircleAlert size={20} />
-                      ) : (
-                        <ArrowRight size={20} />
-                      )}
+                      Onboard a device <ArrowRight size={16} />
                     </button>
-                  ))}
-                </div>
-              </section>
+                  </div>
+                  <div className={s.lifecycle}>
+                    {[
+                      "01 / ONBOARD",
+                      "02 / TWIN",
+                      "03 / VALIDATE",
+                      "04 / RUN & LEARN",
+                    ].map((label, i) => (
+                      <button
+                        key={label}
+                        onClick={() =>
+                          onNavigate(
+                            ["onboard", "twin", "readiness", "runs"][i],
+                          )
+                        }
+                      >
+                        <span>{label}</span>
+                        {i === 2 ? (
+                          <CircleAlert size={20} />
+                        ) : (
+                          <ArrowRight size={20} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </details>
               <div className={s.metrics}>
                 <div>
-                  <span>Registered devices</span>
+                  <span>Device records</span>
                   <strong>{devices.length}</strong>
-                  <small>Manually declared · connectivity unverified</small>
                 </div>
                 <div>
-                  <span>Paired teaching twins</span>
+                  <span>Synthetic teaching twins</span>
                   <strong>{paired.length}</strong>
-                  <small>Synthetic models · physical sync unverified</small>
                 </div>
                 <div>
                   <span>Teaching experiments</span>
@@ -534,7 +538,8 @@ export default function Workcell({
                       sessions.filter(
                         (item) =>
                           item.status === "completed" &&
-                          item.assessment?.passed,
+                          item.assessment?.passed &&
+                          item.assessment.scope !== "model-checks",
                       ).length
                     }{" "}
                     with a saved passing goal
@@ -543,7 +548,6 @@ export default function Workcell({
               </div>
               <div className={s.sectionHeading}>
                 <h2>Your workcells</h2>
-                <span>{workcells.length} registered</span>
               </div>
               {workcells.length ? (
                 <div className={s.workcells}>
@@ -584,11 +588,8 @@ export default function Workcell({
               ) : (
                 <div className={s.empty}>
                   <Layers3 size={30} />
-                  <h3>Your first workcell starts with one device.</h3>
-                  <p>
-                    Register your Flex and choose a connection plan. No network
-                    discovery or device commands are sent.
-                  </p>
+                  <h3>No devices yet.</h3>
+                  <p>Register a Flex for synthetic practice.</p>
                   <button
                     className={s.secondary}
                     onClick={() => onNavigate("onboard")}
@@ -599,12 +600,7 @@ export default function Workcell({
               )}
               <section className={s.practice}>
                 <div>
-                  <span className={s.kicker}>LEARN WHILE YOU PREPARE</span>
-                  <h2>A small transfer. A useful first step.</h2>
-                  <p>
-                    Explore the Flex, predict liquid movement and inspect every
-                    teaching step.
-                  </p>
+                  <h2>Learn a 100 µL transfer.</h2>
                 </div>
                 <div className={s.actions}>
                   <button className={s.primary} onClick={onFirstLesson}>
@@ -768,9 +764,15 @@ export default function Workcell({
                             {attempt.status} · {attempt.steps} steps
                           </span>
                           <span>
-                            {attempt.assessment?.passed
-                              ? "Teaching goal passed"
-                              : "Goal not reached"}
+                            {run.experiment.course_id === "workflow-sandbox"
+                              ? !attempt.assessment
+                                ? "Sequence incomplete"
+                                : attempt.assessment.passed
+                                  ? "Model checks passed"
+                                  : "Review model checks"
+                              : attempt.assessment?.passed
+                                ? "Teaching goal passed"
+                                : "Goal not reached"}
                           </span>
                         </div>
                       ))}
@@ -868,7 +870,6 @@ export default function Workcell({
                   </ol>
                   <div className={s.wizard}>
                     <section className={s.wizardMain}>
-                      <span className={s.kicker}>STEP {step + 1} / 5</span>
                       <h2>
                         {
                           [
@@ -1034,25 +1035,15 @@ export default function Workcell({
                           </p>
                           <Pair device={selected} />
                           <div className={s.inset}>
-                            <strong>What this creates</strong>
                             <p>
-                              A persistent teaching session that you can edit,
-                              run and review. Geometry, calibration, live state
-                              synchronization and physical execution remain
-                              unverified.
+                              Geometry, calibration, live state synchronization
+                              and physical execution remain unverified.
                             </p>
                           </div>
                         </>
                       )}
                       {step === 4 && selected && (
                         <>
-                          <p>
-                            {selected.twin_session_id
-                              ? `${selected.name} is paired with a teaching model.`
-                              : `${selected.name} has no teaching twin.`}{" "}
-                            Use these checks to plan the next qualification
-                            work.
-                          </p>
                           <Checks checks={selected.checks} />
                           <div className={s.actions}>
                             <button
@@ -1112,7 +1103,6 @@ export default function Workcell({
                     </section>
                     <aside className={s.wizardAside}>
                       <Box size={30} />
-                      <span className={s.kicker}>YOUR DEVICE RECORD</span>
                       <h3>{draft.name || "A new Flex"}</h3>
                       <p>{draft.workcell}</p>
                       <dl>
@@ -1141,10 +1131,6 @@ export default function Workcell({
                 <div className={s.empty}>
                   <Box size={30} />
                   <h2>Select or onboard a device.</h2>
-                  <p>
-                    A device record keeps the physical identity and teaching
-                    twin together.
-                  </p>
                   <button
                     className={s.primary}
                     onClick={() => onNavigate("onboard")}
@@ -1182,7 +1168,6 @@ export default function Workcell({
                           </div>
                         </section>
                         <aside className={s.statePanel}>
-                          <span className={s.kicker}>PHYSICAL ↔ DIGITAL</span>
                           <h2>State difference</h2>
                           <p>
                             Physical state has not been observed. Differences
@@ -1280,22 +1265,13 @@ export default function Workcell({
                 <>
                   <section className={s.readinessHero}>
                     <div>
-                      <span className={s.kicker}>
-                        SIM → REAL / {selected.name}
-                      </span>
                       <h2>
                         {selected.physical_ready
                           ? "Physical evidence is complete."
                           : "Physical readiness is unverified."}
                       </h2>
                       <p>
-                        {
-                          missingPhysical.filter(
-                            (check) => check.status !== "passed",
-                          ).length
-                        }{" "}
-                        physical checks need evidence. Passing a teaching trial
-                        does not clear these checks.
+                        Passing a teaching trial does not clear these checks.
                       </p>
                     </div>
                     <div className={s.readinessCount}>
@@ -1311,7 +1287,7 @@ export default function Workcell({
                   </section>
                   <section className={s.panel}>
                     <div className={s.sectionHeading}>
-                      <h2>01 / Teaching evidence</h2>
+                      <h2>Teaching evidence</h2>
                       <span className={s.tag}>Synthetic only</span>
                     </div>
                     <Checks
@@ -1322,7 +1298,7 @@ export default function Workcell({
                   </section>
                   <section className={s.panel}>
                     <div className={s.sectionHeading}>
-                      <h2>02 / Physical qualification</h2>
+                      <h2>Physical qualification</h2>
                       <span className={s.tag}>
                         {selected.instrument_id
                           ? `Linked · ${selected.instrument_id}`

@@ -1,9 +1,13 @@
 """A deploy job must reject changed artifacts before obtaining cloud credentials."""
 
 import importlib.util
+import json
+import zipfile
 from pathlib import Path
 
+import httpx
 import pytest
+from academy._version import __version__
 
 
 @pytest.fixture
@@ -16,7 +20,8 @@ def release(tmp_path, monkeypatch):
     module.LAMBDA = tmp_path / "lambda.zip"
     module.WEB = tmp_path / "web"
     module.WEB.mkdir()
-    module.LAMBDA.write_bytes(b"fixture-only-package")
+    with zipfile.ZipFile(module.LAMBDA, "w") as archive:
+        archive.writestr("academy/_version.py", f"__version__ = {__version__!r}\n")
     (module.WEB / "index.html").write_text("<p>Fixture</p>")
     monkeypatch.setenv("GITHUB_SHA", "a" * 40)
     module.manifest()
@@ -25,6 +30,56 @@ def release(tmp_path, monkeypatch):
 
 def test_release_accepts_exact_tested_files(release):
     assert release.verify()["commit"] == "a" * 40
+    assert release.verify()["version"] == __version__
+
+
+def test_manifest_rejects_a_stale_lambda_package(release):
+    with zipfile.ZipFile(release.LAMBDA, "w") as archive:
+        archive.writestr("academy/_version.py", '__version__ = "0.1.0"\n')
+    with pytest.raises(ValueError, match="package version"):
+        release.manifest()
+
+
+def test_release_rejects_a_manifest_with_another_version(release):
+    manifest = json.loads(release.MANIFEST.read_text())
+    manifest["version"] = "0.1.0"
+    release.MANIFEST.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="Release version"):
+        release.verify()
+
+
+@pytest.mark.parametrize("api_version", [__version__, "0.1.0"])
+def test_live_api_and_frontend_must_report_the_same_release(release, api_version):
+    manifest = release.verify()
+
+    def respond(request):
+        if request.url.path == "/api/health":
+            return httpx.Response(200, json={"status": "ok", "version": api_version})
+        if request.url.path == "/version.json":
+            return httpx.Response(200, json=manifest)
+        return httpx.Response(401 if request.url.path == "/api/me" else 200)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        if api_version == __version__:
+            release.verify_live_release(http, "https://example.cloudfront.net", manifest)
+        else:
+            with pytest.raises(RuntimeError, match="Live API version"):
+                release.verify_live_release(http, "https://example.cloudfront.net", manifest)
+
+
+def test_live_frontend_manifest_must_match_the_tested_release_even_with_current_api(release):
+    manifest = release.verify()
+
+    def respond(request):
+        if request.url.path == "/api/health":
+            return httpx.Response(200, json={"status": "ok", "version": __version__})
+        if request.url.path == "/version.json":
+            return httpx.Response(200, json={**manifest, "commit": "b" * 40})
+        return httpx.Response(401 if request.url.path == "/api/me" else 200)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        with pytest.raises(RuntimeError, match="Live release manifest"):
+            release.verify_live_release(http, "https://example.cloudfront.net", manifest)
 
 
 @pytest.mark.parametrize("change", ["lambda", "frontend", "missing", "extra", "commit"])

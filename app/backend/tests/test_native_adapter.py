@@ -186,8 +186,9 @@ def test_native_assets_reject_untracked_overrides_and_external_data(tmp_path):
     )
     config.verify()
     (data / "untracked.usda").write_text("#usda 1.0\n")
-    with pytest.raises(GatewayUnavailable, match="outside the pinned Git revision"):
+    with pytest.raises(GatewayUnavailable, match="pinned"):
         config.verify()
+    (data / "untracked.usda").unlink()
     other = tmp_path / "other"
     other.mkdir()
     with pytest.raises(GatewayUnavailable, match="belong to the pinned assets"):

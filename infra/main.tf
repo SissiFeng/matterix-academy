@@ -110,8 +110,8 @@ resource "aws_cognito_user_pool_client" "web" {
   logout_urls                          = ["https://${aws_cloudfront_distribution.web.domain_name}"]
   prevent_user_existence_errors        = "ENABLED"
   enable_token_revocation              = true
-  access_token_validity                = 15
-  id_token_validity                    = 15
+  access_token_validity                = 60
+  id_token_validity                    = 60
   refresh_token_validity               = 1
   token_validity_units {
     access_token  = "minutes"
@@ -137,7 +137,18 @@ resource "aws_iam_role_policy" "api" {
 }
 resource "aws_lambda_function" "api" {
   # Terraform bootstraps code; the tested GitHub release owns later code updates.
-  lifecycle { ignore_changes = [filename, source_code_hash] }
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
+    # Cross-variable rule; variable validation can reference other variables only from Terraform 1.9.
+    precondition {
+      condition     = !var.real_execution_enabled || var.pairing_enabled
+      error_message = "real_execution_enabled requires pairing_enabled."
+    }
+    precondition {
+      condition     = !var.connector_real_execution_enabled || var.connector_companion_enabled
+      error_message = "Physical execution requires the dedicated companion API."
+    }
+  }
   function_name                  = local.name
   role                           = aws_iam_role.api.arn
   runtime                        = "python3.12"
@@ -158,11 +169,17 @@ resource "aws_lambda_function" "api" {
       ACADEMY_COGNITO_DOMAIN            = "https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com"
       ACADEMY_APP_URL                   = "https://${aws_cloudfront_distribution.web.domain_name}"
       ACADEMY_REMOTE_ENABLED            = tostring(var.remote_execution_enabled)
+      ACADEMY_CONNECTOR_REAL_ENABLED    = tostring(var.connector_real_execution_enabled)
+      ACADEMY_CONNECTOR_BUCKET          = var.connector_artifact_bucket
       ACADEMY_SELF_SIGNUP_EMAIL_DOMAINS = jsonencode(var.self_signup_email_domains)
       ACADEMY_MEDIA_PREFIX              = local.media_prefix
       ACADEMY_PAIRING_ENABLED           = tostring(var.pairing_enabled)
       ACADEMY_REAL_ENABLED              = tostring(var.real_execution_enabled)
       ACADEMY_OPERATOR_GROUP            = var.operator_group
+      ACADEMY_GPU_INSTANCE_ID           = var.gpu_instance_id
+      ACADEMY_GPU_WORKER_ID             = var.gpu_worker_id
+      ACADEMY_GPU_START_DOCUMENT        = var.gpu_instance_id != "" ? aws_ssm_document.gpu_start[0].name : ""
+
     }
   }
   depends_on = [aws_iam_role_policy.api, aws_cloudwatch_log_group.api]
@@ -260,15 +277,17 @@ resource "aws_cloudfront_response_headers_policy" "web" {
       override                   = true
     }
     content_security_policy {
-      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://${aws_cognito_user_pool.learners.endpoint} https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://${aws_cognito_user_pool.learners.endpoint} https://${aws_cognito_user_pool_domain.learners.domain}.auth.${var.region}.amazoncognito.com wss://*.kinesisvideo.${var.region}.amazonaws.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
       override                = true
     }
   }
 }
 resource "aws_cloudfront_distribution" "web" {
   enabled             = true
+  comment             = local.name
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
+  tags                = { Name = local.name }
   origin {
     domain_name              = aws_s3_bucket.web.bucket_regional_domain_name
     origin_id                = "web"

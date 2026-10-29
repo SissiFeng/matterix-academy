@@ -11,4 +11,7 @@ github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@139333201
 
 # Optional notifications (confirm the email subscription after apply)
 # alarm_email        = "operator@example.org"
+# Optional wakeup for one existing reviewed GPU; does not enable native execution.
+# gpu_instance_id = "i-0123456789abcdef0"
+# gpu_worker_id   = "ec2-flex-pilot-1"
 # monthly_budget_usd = 100

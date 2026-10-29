@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import external, protocol_api
+from .gpu_lifecycle import configured as configured_gpu
 from .instruments import gateway_credential
 from .media import MediaService
 from .models import StrictModel
@@ -120,7 +121,12 @@ def create_worker_app(
         if enabled is not None
         else os.getenv("ACADEMY_REMOTE_ENABLED", "false").lower() == "true"
     )
-    service = RunService(store, enabled, **({"clock": clock} if clock else {}))
+    service = RunService(
+        store,
+        enabled,
+        gpu=configured_gpu(store) if runtime == "aws" else None,
+        **({"clock": clock} if clock else {}),
+    )
     pairing_enabled = (
         flag("ACADEMY_PAIRING_ENABLED") if pairing_enabled is None else pairing_enabled
     )
@@ -279,14 +285,21 @@ handler = Mangum(app, lifespan="off")
 
 def reap_handler(event, context):
     store = machine_store()
-    runs = RunService(store, enabled=flag("ACADEMY_REMOTE_ENABLED"))
+    runs = RunService(
+        store,
+        enabled=flag("ACADEMY_REMOTE_ENABLED"),
+        gpu=configured_gpu(store),
+    )
     pairing = PairRunService(
         store,
         pairing_enabled=flag("ACADEMY_PAIRING_ENABLED"),
         real_enabled=flag("ACADEMY_REAL_ENABLED"),
     )
-    return {
+    result = {
         "expired_runs": runs.reap(),
         "closed_viewports": MediaService(runs).reap(),
         "expired_commands": pairing.reap(),
     }
+    if runs.gpu:
+        result["gpu"] = runs.gpu.reconcile()
+    return result

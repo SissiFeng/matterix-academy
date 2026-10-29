@@ -15,9 +15,11 @@ from uuid import UUID
 from fastapi import HTTPException
 from pydantic import Field, model_validator
 
+from .commissioning import active_grant, permits_plan, reserve
 from .learning import readiness
 from .models import StrictModel
 from .native_plan import FIRST_TRANSFER, TransferCapability, intent_for, preflight
+from .native_studio import STUDIO, StudioCapability, StudioIssue, studio_preflight, studio_scene
 from .recipes import MIXING, parse_plan
 from .remote_run import RemoteRunRequest, RemoteRunSnapshot, check_run_snapshot, workflow_digest
 from .store import Conflict, Write
@@ -96,6 +98,26 @@ def transfer_issues(worker, plan) -> list | None:
     return preflight(intent_for(plan), TransferCapability.model_validate(declared))
 
 
+def studio_issues(worker, plan, declared=None):
+    declared = declared or (worker.get("capabilities") or {}).get(studio_scene(plan))
+    if not declared:
+        return None
+    try:
+        capability = StudioCapability.model_validate(declared)
+    except ValueError:
+        return None
+    issues = studio_preflight(plan, capability)
+    if not capability.viewport:
+        issues.append(StudioIssue(code="viewport", message="This scene has no qualified live view"))
+    if set(capability.observed) != {"liquid_volume", "tip_state"}:
+        issues.append(
+            StudioIssue(
+                code="observations", message="Native liquid and tip reporting is not qualified"
+            )
+        )
+    return issues
+
+
 def worker_credential(store, authorization: str, now=None):
     """Bind a high-entropy token to its registered machine, without logging it."""
     if not authorization.startswith("Bearer "):
@@ -118,10 +140,33 @@ def worker_credential(store, authorization: str, now=None):
 
 
 class RunService:
-    def __init__(self, store, enabled=False, clock=time.time):
+    def __init__(self, store, enabled=False, clock=time.time, gpu=None):
         self.store = store
         self.enabled = enabled
         self.clock = clock
+        self.gpu = gpu
+
+    def commissioning(self, owner=None, worker=None, run=None):
+        return active_grant(self.store, self.clock(), subject=owner, worker=worker, run=run)
+
+    def execution_allowed(self, worker, run):
+        if run.get("commissioning_id"):
+            return self.commissioning(worker=worker, run=run) is not None
+        return self.enabled and worker.get("qualified", False)
+
+    def studio_run_issues(self, worker, run):
+        grant = self.commissioning(worker=worker, run=run) if run.get("commissioning_id") else None
+        declared = ((grant or {}).get("request", {}).get("studio") or {}).get("capability")
+        return studio_issues(worker, parse_plan(run["plan"]), declared)
+
+    def availability(self, owner):
+        grant = self.commissioning(owner)
+        return {
+            "enabled": self.enabled
+            or bool(grant and len(grant["run_ids"]) < grant["request"]["max_runs"]),
+            "commissioning": bool(grant),
+            "commissioning_expires": grant["expires"] if grant else None,
+        }
 
     def raw(self, run_id):
         record = self.store.get(RUNS, str(run_id))
@@ -148,7 +193,11 @@ class RunService:
                 "reason",
             )
         } | {
+            "gpu": self.gpu.status() if self.gpu else None,
+            "scene": run.get("scene", run["plan"]["course_id"]),
+            "instrument": run["plan"].get("instrument", "flex"),
             "evidence": "native" if snapshot else "pending",
+            "commissioning": bool(run.get("commissioning_id")),
             "completed_steps": sum(s["status"] == "completed" for s in snapshot["steps"])
             if snapshot
             else 0,
@@ -183,7 +232,8 @@ class RunService:
             ):
                 raise Conflict
             return self.public(existing)
-        if not self.enabled:
+        grant = self.commissioning(owner)
+        if not self.enabled and not grant:
             raise HTTPException(503, "Native execution awaits Ubuntu qualification")
         session = self.store.get(owner, f"session#{session_id}")
         if not session:
@@ -191,7 +241,14 @@ class RunService:
         if session["version"] != data.expected_version or session["status"] == "running":
             raise Conflict
         plan = parse_plan(session["experiment"])
-        if plan.course_id not in {"flex-first-transfer", MIXING}:
+        if grant and not permits_plan(grant, plan, next_only=True):
+            raise HTTPException(
+                422,
+                "Commissioning permits only the fixed seed-42 mixing scene"
+                if not grant["request"].get("studio")
+                else "Commissioning permits only the next exact approved Studio plan",
+            )
+        if plan.course_id not in {"flex-first-transfer", MIXING, STUDIO}:
             raise HTTPException(422, "Only the qualified first-transfer scene is supported")
         if plan.course_id == "flex-first-transfer" and not readiness(session)["ready"]:
             raise HTTPException(
@@ -199,6 +256,10 @@ class RunService:
             )
         if plan.course_id == FIRST_TRANSFER:
             self.check_supported(plan)
+        if plan.course_id == STUDIO:
+            report = self.studio_preflight(owner, session_id)
+            if not report["ready"]:
+                raise HTTPException(422, {"message": report["message"], "issues": report["issues"]})
         pointer = self.store.get(owner, f"remote#{session_id}")
         if pointer and not pointer["released"]:
             raise HTTPException(
@@ -213,10 +274,12 @@ class RunService:
             "submitted_version": data.expected_version,
             "plan": plan.model_dump(mode="json"),
             "plan_hash": workflow_digest(plan),
+            "scene": studio_scene(plan) if plan.course_id == STUDIO else plan.course_id,
             "status": "queued",
             "created_at": now,
             "updated_at": now,
             "snapshot": None,
+            "commissioning_id": grant["request"]["grant_id"] if grant else None,
             "control": None,
             "cleanup": None,
             "queue_key": f"{now:020.6f}#{run_id}",
@@ -226,8 +289,14 @@ class RunService:
             "run_id": run_id,
             "released": False,
         }
+        try:
+            commission_write = [reserve(grant, run_id, plan)] if grant else []
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
         self.store.transact(
             [
+                *([self.gpu.demand_write()] if self.gpu else []),
+                *commission_write,
                 Write(
                     owner,
                     f"session#{session_id}",
@@ -240,6 +309,101 @@ class RunService:
             ]
         )
         return self.public(run)
+
+    def studio_preflight(self, owner, session_id):
+        session = self.store.get(owner, f"session#{session_id}")
+        if not session:
+            raise HTTPException(404, "Experiment not found")
+        plan = parse_plan(session["experiment"])
+        if plan.course_id != STUDIO:
+            raise HTTPException(422, "Native Studio preflight requires a Workflow Studio design")
+        scene = studio_scene(plan)
+        issues = []
+        grant = self.commissioning(owner)
+        scope = (grant or {}).get("request", {}).get("studio")
+        enabled = self.enabled or bool(scope)
+        if grant and not scope:
+            issues.append(
+                StudioIssue(
+                    code="commissioning_plan",
+                    message="This acceptance window permits only its fixed mixing recipe",
+                )
+            )
+        if not enabled:
+            issues.append(
+                StudioIssue(
+                    code="deployment",
+                    message="Matterix execution awaits native qualification in this deployment",
+                )
+            )
+        if session["status"] == "running":
+            issues.append(
+                StudioIssue(
+                    code="teaching_active",
+                    message="Pause the teaching simulation before starting Matterix",
+                )
+            )
+        pointer = self.store.get(owner, f"remote#{session_id}")
+        if pointer and not pointer["released"]:
+            issues.append(
+                StudioIssue(
+                    code="active_run",
+                    message="The previous native run still requires verified cleanup",
+                )
+            )
+        candidates = [
+            worker
+            for worker in self.store.partition(WORKERS)
+            if worker.get("qualified")
+            and not worker.get("revoked", True)
+            and worker.get("credential_expires", 0) > self.clock()
+            and scene in worker.get("scenes", [])
+            and (
+                worker.get("state") in {"ready", "busy"}
+                or (self.gpu and worker["worker_id"] == self.gpu.worker)
+            )
+        ]
+        closest = None
+        for worker in candidates:
+            found = studio_issues(worker, plan)
+            if found is not None and (closest is None or len(found) < len(closest)):
+                closest = found
+        if scope:
+            if not permits_plan(grant, plan, next_only=True):
+                issues.append(
+                    StudioIssue(
+                        code="commissioning_plan",
+                        message="Only the next exact operator-approved Studio design can run in this acceptance window",
+                    )
+                )
+            else:
+                found = studio_issues({}, plan, scope["capability"])
+                if found is not None and (closest is None or len(found) < len(closest)):
+                    closest = found
+        if closest is None:
+            issues.append(
+                StudioIssue(
+                    code="host",
+                    message=f"No qualified {plan.instrument.upper() if plan.instrument == 'ot2' else 'Flex'} host declares support for this Studio scene",
+                )
+            )
+        else:
+            issues.extend(closest)
+        return {
+            "session_id": str(session_id),
+            "session_version": session["version"],
+            "plan_hash": workflow_digest(plan),
+            "instrument": plan.instrument,
+            "scene": scene,
+            "enabled": enabled,
+            "gpu": self.gpu.status() if self.gpu else None,
+            "commissioning": bool(scope),
+            "ready": not issues,
+            "issues": [issue.model_dump() for issue in issues],
+            "message": "This saved design is ready for native simulation"
+            if not issues
+            else "Resolve the listed requirements before starting Matterix",
+        }
 
     def check_supported(self, plan):
         """Reject a learner plan no qualified scene can run exactly as saved."""
@@ -281,12 +445,26 @@ class RunService:
 
     def claim(self, worker_id):
         worker = self.worker(worker_id)
-        if not self.enabled or not worker.get("qualified"):
-            raise HTTPException(403, "Native worker qualification is required")
+        managed = self.gpu and worker_id == self.gpu.worker
+        if managed:
+            # Only called with an empty local journal (or to recover its exact run).
+            # Heartbeat is liveness, never qualification or evidence of execution.
+            self.store.put(
+                WORKERS, worker_id, revised(worker, last_seen=self.clock()), worker["version"]
+            )
+            worker = self.worker(worker_id)
+        grant = self.commissioning(worker=worker)
+        if not (self.enabled and worker.get("qualified")) and not grant:
+            raise HTTPException(
+                403, "Native worker qualification or commissioning authority is required"
+            )
         if worker.get("active_run"):
             # Recover a lost claim response; never assign a second instance/run.
             return self.machine_view(self.raw(worker["active_run"]), worker_id)
-        if worker["state"] != "ready":
+        if worker["state"] != "ready" and not (grant and worker["state"] == "quarantined"):
+            return None
+        power_writes = self.gpu.claim_writes() if managed else []
+        if power_writes is None:
             return None
         target = self.store.get("system#targets", f"sim:{worker_id}")
         if target and target.get("reservation"):
@@ -294,9 +472,16 @@ class RunService:
             return None
         for candidate in self.store.partition(QUEUE):
             run = self.raw(candidate["run_id"])
-            if run["status"] != "queued":
+            if self.clock() - run["created_at"] >= 3600:
+                # The scheduled reaper releases it; never dispatch in the tick gap.
                 continue
-            if run["plan"]["course_id"] not in worker.get("scenes", []):
+            if run["status"] != "queued" or not self.execution_allowed(worker, run):
+                continue
+            if not run.get("commissioning_id") and run.get(
+                "scene", run["plan"]["course_id"]
+            ) not in worker.get("scenes", []):
+                continue
+            if run["plan"]["course_id"] == STUDIO and self.studio_run_issues(worker, run) != []:
                 continue
             if run["plan"]["course_id"] == FIRST_TRANSFER and (
                 transfer_issues(worker, parse_plan(run["plan"])) != []
@@ -309,8 +494,12 @@ class RunService:
                 status="claimed",
                 worker_id=worker_id,
                 claim_token=secrets.token_urlsafe(32),
-                lease_expires=now + LEASE_SECONDS,
-                deadline=now + MAX_RUN_SECONDS,
+                lease_expires=min(now + LEASE_SECONDS, grant["expires"])
+                if run.get("commissioning_id")
+                else now + LEASE_SECONDS,
+                deadline=min(now + MAX_RUN_SECONDS, grant["expires"])
+                if run.get("commissioning_id")
+                else now + MAX_RUN_SECONDS,
                 updated_at=now,
                 runtime_manifest={
                     "engine_version": worker["engine_version"],
@@ -321,6 +510,7 @@ class RunService:
             try:
                 self.store.transact(
                     [
+                        *power_writes,
                         Write(RUNS, run["run_id"], claimed, run["version"]),
                         Write(WORKERS, worker_id, updated_worker, worker["version"]),
                         Write(QUEUE, run["queue_key"], None, 1),
@@ -369,8 +559,8 @@ class RunService:
 
     def start(self, worker_id, run_id, data: StartRequest):
         worker, run = self.owned(worker_id, run_id, data.claim_token)
-        if not self.enabled or not worker.get("qualified"):
-            raise HTTPException(403, "Native execution is not qualified")
+        if not self.execution_allowed(worker, run):
+            raise HTTPException(403, "Native execution is not authorized")
         if run.get("start_command_id") == str(data.command_id):
             return self.machine_view(run, worker_id)
         if run["status"] != "claimed":
@@ -388,7 +578,7 @@ class RunService:
 
     def bind(self, worker_id, run_id, data: BindRequest):
         worker, run = self.owned(worker_id, run_id, data.claim_token)
-        if not worker.get("qualified") or (data.engine_version, data.asset_version) != (
+        if not self.execution_allowed(worker, run) or (data.engine_version, data.asset_version) != (
             worker["engine_version"],
             worker["asset_version"],
         ):
@@ -604,8 +794,9 @@ class RunService:
                 worker_id,
                 revised(
                     worker,
-                    state="ready" if verified else "quarantined",
+                    state="ready" if verified and worker.get("qualified") else "quarantined",
                     active_run=None if verified else run["run_id"],
+                    last_cleanup_at=self.clock() if verified else worker.get("last_cleanup_at", 0),
                 ),
                 worker["version"],
             ),
@@ -617,6 +808,34 @@ class RunService:
 
     def reap(self):
         changed = 0
+        for candidate in self.store.partition(QUEUE):
+            run = self.raw(candidate["run_id"])
+            if run["status"] != "queued":
+                continue
+            expired = self.clock() - run["created_at"] >= 3600
+            revoked = run.get("commissioning_id") and not self.commissioning(run=run)
+            if expired or revoked:
+                # No worker ever claimed this job: no native side effect needs reset.
+                failed = revised(
+                    run,
+                    status="failed",
+                    updated_at=self.clock(),
+                    reason="GPU queue wait expired"
+                    if expired
+                    else "Run authorization expired before dispatch",
+                    cleanup={"reset_verified": True, "never_started": True},
+                )
+                try:
+                    self.store.transact(
+                        [
+                            Write(RUNS, run["run_id"], failed, run["version"]),
+                            Write(QUEUE, run["queue_key"], None, candidate["version"]),
+                            *self.release_lock(run),
+                        ]
+                    )
+                    changed += 1
+                except Conflict:
+                    continue
         for worker in self.store.partition(WORKERS):
             if not worker.get("active_run"):
                 continue

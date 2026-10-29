@@ -1,0 +1,120 @@
+name: Review and mirror connector packages
+on:
+  schedule:
+    - cron: '41 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      manifest_id:
+        description: 'Reviewed manifest filename without .json; leave empty for intake only'
+        type: string
+        default: ''
+      artifact_id:
+        description: 'Exact GitHub Actions artifact or release asset ID'
+        type: string
+        default: ''
+      artifact_kind:
+        type: choice
+        options: [actions, release]
+        default: actions
+
+permissions:
+  contents: read
+concurrency:
+  group: connector-artifact-intake
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    if: github.repository == 'SissiFeng/matterix-academy' && ((github.event_name == 'schedule' && vars.CONNECTOR_SYNC_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && inputs.manifest_id == ''))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        with:
+          version: '0.11.18'
+      - name: Inspect current AC commits and build evidence without executing upstream code
+        env:
+          GH_TOKEN: ${{ secrets.CONNECTOR_ARTIFACT_READ_TOKEN || github.token }}
+        run: uv run --frozen python scripts/connector-release.py inspect --output build/connector-intake.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: connector-intake-${{ github.run_id }}
+          path: build/connector-intake.json
+          retention-days: 14
+      - name: Record the evidence boundary
+        run: echo 'Intake records candidates only. No robot installation, package promotion or hardware execution occurred.' >> "$GITHUB_STEP_SUMMARY"
+
+  mirror:
+    if: github.repository == 'SissiFeng/matterix-academy' && github.event_name == 'workflow_dispatch' && inputs.manifest_id != ''
+    environment: connector-publication
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        with:
+          version: '0.11.18'
+      - name: Require reviewed manifest and configured private destination
+        env:
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          PUBLISH_ROLE: ${{ vars.CONNECTOR_PUBLISH_ROLE_ARN }}
+          EXPECTED_ACCOUNT: ${{ vars.CONNECTOR_EXPECTED_ACCOUNT }}
+          ARTIFACT_BUCKET: ${{ vars.CONNECTOR_ARTIFACT_BUCKET }}
+        run: |
+          set -euo pipefail
+          [[ "$MANIFEST_ID" =~ ^[a-z0-9][a-z0-9-]{0,79}$ ]]
+          [[ "$ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$EXPECTED_ACCOUNT" =~ ^[0-9]{12}$ ]]
+          [[ -n "$PUBLISH_ROLE" && -n "$ARTIFACT_BUCKET" ]]
+          test -f "ops/connectors/releases/$MANIFEST_ID.json"
+      - name: Fetch the exact artifact and validate its source and digest
+        env:
+          GH_TOKEN: ${{ secrets.CONNECTOR_ARTIFACT_READ_TOKEN }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_KIND: ${{ inputs.artifact_kind }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          uv run --frozen python scripts/connector-release.py fetch \
+            --manifest "ops/connectors/releases/$MANIFEST_ID.json" \
+            --artifact-id "$ARTIFACT_ID" --kind "$ARTIFACT_KIND" \
+            --output build/connector-package
+      - uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
+        with:
+          role-to-assume: ${{ vars.CONNECTOR_PUBLISH_ROLE_ARN }}
+          aws-region: ${{ vars.CONNECTOR_AWS_REGION }}
+          allowed-account-ids: ${{ vars.CONNECTOR_EXPECTED_ACCOUNT }}
+          role-duration-seconds: 900
+      - name: Mirror immutable package to the existing private artifact bucket
+        env:
+          GH_TOKEN: ${{ secrets.CONNECTOR_ARTIFACT_READ_TOKEN }}
+          MANIFEST_ID: ${{ inputs.manifest_id }}
+          EXPECTED_ACCOUNT: ${{ vars.CONNECTOR_EXPECTED_ACCOUNT }}
+          ARTIFACT_BUCKET: ${{ vars.CONNECTOR_ARTIFACT_BUCKET }}
+        run: |
+          set -euo pipefail
+          uv run --frozen python scripts/connector-release.py mirror \
+            --manifest "ops/connectors/releases/$MANIFEST_ID.json" \
+            --bundle build/connector-package --bucket "$ARTIFACT_BUCKET" \
+            --expected-account "$EXPECTED_ACCOUNT" --confirm-publish \
+            > build/connector-publication.json
+          cat build/connector-publication.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: connector-publication-${{ github.run_id }}
+          path: build/connector-publication.json
+          if-no-files-found: warn
+          retention-days: 30

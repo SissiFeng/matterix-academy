@@ -25,6 +25,7 @@ from pydantic import Field, StrictBool, model_validator
 
 from .models import StrictModel
 from .native_plan import TransferCapability
+from .native_studio import STUDIO_SCENES, StudioCapability
 from .runs import RUNS, TERMINAL, WORKERS, RunService, revised
 from .store import Conflict, DynamoStore, Write
 
@@ -321,7 +322,7 @@ def qualification_changes(old: dict, evidence: dict) -> dict:
     if (
         not isinstance(scenes, list)
         or not (scenes or pair_models)
-        or not set(scenes) <= {"flex-first-transfer", "flex-mixing"}
+        or not set(scenes) <= {"flex-first-transfer", "flex-mixing", *STUDIO_SCENES}
     ):
         raise ValueError("Invalid qualified scene list")
     if "flex-mixing" in scenes and evidence.get("mixing_and_media_verified") is not True:
@@ -338,6 +339,21 @@ def qualification_changes(old: dict, evidence: dict) -> dict:
                 "wells and volume range"
             ) from None
         capabilities["flex-first-transfer"] = declared.model_dump()
+    for scene in set(scenes) & STUDIO_SCENES:
+        if (evidence.get("studio_and_media_verified") or {}).get(scene) is not True:
+            raise ValueError(
+                "Each Studio scene requires its own native workflow and media acceptance"
+            )
+        declared = StudioCapability.model_validate((evidence.get("capabilities") or {}).get(scene))
+        if (
+            declared.scene != scene
+            or not declared.viewport
+            or set(declared.observed) != {"liquid_volume", "tip_state"}
+        ):
+            raise ValueError(
+                "Studio qualification must bind its scene, native observations and viewport"
+            )
+        capabilities[scene] = declared.model_dump()
     return {
         "qualified": True,
         "state": "ready",

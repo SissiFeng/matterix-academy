@@ -1,3 +1,247 @@
+# Saved Workflow Studio to native Matterix — 2026-10-23
+
+Local validation passed **884 backend tests and all 61 Chromium journeys**.
+Lambda packaging, `verify.sh`, production frontend build and formatting, both
+Terraform roots, disabled zero-resource pilot plan, and Packer 1.16.1 formatting,
+syntax and offline Amazon plugin schema checks passed. The verification script
+also passes 18 Node guard/receipt tests, including five new Studio harness tests.
+
+The new path binds the complete saved plan and version to native Flex scene
+geometry, actions, observations and video. Browser fixtures cover unavailable
+hosts, exact-plan submission, refresh recovery, unresolved submission locks,
+verified cleanup before a second run, and stale preflight rejection. These are
+synthetic fixtures, not a real GPU/browser run. Representative desktop and phone
+views were visually inspected.
+
+Independent architecture review found and corrected a partial-progress mismatch:
+confirmed steps must now agree with the native liquid/tip state, with only the next
+action allowed to be partially observed. The image probe also requires validated
+persisted completion, bound renderer frames and reset checks. Independent security
+review found no concrete new authority bypass. Static compatibility checks against
+the exact pinned internal engine Git objects and SHA256-verified Flex LFS assets
+found no definite API incompatibility; this does not establish Isaac execution.
+
+External review corrections also restrict qualification and commissioning to the
+implemented Flex profile, share its excluded A3 slot with preflight, preserve
+monotonic native action identity/progress, reject damaged Studio evidence without
+crashing, and retain failed probe diagnostics. Browser regressions confirm network
+alerts clear after recovery and accepted runs stay locked during failed session
+reads without being described as unsubmitted. The complete suite above was rerun
+after these corrections.
+
+The image build now includes a local saved-workflow execution/render/reset probe.
+The separate opt-in [live Studio acceptance harness](STUDIO-NATIVE-ACCEPTANCE.md)
+requires two approved, distinct saved designs and manual Cognito login. Native GPU
+operation, real relay video, real-account browser acceptance and OT-2 qualification
+remain unverified. General native execution remains disabled. Publication and any
+paid image-build outcome must be verified separately from these local checks.
+
+---
+
+# Instrument introductions and Workflow Studio — 2026-10-23
+
+Local validation passed **730 backend tests and 55 Chromium journeys**. After the
+final shared-layout and mobile-navigation refinements, all **10 affected browser
+journeys** were rerun and passed. Lambda packaging, repository verification,
+frontend production build, formatting, both Terraform roots and offline Packer
+validation passed. No paid resource creation or cloud configuration change ran.
+
+The new journeys exercise public playback without learner mutations, pause/seek/
+instrument switching, reduced motion, a starter surviving refresh and onboarding
+without duplicate creation, Flex and OT-2 editing, blank designs, saved refresh,
+paused recovery, reset and a second run, fault correction, stale edits, keyboard
+navigation, and phone light/dark layouts. Reset sandbox attempts without an
+assessment are labeled as incomplete sequences rather than missed lesson goals.
+
+The public and signed-in pages were inspected in a real local browser at desktop
+and 390px phone sizes. Representative Flex dilution and OT-2 distribution frames,
+the studio, completed observations, and dark theme were visually checked. The
+36-second timeline reaches its end and can replay; hidden pages pause it.
+Architecture review corrections unified the starter/illustration deck layout and
+aligned dilution tip changes. A separate security review found no concrete new
+vulnerability.
+
+These checks establish English synthetic teaching behavior and local browser
+integration. They do not establish real Cognito account acceptance, native
+Isaac/GPU operation, physical instrument operation or experimental validity.
+Application publication is verified separately by the main deployment workflow
+and its commit-bound release manifest. See [studio contract](INSTRUMENT-STUDIO.md).
+
+---
+
+# Academy readiness completion — 2026-10-23
+
+The final local verification passed **539 backend tests and 45 Chromium journeys**,
+including a five-learner concurrent SQLite/FastAPI regression and the exact shared
+course, dilution reset/repeat and first-transfer helpers used by the live learner
+harness. Its nine guard tests and four native browser-evidence helper tests also passed; failed registration followed by existing
+account login can never establish a successful new registration.
+
+`build-lambda.sh`, `verify.sh`, frontend build/format, both Terraform roots and the
+actual offline Amazon Packer plugin schema passed. The packaged health/OpenAPI and
+release manifest now share version 0.2.0, and publishing checks the installed ZIP
+version before credentials plus the live version after deployment. CI installation
+has separate bounded OS/browser phases and retained failure logs.
+
+Review fixes preserve drafts after unchanged recovery reads, require a fresh post-reload
+GET, and bind relay evidence to the currently attached video track. Native evidence
+must match the manifest's session binding. GPU inputs now bind the private source
+archives; installed Lab bytes are checked against the pinned publisher wheel, and
+Git/LFS source checks work without writing caches in read-only source directories.
+Credential expiry is rechecked immediately before launching the paid build.
+
+Linux CI exposed a missing unpacked-provider checksum, corrected using official signed
+Linux/macOS packages. [CI run 39971827669](https://github.com/SissiFeng/matterix-academy/actions/runs/39971827669)
+passed at `03a8a1b`, including Packer plugin validation and browser journeys. The
+additional review fixes above passed the latest local suite; consult PR #5's latest
+check for their final remote result. These checks do not establish image-build or
+native acceptance evidence.
+
+Operational Terraform applied 13 additions and four alarm updates, then removed
+only the new US$400 budget at the user's request. The final plan has no changes.
+All 13 operational alarms have a confirmed SNS target; controlled ALARM and OK
+messages were observed in the operator mailbox. The organization budget was
+preserved. [Sanitized operational evidence](evidence/operations/2026-10-23.json).
+
+Applied G/VT quota is now 8 vCPU; g6.2xlarge preflight passes the 32-GiB/full-L4
+minimum. Actual image startup/render capacity remains unmeasured until the bounded
+build in [GPU-CAPACITY-TRIAL.md](GPU-CAPACITY-TRIAL.md). Real registration, sign-in,
+two-user cloud isolation, authenticated load and browser/native DT acceptance are
+**deferred by the user**. Their harness is ready in [LEARNER-ACCEPTANCE.md](LEARNER-ACCEPTANCE.md),
+but no local result promotes those live acceptance gates.
+
+# Academy 0.2.0 and GPU image preparation — 2026-10-19
+
+The complete Isaac dependency resolution exposed a conflict missed by top-level
+version comparison: Sim 6.0.1.0 requires torchvision 0.26.0, which requires torch
+2.11.0. The candidate is corrected to torch 2.11.0+cu128 / torchvision 0.26.0+cu128.
+Lab also requires Pydantic <2.12, so the native environment uses 2.11.10 and the
+independent Academy agent retains its existing frozen 2.13.5. No private repository
+was modified to force compatibility. Older dated candidate notes below are historical.
+
+Linux CPython 3.12 / manylinux_2_35 resolution produced a **245-package hashed
+runtime lock**. Frozen Academy export produced a **39-package agent closure**.
+Both passed hash-enforced Linux install dry runs; this does not prove an actual
+Linux installation. The sdist-only flatdict build uses pinned bootstrap tools.
+The official 595.58.03 driver installer was downloaded outside Academy and verified
+against the publisher's SHA256. It was not installed and licenses were not accepted.
+
+Private engine and materialized LFS assets were exported to a protected external
+input directory, then restored in a temporary directory. The restored sources passed
+exact commit, clean Git tree, fixed-scene and materialized-payload checks. No local
+Git credential helpers, remotes, hooks, untracked files or external data submodule
+were exported. Source repositories remain independent and unchanged.
+
+The Packer 1.16.1 / Amazon plugin 1.8.3 recipe passed formatting, syntax and full
+plugin-schema validation in a temporary copy with fake credentials/inputs and
+blocked cloud connectivity. The full schema check caught an unsupported account
+attribute, which was replaced with an explicit guarded build wrapper. The wrapper
+verifies the exact frozen credentials through a pinned official STS endpoint before
+Packer; tests cover a spoofed STS override and wrong-account rejection. This wrapper
+was not run against AWS. Build consent and license flags default false.
+
+Architecture review's bootstrap-hash extraction and worker-readability findings
+were fixed and regression-tested. Security review's IMDS token-probe improvement
+and STS endpoint finding were also addressed. No deferred review blocker remains.
+
+**Local verification:** 482 backend tests, 42 Playwright journeys, lint/format,
+frontend build, Lambda packaging, both Terraform validations and the disabled
+zero-resource plan passed. Packer schema validation uses no real account or build.
+The actual GPU image, installed driver, scene/render probe, browser/native video,
+five-step workflow and reset/recovery acceptance have **not run**. Neither local
+source release nor image inputs deploy the existing Onboarding application.
+
+See [GPU-IMAGE-BUILD.md](GPU-IMAGE-BUILD.md) and [COMMISSIONING.md](COMMISSIONING.md).
+
+---
+
+# Internal Flex commissioning preparation — 2026-10-19
+
+Compatibility was rechecked against clean internal Flex code at
+`18a96b78ee989fbf4e480e9db6a588c148c6adbe` and internal assets at
+`c57f12a04079a5f99405e1fcb818a3b7ccc52e5b`, not the unrelated OT2 checkout.
+The earlier Lab 2.3 / Sim 5.1 candidate is superseded by the pinned Python 3.12 /
+Lab 3.0.0b2.post1 / Sim 6.0.1.0 profile. Public wheel metadata and source audit
+are retained under `docs/evidence/ec2-gpu/`; source audit passes pins/payloads
+but correctly fails runtime/GPU readiness on the local Mac.
+
+`bash scripts/verify.sh` passed **463 backend tests**, lint/format, frontend
+build/format, the live-harness response-correlation unit test and both Terraform
+validations, including an isolated disabled plan with **zero resources**.
+All **42 Playwright browser journeys passed** (1.7 minutes), including the
+explicitly synthetic commissioning submit/refresh/cleanup journey. It checks the
+control path without asserting native video or qualifying its fixture worker.
+`bash scripts/build-lambda.sh` passed. After tightening operator preflight input
+validation, the 20 commissioning/evidence tests and Lambda packaging passed again.
+The live harness now follows actual POST submission and session remote-run polling
+URLs, rejects unrelated/stale responses, and checks origin. This corrects the
+architecture review finding. Security review found no concrete findings.
+
+No cloud administrative write, live browser commissioning, Isaac runtime execution,
+AMI build or resource creation was performed. The native frame proof, decoded video,
+cleanup and two-run browser acceptance still require an authorized GPU host.
+The browser/evidence checker never sets qualification; image provenance, isolation
+and interruption/recovery remain independent operator acceptance requirements.
+See [COMMISSIONING.md](COMMISSIONING.md) for the complete procedure.
+
+---
+
+# EC2 GPU pilot preparation validation — 2026-10-19
+
+Prepared in the attached `workflow-readiness-course` worktree without selecting an
+AWS account or creating paid resources. The public AWS Linux On-Demand/EBS price
+snapshot and hashes are saved in `docs/evidence/ec2-gpu/prices-2026-10-19.json`.
+This work adds an independent default-disabled `infra/ec2-gpu` root, a prepared-image
+contract, fixed-runner service, manifest renderer and acceptance matrix.
+
+`bash scripts/verify.sh` passed: **436 backend tests**, Ruff lint/format,
+TypeScript/Vite build, Prettier and both Terraform roots' validation. This includes
+**19 new offline preparation tests** on image pin validation, runner schema
+compatibility, price arithmetic/catalog gaps and rejecting the pending acceptance
+template as a qualification record. `bash scripts/build-lambda.sh` passed.
+`bash -n scripts/verify-ec2-gpu.sh` and `git diff --check` passed.
+
+`bash scripts/verify-ec2-gpu.sh` passed a fresh-state disabled plan with zero
+resources and no account discovery; it was also tested with ambient
+`TF_VAR_enabled=true` and an invalid AWS profile to verify the command-line false
+opt-in and profile isolation. Terraform 1.5.7 / locked AWS provider 6.66.0 were used.
+Independent security/architecture reviews reported no findings in this preparation
+scope. Current changes do not alter browser flows; the preceding course's 41
+Chromium journeys remain the separately recorded browser evidence, not GPU proof.
+
+No enabled/live Terraform plan, apply, EC2 launch, AMI build, worker enrollment,
+qualification, KVS probe/channel creation, native gate change, GPU frame, actual
+browser-to-Isaac run, native recovery or physical validation occurred. The exact
+approved image/accounts/network inputs and supervised GPU commissioning remain
+prerequisites. See [the pilot runbook](EC2-GPU-PILOT.md).
+
+# Workflow judgment course validation — 2026-10-19
+
+Validated locally in the attached `workflow-readiness-course` worktree against
+baseline `1e7f767` plus the uncommitted course changes. `bash scripts/build-lambda.sh`
+passed and produced the Python 3.12 / Linux x86_64 Lambda package.
+`bash scripts/verify.sh` passed: **417 backend tests**, Ruff lint/format, TypeScript /
+Vite production build, Prettier, Terraform formatting and configuration validation.
+Terraform used a fresh temporary `TF_DATA_DIR` with backend-disabled initialization;
+no AWS account selection or infrastructure apply occurred. Node 22.15.0 was used.
+
+All **41 Chromium journeys passed**, including five new course journeys. Course
+coverage includes incorrect gap/repair/recovery/conclusion answers, complete flow,
+refresh resume, restart, stale records, unsaved navigation, lost save response without
+replay, blocked reconciliation and recovery, and a 390px dark-theme viewport.
+Ten new backend cases run across SQLite and mocked DynamoDB, covering synthetic
+trial results, stage enforcement, forged-result rejection, version conflicts,
+authentication, ownership and origin isolation. Security and architecture reviews
+reported no findings. Desktop completion and mobile dark review screenshots were
+visually inspected; neither viewport showed horizontal overflow.
+
+The written explanation is not scientifically graded: completion requires the
+correct evidence-boundary choice and a nonblank explanation of at least 20 characters.
+All numerical and incident evidence is synthetic. No CI run, commit, push, AWS
+publication, native Isaac/GPU run or physical-device acceptance is established.
+Local preview uses loopback ports 5176/8003 and a separate demonstration database.
+See [the course contract](WORKFLOW-JUDGMENT-COURSE.md).
+
 # Repository fixes and preflight validation — 2026-10-16
 
 Branch `codex/workcell-onboarding` (local, not pushed). Backend: **407 passed** with the `native-worker` extra on Python 3.12 (Linux, cloud workspace); 394 passed + 13 `aiortc` skips on the Linux VM. Ruff lint/format, TypeScript, Prettier and `scripts/build-lambda.sh` passed. Vite main bundle fell from about 521 kB to 344 kB with no size warning.
