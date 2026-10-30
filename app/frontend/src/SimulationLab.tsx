@@ -1,3 +1,4 @@
+import GpuRequestPanel from "./GpuRequestPanel";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, FlaskConical, Play, RefreshCw } from "lucide-react";
 import { api, json } from "./api";
@@ -225,15 +226,7 @@ export default function SimulationLab() {
           </small>
         </div>
       </header>
-      {run?.gpu && (
-        <p
-          className={s.notice}
-          role="status"
-          aria-label="Digital twin availability"
-        >
-          {run.gpu.message} GPU idle timeout: one hour.
-        </p>
-      )}
+      {session && <GpuRequestPanel key={session.id} session={session} />}
       {catalog?.commissioning && (
         <p className={s.notice}>
           Operator commissioning window · fixed seed 42 · at most two runs. This

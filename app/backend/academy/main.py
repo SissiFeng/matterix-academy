@@ -23,7 +23,7 @@ from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperim
 from .onboarding import DeviceUpdate, OnboardingService, TwinCreate
 from .pairing import PairRunService
 from .recipes import MIXING, CreateMixing, MixingPlan, mixing_session
-from .runs import RunControl, RunService, SubmitRun
+from .runs import GpuRequest, RunControl, RunService, SubmitRun
 from .settings import Settings
 from .simple_twins import (
     ConfirmTwin,
@@ -359,6 +359,16 @@ def create_app(settings: Settings | None = None, store=None):
             if settings.remote_enabled
             else "Remote execution is awaiting Ubuntu qualification. Your teaching exercises remain available.",
         }
+
+    @app.get("/api/sessions/{session_id}/gpu-request")
+    def gpu_request_status(session_id: UUID, owner: str = Depends(identify)):
+        return app.state.runs.gpu_request_status(owner, session_id)
+
+    @app.post("/api/sessions/{session_id}/gpu-request", status_code=202)
+    def request_gpu(session_id: UUID, data: GpuRequest, owner: str = Depends(identify)):
+        app.state.runs.request_gpu(owner, session_id, data)
+        app.state.runs.gpu.reconcile()
+        return app.state.runs.gpu_request_status(owner, session_id)
 
     @app.post("/api/runs", status_code=201)
     def submit_run(data: SubmitRun, owner: str = Depends(identify)):

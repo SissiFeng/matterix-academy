@@ -71,6 +71,19 @@ test("queued DT shows wakeup and capacity states without resubmitting after refr
     updated_at: null,
   };
   const run = { ...fixtureRun(session, crypto.randomUUID()), gpu };
+  await page.route(`**/api/sessions/${session.id}/gpu-request`, (route) =>
+    route.fulfill({
+      json: {
+        configured: true,
+        active: true,
+        request: {
+          request_id: crypto.randomUUID(),
+          expires_at: Date.now() / 1000 + 3600,
+        },
+        gpu,
+      },
+    }),
+  );
   let posts = 0;
   await page.route(`**/api/sessions/${session.id}/native-preflight`, (route) =>
     route.fulfill({ json: { ...preflight(session, false), gpu } }),
@@ -674,4 +687,94 @@ test("an accepted native run stays confirmed and locked when the subsequent sess
   ).toBeVisible();
   await expect(page.getByLabel("Workflow name")).toBeDisabled();
   expect(posts).toBe(1);
+});
+
+test("GPU can be requested while native execution is blocked, and reload recovers without a run", async ({
+  page,
+}) => {
+  const session = await savedStudio(page);
+  let requests = 0;
+  let runs = 0;
+  const gpu = {
+    state: "sleeping",
+    message: "The digital twin is asleep. Request a GPU to connect.",
+    idle_seconds: 3600,
+    retry_at: null,
+    updated_at: null,
+  };
+  let receipt: { request_id: string; expires_at: number } | null = null;
+  await page.route(`**/api/sessions/${session.id}/native-preflight`, (route) =>
+    route.fulfill({
+      json: {
+        ...preflight(session, false),
+        enabled: false,
+        issues: [
+          {
+            code: "deployment",
+            message:
+              "Matterix execution awaits native qualification in this deployment",
+          },
+        ],
+        gpu,
+      },
+    }),
+  );
+  await page.route(
+    `**/api/sessions/${session.id}/gpu-request`,
+    async (route) => {
+      if (route.request().method() === "POST") {
+        requests += 1;
+        expect(route.request().postDataJSON().expected_version).toBe(
+          session.version,
+        );
+        receipt = {
+          request_id: route.request().postDataJSON().request_id,
+          expires_at: Date.now() / 1000 + 3600,
+        };
+        gpu.state = "starting";
+        gpu.message = "Starting the GPU for digital twin access.";
+        // A committed request with a lost response is recovered by GET polling.
+        return route.abort("failed");
+      }
+      return route.fulfill({
+        json: { configured: true, active: !!receipt, request: receipt, gpu },
+      });
+    },
+  );
+  await page.route("**/api/runs", (route) => {
+    runs += 1;
+    return route.abort();
+  });
+  await page.goto(`/#/lab/${session.id}`);
+  await page.reload();
+  const allocation = page.getByLabel("GPU allocation", { exact: true });
+  const native = page.getByTestId("native-studio-run");
+  await expect(
+    native.getByRole("button", {
+      name: "Run saved workflow in Matterix",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await allocation
+    .getByRole("button", { name: "Request GPU", exact: true })
+    .click();
+  await expect(
+    allocation.getByRole("button", { name: "GPU requested", exact: true }),
+  ).toBeDisabled();
+  await expect(allocation).toContainText(
+    "Starting the GPU for digital twin access.",
+  );
+  await page.reload();
+  await expect(
+    allocation.getByRole("button", { name: "GPU requested", exact: true }),
+  ).toBeDisabled();
+  expect(requests).toBe(1);
+  expect(runs).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(allocation).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });
