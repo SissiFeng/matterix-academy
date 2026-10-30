@@ -40,6 +40,7 @@ export default function GpuRequestPanel({
         );
         if (!controller.signal.aborted && epoch === mutation.current) {
           setCapacity(next);
+          if (next.active) setError("");
           if (
             next.request &&
             next.request.request_id === pending.current?.request_id
@@ -49,7 +50,7 @@ export default function GpuRequestPanel({
           }
         }
       } catch {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted && epoch === mutation.current)
           setError(
             "GPU availability could not be checked. Check connection to recover your request.",
           );

@@ -487,3 +487,53 @@ def test_capacity_routes_are_authenticated_and_return_accepted_receipt(client, a
     client.cookies.clear()
     assert client.post(path, json=request).status_code == 401
     assert client.get(path).status_code == 401
+
+
+def test_capacity_request_retries_shared_demand_contention_without_replaying_power(
+    managed, monkeypatch
+):
+    from academy.runs import GpuRequest
+
+    gpu, ec2, _, now = managed
+    service = RunService(gpu.store, gpu=gpu, clock=lambda: now[0])
+    session = saved(gpu.store)
+    original = gpu.store.transact
+    raced = False
+
+    def concurrent_demand(writes):
+        nonlocal raced
+        if not raced:
+            raced = True
+            original([gpu.demand_write()])
+        original(writes)
+
+    monkeypatch.setattr(gpu.store, "transact", concurrent_demand)
+    result = service.request_gpu(
+        "alice", session["id"], GpuRequest(request_id=uuid4(), expected_version=session["version"])
+    )
+    assert raced and result["active"]
+    assert gpu.store.get("alice", "session#" + session["id"]) == session
+    ec2.start_instances.assert_not_called()
+
+
+def test_capacity_request_id_cannot_be_reused_with_another_saved_version(managed):
+    from academy.runs import GpuRequest
+    from academy.store import Conflict
+
+    gpu, _, _, now = managed
+    service = RunService(gpu.store, gpu=gpu, clock=lambda: now[0])
+    session = saved(gpu.store)
+    request_id = uuid4()
+    service.request_gpu(
+        "alice",
+        session["id"],
+        GpuRequest(request_id=request_id, expected_version=session["version"]),
+    )
+    changed = revised(session)
+    gpu.store.put("alice", "session#" + session["id"], changed, session["version"])
+    with pytest.raises(Conflict):
+        service.request_gpu(
+            "alice",
+            session["id"],
+            GpuRequest(request_id=request_id, expected_version=changed["version"]),
+        )

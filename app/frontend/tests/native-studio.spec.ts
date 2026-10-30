@@ -764,6 +764,7 @@ test("GPU can be requested while native execution is blocked, and reload recover
   await expect(allocation).toContainText(
     "Starting the GPU for digital twin access.",
   );
+  await expect(allocation.getByRole("alert")).toHaveCount(0);
   await page.reload();
   await expect(
     allocation.getByRole("button", { name: "GPU requested", exact: true }),

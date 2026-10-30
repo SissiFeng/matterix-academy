@@ -38,6 +38,10 @@ class SubmitRun(StrictModel):
     expected_version: int = Field(ge=1)
 
 
+class _GpuDemandConflict(Conflict):
+    """Only a rejected GPU-demand transaction is eligible for contention retry."""
+
+
 class GpuRequest(StrictModel):
     request_id: UUID
     expected_version: int = Field(ge=1)
@@ -238,6 +242,18 @@ class RunService:
         }
 
     def request_gpu(self, owner, session_id, data: GpuRequest):
+        # Independent learners can race on shared demand. Retry only rejected
+        # transactions; no external power mutation has occurred at this point.
+        for _ in range(4):
+            try:
+                return self._request_gpu(owner, session_id, data)
+            except _GpuDemandConflict:
+                session = self.store.get(owner, f"session#{session_id}")
+                if not session or session["version"] != data.expected_version:
+                    raise
+        raise HTTPException(503, "GPU request service is busy. Check connection and try again")
+
+    def _request_gpu(self, owner, session_id, data: GpuRequest):
         # GPU demand is independent of execution qualification and plan support.
         # Rewriting the unchanged session in this transaction supplies a CAS
         # barrier against concurrent edits/deletion without creating a revision.
@@ -266,13 +282,16 @@ class RunService:
             "requested_at": self.clock(),
             "expires_at": demand.body["desired_until"],
         }
-        self.store.transact(
-            [
-                Write(owner, f"session#{session_id}", session, session["version"]),
-                Write(owner, key, receipt, old["version"] if old else None),
-                demand,
-            ]
-        )
+        try:
+            self.store.transact(
+                [
+                    Write(owner, f"session#{session_id}", session, session["version"]),
+                    Write(owner, key, receipt, old["version"] if old else None),
+                    demand,
+                ]
+            )
+        except Conflict as exc:
+            raise _GpuDemandConflict from exc
         return self.gpu_request_status(owner, session_id)
 
     def submit(self, owner, data: SubmitRun):
