@@ -8,6 +8,7 @@ native semantic simulation, not a fluid solver or a physical robot validation.
 
 import argparse
 import hashlib
+import os
 import time
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -261,6 +262,10 @@ def run(folder, *, probe=False):
 
     manifest = read_json(folder / "manifest.json")
     config = NativeConfig.model_validate(manifest["config"])
+    # Resolve imported Matterix asset USD paths from the shipped internal assets,
+    # exactly as the scene probe does. Without this, matterix_assets falls back to
+    # the empty engine submodule path and the Flex gripper USD is not found.
+    os.environ["MATTERIX_ASSETS_DATA_DIR"] = config.assets_data_dir
     binding, request = manifest["binding"], manifest["request"]
     RemoteRunRequest.model_validate(request)  # Includes the complete saved-plan hash.
     plan, origins, steps = compile_plan(request["experiment"])
