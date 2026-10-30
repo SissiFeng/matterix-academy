@@ -150,3 +150,65 @@ test("recovering a selected experiment cannot submit a new one while state is un
     page.getByRole("button", { name: "Run mixing experiment" }),
   ).toBeEnabled();
 });
+
+test("first visit can request a GPU before mixing execution is qualified", async ({
+  page,
+}) => {
+  let created = 0;
+  let requested = 0;
+  let runs = 0;
+  let receipt: { request_id: string; expires_at: number } | null = null;
+  await page.route("**/api/simulations", async (route) => {
+    if (route.request().method() === "POST") created += 1;
+    await route.continue();
+  });
+  await page.route("**/api/sessions/*/gpu-request", (route) => {
+    if (route.request().method() === "POST") {
+      requested += 1;
+      const data = route.request().postDataJSON();
+      expect(data.expected_version).toBe(1);
+      receipt = {
+        request_id: data.request_id,
+        expires_at: Date.now() / 1000 + 3600,
+      };
+    }
+    return route.fulfill({
+      status: route.request().method() === "POST" ? 202 : 200,
+      json: {
+        configured: true,
+        active: !!receipt,
+        request: receipt,
+        gpu: {
+          state: "starting",
+          message: "Starting the GPU for digital twin access.",
+          idle_seconds: 3600,
+          retry_at: null,
+          updated_at: null,
+        },
+      },
+    });
+  });
+  await page.route("**/api/runs", (route) => {
+    runs += 1;
+    return route.abort();
+  });
+  await enter(page);
+  await expect(
+    page.getByRole("button", { name: "Run mixing experiment", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Request GPU", exact: true }).click();
+  await expect(page).toHaveURL(/#\/sim\/[a-f0-9-]+$/);
+  await expect(
+    page.getByRole("button", { name: "GPU requested", exact: true }),
+  ).toBeDisabled();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "GPU requested", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Run mixing experiment", exact: true }),
+  ).toBeDisabled();
+  expect(created).toBe(1);
+  expect(requested).toBe(1);
+  expect(runs).toBe(0);
+});

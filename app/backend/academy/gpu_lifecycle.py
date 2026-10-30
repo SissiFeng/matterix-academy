@@ -1,7 +1,7 @@
 """One pinned GPU, durable demand and serialized power transitions.
 
 This is power management, never native qualification or workflow authority.
-Only an already-validated run can create demand. EC2 state is reconciled before
+Authenticated capacity requests and validated runs can create demand. EC2 state is reconciled before
 every retry; neither native runs nor unknown SSM commands are replayed.
 """
 
@@ -24,12 +24,12 @@ STARTUP_SECONDS = 600
 # DynamoDB response delays after its conditional transaction has committed.
 OPERATION_SECONDS = 90
 MESSAGES = {
-    "sleeping": "The digital twin is asleep. Running a saved workflow will wake it.",
-    "starting": "Starting the GPU. Your saved workflow is queued.",
+    "sleeping": "The digital twin is asleep. Request a GPU to connect.",
+    "starting": "Starting the GPU for digital twin access.",
     "preparing": "GPU started. Preparing the Isaac worker.",
     "ready": "Digital twin worker connected. Queued workflows run in order.",
     "busy": "The digital twin is running or verifying cleanup. Your workflow stays queued.",
-    "capacity_wait": "AWS GPU capacity is unavailable. Your workflow stays queued; retrying shortly.",
+    "capacity_wait": "AWS GPU capacity is unavailable. Your request is retained; retrying shortly.",
     "stopping": "The digital twin is shutting down. New workflows wait for it to restart.",
     "error": "The digital twin needs operator attention. Your workflow has not been replayed.",
 }

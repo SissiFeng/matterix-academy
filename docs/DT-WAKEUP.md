@@ -6,12 +6,37 @@ duration. Silent renewal remains off, so polling does not extend a login forever
 Refresh tokens, worker credentials, live-video grants and native safety leases
 retain their independent policies.
 
-## Request path
+## Capacity request (independent of native execution)
+
+Every authenticated learner with an owned saved session can use **Request GPU**
+in Workflow Studio, the first-transfer lesson or an existing mixing session.
+`POST /api/sessions/{session_id}/gpu-request` accepts a UUID `request_id` and the
+current `expected_version`. It does not require native execution to be enabled,
+an active commissioning grant or a compatible scene. This removes the deadlock
+where a blocked native run was the only way to wake the worker.
+
+A transaction checks the unchanged saved-session version and commits an
+owner-scoped receipt together with GPU demand. It never creates a native run,
+reserves a worker, changes the design revision or clears prior cleanup locks.
+Only one outstanding request per session is accepted for one hour; repeat clicks
+return the same receipt without extending its expiry. Replaying an expired ID
+returns that expired receipt; a new request ID is required to request again.
+`GET` on the same route recovers the receipt and current GPU state after a lost
+response or reload. Reads do not renew demand. Another user's session returns
+404; stale versions return 409; an unconfigured allocator returns 503.
+
+A 202 response means the request was recorded, not that an instance was assigned
+exclusively, the worker qualified, or Isaac rendered a frame. The current allocator
+wakes one pinned shared instance. Availability, busy/queue and capacity failures
+are visible separately from saved-workflow execution checks. No native workflow
+is automatically submitted when capacity becomes ready.
+
+## Native run request path
 
 1. Save a workflow and request its native run with the current session version.
 2. The backend checks JWT ownership, saved revision, supported scene, qualification
    or exact commissioning authority, and previous cleanup. Rejected requests
-   cannot wake a GPU.
+   cannot create run demand. An independent capacity request remains available.
 3. One DynamoDB transaction records the immutable run, session reservation, queue
    entry and demand for the pinned GPU. The run ID is the idempotency key; refresh
    reconciles the same run rather than submitting another one.
@@ -80,7 +105,8 @@ learner execution. A one-hour Cognito login is not native execution authority.
 Tests exercise the controller with SQLite and mocked DynamoDB/EC2/SSM, including
 concurrent demand, capacity backoff, unknown command responses, worker startup
 deadline, shutdown/claim fencing, queued expiry and owner rejection. Browser
-journeys check startup/capacity messaging and no resubmission across refresh.
+journeys check startup/capacity messaging, requesting while native execution is
+blocked, lost-response recovery, mobile layout and no resubmission across refresh.
 These tests are control-plane evidence. Real boot, SSM service start, native
 dispatch and idle shutdown require an AWS GPU acceptance exercise when capacity
 is available.
