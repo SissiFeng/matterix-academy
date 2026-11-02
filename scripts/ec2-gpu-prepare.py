@@ -99,6 +99,7 @@ def native_config(manifest):
         "frame_root": "/run/academy-native/frames",
         "headless": True,
         "display": "",
+        "driver_version": manifest["driver_version"],
     }
 
 

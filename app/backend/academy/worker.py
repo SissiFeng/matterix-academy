@@ -20,6 +20,7 @@ import httpx
 from .gateway import (
     GatewayUnavailable,
     MatterixGateway,
+    NativeLaunchFailed,
     RemoteOperationPending,
     RemoteOutcomeUnknown,
 )
@@ -233,6 +234,18 @@ class GatewayRunner:
 class Worker:
     def __init__(self, client, runner, journal, clock=time.time):
         self.client, self.runner, self.journal, self.clock = client, runner, journal, clock
+        self.readiness = None
+
+    def ready(self):
+        """Never claim work the local runtime cannot start (for example, no GPU driver)."""
+        issue = self.runner.readiness_issue() if hasattr(self.runner, "readiness_issue") else None
+        if issue != self.readiness:
+            if issue:
+                logger.warning("Not claiming runs: %s", issue)
+            elif self.readiness:
+                logger.info("Native runtime ready; claiming runs")
+            self.readiness = issue
+        return issue is None
 
     def valid_lease(self, run):
         if min(run["lease_expires"], run["deadline"]) <= self.clock() + 2:
@@ -241,6 +254,8 @@ class Worker:
     def step(self):
         local = self.journal.read()
         if not local:
+            if not self.ready():
+                return False
             run = self.client.request("POST", "internal/runs/claim")
             if not run:
                 return False  # Idle polling has a separate bounded backoff.
@@ -392,6 +407,19 @@ class Worker:
                 result = self.client.post(run, "cleanup", **local["cleanup"])
                 if result["cleanup"]["reset_verified"]:
                     self.journal.clear()
+        except NativeLaunchFailed as exc:
+            # The supervisor proved no scene existed and every child stopped.
+            receipt = exc.receipt
+            run = self.client.post(
+                run,
+                "launch-failed",
+                native_session_id=receipt["native_session_id"],
+                stage=receipt["stage"],
+                reason=receipt["reason"],
+            )
+            logger.warning("Native launch failed before any scene existed: %s", receipt["reason"])
+            if (run.get("cleanup") or {}).get("reset_verified"):
+                self.journal.clear()
         except RemoteOperationPending:
             logger.info("Native operation is pending; preserving its intent for read-only polling")
         except RemoteOutcomeUnknown:

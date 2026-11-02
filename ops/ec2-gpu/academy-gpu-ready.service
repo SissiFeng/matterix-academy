@@ -1,0 +1,13 @@
+[Unit]
+Description=Load and verify the pinned NVIDIA driver for the native worker
+Before=academy-native.service
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh /opt/academy-agent/ops/ec2-gpu/academy-gpu-ready.sh
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

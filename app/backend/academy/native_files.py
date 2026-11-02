@@ -27,6 +27,14 @@ def write_json(path, data):
     os.replace(temp, path)
 
 
+SCENE_STARTED = "scene-started.json"
+
+
+def mark_scene_started(folder, native_session_id):
+    """Persist before any simulator scene exists; its absence proves nothing ran."""
+    write_json(Path(folder) / SCENE_STARTED, {"native_session_id": native_session_id})
+
+
 def alive_lease(folder):
     try:
         return read_json(Path(folder) / "lease.json")["lease_expires"] > time.time() + 2

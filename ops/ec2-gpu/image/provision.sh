@@ -49,6 +49,14 @@ if lsmod | awk '{print $1}' | grep -qx nouveau; then
   exit 1
 fi
 sh "$input/nvidia-driver.run" --silent --dkms --no-questions --ui=none --kernel-module-type=open
+# DKMS built the module for this kernel only; never let unattended upgrades
+# boot the worker into a kernel without its NVIDIA driver.
+apt-mark hold "linux-image-$(uname -r)" "linux-headers-$(uname -r)" "linux-modules-$(uname -r)"
+for meta in linux-aws linux-image-aws linux-headers-aws; do
+  if dpkg-query -W -f='${Status}' "$meta" 2>/dev/null | grep -q 'install ok installed'; then
+    apt-mark hold "$meta"
+  fi
+done
 # Bootstrap only uv from the hash-locked runtime requirements, then use the same lock for install.
 python3.12 -m venv /opt/academy-build-tools
 python3.12 /opt/academy-agent/scripts/ec2-gpu-bootstrap.py \
@@ -89,6 +97,7 @@ install -m 644 "$input/release.json" /etc/academy-native/release.json
   --manifest /etc/academy-native/image-manifest.json --output-dir /etc/academy-native
 chmod 644 /etc/academy-native/native-config.json /etc/academy-native/image-manifest.sha256
 install -m 644 /opt/academy-agent/ops/ec2-gpu/academy-native.service /etc/systemd/system/academy-native.service
+install -m 644 /opt/academy-agent/ops/ec2-gpu/academy-gpu-ready.service /etc/systemd/system/academy-gpu-ready.service
 # Persistent dedicated firewall; preserve the base host's other tables.
 install -m 644 /opt/academy-agent/ops/ec2-gpu/block-imds.nft /etc/academy-native/block-imds.nft
 cat > /etc/systemd/system/academy-imds.service <<'UNIT'
@@ -108,6 +117,7 @@ printf '[Unit]\nRequires=academy-imds.service\nAfter=academy-imds.service\n' > /
 chmod -R a+rX,go-w /opt/academy-agent /opt/matterix-isaac /srv/matterix /srv/matterix-assets
 systemctl daemon-reload
 systemctl enable academy-imds.service
+systemctl enable academy-gpu-ready.service
 systemctl disable academy-native.service
 # The reviewed base AMI must already contain SSM; never install a moving snap here.
 if ! systemctl is-enabled snap.amazon-ssm-agent.amazon-ssm-agent.service >/dev/null 2>&1 && ! systemctl is-enabled amazon-ssm-agent.service >/dev/null 2>&1; then

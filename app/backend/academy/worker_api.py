@@ -22,6 +22,7 @@ from .pairing import PairRunService
 from .runs import (
     BindRequest,
     CleanupRequest,
+    LaunchFailedRequest,
     LeaseRequest,
     RunService,
     SnapshotRequest,
@@ -259,6 +260,12 @@ def create_worker_app(
     @app.post("/internal/runs/{run_id}/unknown")
     def unknown(run_id: UUID, data: UnknownRequest, worker_id: str = Depends(identify_worker)):
         return service.unknown(worker_id, run_id, data)
+
+    @app.post("/internal/runs/{run_id}/launch-failed")
+    def launch_failed(
+        run_id: UUID, data: LaunchFailedRequest, worker_id: str = Depends(identify_worker)
+    ):
+        return service.launch_failed(worker_id, run_id, data)
 
     @app.post("/internal/runs/{run_id}/cleanup")
     def cleanup(run_id: UUID, data: CleanupRequest, worker_id: str = Depends(identify_worker)):

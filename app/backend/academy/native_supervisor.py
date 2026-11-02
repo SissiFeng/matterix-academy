@@ -8,7 +8,12 @@ import sys
 import time
 from pathlib import Path
 
-from .native_files import alive_lease, read_json, write_json
+from .gpu_health import gpu_issue
+from .native_files import SCENE_STARTED, alive_lease, read_json, write_json
+
+
+class LaunchBlocked(RuntimeError):
+    """Raised before any simulator child exists."""
 
 
 def runtime_module(request):
@@ -34,9 +39,13 @@ def supervise(folder):
     children = []
     logs = []
     frame_path = Path(cfg["frame_root"]) / (binding["native_session_id"] + ".rgb")
+    launch_failure = None
     try:
         if not alive_lease(folder):
             raise RuntimeError("Native lease expired before process launch")
+        issue = gpu_issue(cfg.get("driver_version"))
+        if issue:
+            raise LaunchBlocked(issue)
         Path(cfg["frame_root"]).mkdir(parents=True, exist_ok=True, mode=0o700)
         backend = str(Path(__file__).resolve().parents[1])
         env = {
@@ -87,14 +96,24 @@ def supervise(folder):
         proof["checks"]["stopped"] = True
         proof["reset_verified"] = all(proof["checks"].values())
         write_json(folder / "released.json", proof)
-    except Exception:
-        write_json(
-            folder / "fault.json",
-            {
+    except Exception as exc:
+        if (folder / SCENE_STARTED).exists():
+            write_json(
+                folder / "fault.json",
+                {
+                    "native_session_id": binding["native_session_id"],
+                    "message": "Native execution or cleanup needs operator inspection",
+                },
+            )
+        else:
+            # Isaac writes the marker before building any scene. Without it the
+            # simulator never held run state; report only once children are gone.
+            launch_failure = {
                 "native_session_id": binding["native_session_id"],
-                "message": "Native execution or cleanup needs operator inspection",
-            },
-        )
+                "stage": "preflight" if isinstance(exc, LaunchBlocked) else "launch",
+                "reason": str(exc)[:300] or type(exc).__name__,
+                "simulator_exit": children[1].poll() if len(children) > 1 else None,
+            }
         raise
     finally:
         for child in children:
@@ -108,6 +127,17 @@ def supervise(folder):
         for log in logs:
             log.close()
         frame_path.unlink(missing_ok=True)
+        if launch_failure is not None:
+            if any(child.poll() is None for child in children) or (folder / SCENE_STARTED).exists():
+                write_json(
+                    folder / "fault.json",
+                    {
+                        "native_session_id": binding["native_session_id"],
+                        "message": "Native launch did not stop cleanly; operator inspection needed",
+                    },
+                )
+            else:
+                write_json(folder / "launch-failed.json", launch_failure)
 
 
 def main():

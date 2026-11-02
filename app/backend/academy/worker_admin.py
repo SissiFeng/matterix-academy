@@ -357,6 +357,7 @@ def qualification_changes(old: dict, evidence: dict) -> dict:
     return {
         "qualified": True,
         "state": "ready",
+        "launch_failures": 0,
         "controls": controls,
         "scenes": scenes,
         "capabilities": capabilities,

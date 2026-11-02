@@ -13,7 +13,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .native_files import FrameBuffer, alive_lease, read_json, write_json
+from .native_files import FrameBuffer, alive_lease, mark_scene_started, read_json, write_json
 
 
 def activate(root):
@@ -48,6 +48,7 @@ def run(folder):
         headless=config["headless"],
         protected_roots=(root, config["assets_data_dir"]),
     )
+    mark_scene_started(folder, binding["native_session_id"])
     activate(root)
     import builtins
 

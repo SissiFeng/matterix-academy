@@ -14,7 +14,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .native_files import FrameBuffer, alive_lease, read_json, write_json
+from .native_files import FrameBuffer, alive_lease, mark_scene_started, read_json, write_json
 from .native_isaac import activate, tensor
 from .native_studio_runtime import (
     RIGHT_HOME,
@@ -278,6 +278,7 @@ def run(folder, *, probe=False):
         headless=config.headless,
         protected_roots=(config.matterix_root, config.assets_data_dir),
     )
+    mark_scene_started(folder, binding["native_session_id"])
     env, frame = None, None
     try:
         import builtins
