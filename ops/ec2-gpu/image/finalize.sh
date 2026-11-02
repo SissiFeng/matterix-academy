@@ -14,6 +14,12 @@ install -d -o academy-native -g academy-native -m 700 /var/cache/academy-native
 cd /var/cache/academy-native
 export XDG_CACHE_HOME=/var/cache/academy-native
 export OMNI_KIT_ACCEPT_EULA=YES
+# Before anything else touches the GPU as root: the boot unit alone must have
+# loaded the driver, and the worker's own sandbox (NoNewPrivileges) must see it.
+systemctl is-active --quiet academy-gpu-ready.service
+runuser -u academy-native -- setpriv --no-new-privs env PYTHONPATH="$root/app/backend" \
+  "$root/.venv/bin/python" -c 'import sys; from academy.gpu_health import gpu_issue; issue = gpu_issue(sys.argv[1]); print(issue or "Worker sandbox sees the pinned GPU driver"); sys.exit(1 if issue else 0)' \
+  "$(jq -r .driver_version /etc/academy-native/image-manifest.json)"
 # Prepare immutable NVIDIA ground dependencies through HTTPS before restricted runtime use.
 runuser -u academy-native -- env HOME=/var/cache/academy-native PYTHONPATH="$root/app/backend" \
   "$root/.venv/bin/python" -m academy.native_assets --prepare \
@@ -108,6 +114,8 @@ from importlib.metadata import distributions
 for item in sorted(distributions(),key=lambda d:d.metadata['Name'].lower()):print(item.metadata['Name']+'=='+item.version)
 PY
 systemctl is-enabled academy-imds.service
+systemctl is-enabled academy-gpu-ready.service
+systemd-analyze verify /etc/systemd/system/academy-gpu-ready.service
 systemctl is-active academy-imds.service
 if systemctl is-enabled academy-native.service >/dev/null 2>&1; then exit 1; fi
 # Root must reach IMDSv2; the unprivileged worker must fail at the network layer.

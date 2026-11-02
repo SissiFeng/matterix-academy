@@ -9,7 +9,8 @@ from uuid import UUID
 
 from pydantic import Field
 
-from .gateway import GatewayUnavailable, RemoteOperationPending
+from .gateway import GatewayUnavailable, NativeLaunchFailed, RemoteOperationPending
+from .gpu_health import gpu_issue
 from .models import StrictModel
 from .native_files import read_json, write_json
 from .recipes import MixingPlan, parse_plan
@@ -29,6 +30,7 @@ class NativeConfig(StrictModel):
     frame_root: str = "/dev/shm/lab-onboarding"
     headless: bool = True
     display: str = ":0"
+    driver_version: str | None = Field(default=None, pattern=r"^[0-9]+(\.[0-9]+){1,2}$")
 
     def verify(self):
         for name in (
@@ -76,6 +78,9 @@ class NativeFlexRunner(GatewayRunner):
     def __init__(self, config, client):
         self.config = NativeConfig.model_validate_json(Path(config).read_text())
         self.client = client
+
+    def readiness_issue(self):
+        return gpu_issue(self.config.driver_version)
 
     def folder(self, local):
         return Path(self.config.run_root) / str(UUID(local["run"]["run_id"]))
@@ -185,6 +190,11 @@ class NativeFlexRunner(GatewayRunner):
             raise GatewayUnavailable("Native launch intent has no durable local receipt")
         if (folder / "fault.json").exists():
             raise GatewayUnavailable("Native supervisor stopped; inspect the bound run artifacts")
+        if (folder / "launch-failed.json").exists():
+            receipt = read_json(folder / "launch-failed.json")
+            if receipt.get("native_session_id") != local["binding"]["native_session_id"]:
+                raise GatewayUnavailable("Native launch receipt belongs to a different session")
+            raise NativeLaunchFailed(receipt)
         path = folder / "snapshot.json"
         if not path.exists():
             raise RemoteOperationPending("Waiting for the first native report")

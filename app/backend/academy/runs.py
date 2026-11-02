@@ -30,6 +30,11 @@ QUEUE = "system#queue"
 TERMINAL = {"completed", "failed", "cancelled", "outcome_unknown"}
 LEASE_SECONDS = 60
 MAX_RUN_SECONDS = 1800
+# Consecutive pre-scene launch failures before the worker stops claiming runs.
+LAUNCH_FAILURE_LIMIT = 2
+LAUNCH_FAILED_REASON = (
+    "The digital twin could not start on the GPU, so nothing ran. Run the workflow again."
+)
 
 
 class SubmitRun(StrictModel):
@@ -75,6 +80,12 @@ class SnapshotRequest(LeaseRequest):
 
 class UnknownRequest(LeaseRequest):
     reason: str = Field(min_length=1, max_length=500)
+
+
+class LaunchFailedRequest(LeaseRequest):
+    native_session_id: UUID
+    stage: Literal["preflight", "launch"]
+    reason: str = Field(min_length=1, max_length=300)
 
 
 class CleanupRequest(LeaseRequest):
@@ -536,6 +547,9 @@ class RunService:
             return self.machine_view(self.raw(worker["active_run"]), worker_id)
         if worker["state"] != "ready" and not (grant and worker["state"] == "quarantined"):
             return None
+        if worker.get("launch_failures", 0) >= LAUNCH_FAILURE_LIMIT:
+            # Repeated launch failures need an operator, not more failed learner runs.
+            return None
         power_writes = self.gpu.claim_writes() if managed else []
         if power_writes is None:
             return None
@@ -812,6 +826,60 @@ class RunService:
             state="quarantined",
         )
 
+    def launch_failed(self, worker_id, run_id, data: LaunchFailedRequest):
+        """Close a run whose simulator exited before any scene existed.
+
+        The worker sends this only with the supervisor's receipt that every child
+        stopped before the scene marker was written. A run that ever reported a
+        native snapshot cannot use this path; it stays an unknown outcome.
+        """
+        worker, run = self.owned(worker_id, run_id, data.claim_token, live=False)
+        detail = {"stage": data.stage, "reason": data.reason}
+        cleanup = run.get("cleanup") or {}
+        if cleanup.get("launch_failed") == detail and run["status"] == "failed":
+            return self.machine_view(run, worker_id)
+        native_id = (run.get("binding") or {}).get("native_session_id")
+        if (
+            run["status"] in TERMINAL
+            or run.get("snapshot")
+            or worker.get("active_run") != str(run_id)
+            or native_id != str(data.native_session_id)
+        ):
+            raise Conflict
+        failures = worker.get("launch_failures", 0) + 1
+        changed = revised(
+            run,
+            status="failed",
+            reason=LAUNCH_FAILED_REASON,
+            updated_at=self.clock(),
+            cleanup={
+                "reset_verified": True,
+                "never_started": True,
+                "native_session_id": native_id,
+                "launch_failed": detail,
+            },
+        )
+        available = worker.get("qualified") and failures < LAUNCH_FAILURE_LIMIT
+        self.store.transact(
+            [
+                Write(RUNS, run["run_id"], changed, run["version"]),
+                Write(
+                    WORKERS,
+                    worker_id,
+                    revised(
+                        worker,
+                        state="ready" if available else "quarantined",
+                        active_run=None,
+                        launch_failures=failures,
+                        last_launch_failure=detail | {"at": self.clock()},
+                    ),
+                    worker["version"],
+                ),
+                *self.release_lock(run),
+            ]
+        )
+        return self.machine_view(changed, worker_id)
+
     def release_lock(self, run):
         owner, session_id = run["owner"], run["session_id"]
         lock = self.store.get(owner, f"remote#{session_id}")
@@ -870,6 +938,7 @@ class RunService:
                     state="ready" if verified and worker.get("qualified") else "quarantined",
                     active_run=None if verified else run["run_id"],
                     last_cleanup_at=self.clock() if verified else worker.get("last_cleanup_at", 0),
+                    launch_failures=0 if verified else worker.get("launch_failures", 0),
                 ),
                 worker["version"],
             ),

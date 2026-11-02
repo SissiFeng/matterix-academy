@@ -8,12 +8,13 @@ native semantic simulation, not a fluid solver or a physical robot validation.
 
 import argparse
 import hashlib
+import os
 import time
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .native_files import FrameBuffer, alive_lease, read_json, write_json
+from .native_files import FrameBuffer, alive_lease, mark_scene_started, read_json, write_json
 from .native_isaac import activate, tensor
 from .native_studio_runtime import (
     RIGHT_HOME,
@@ -261,6 +262,10 @@ def run(folder, *, probe=False):
 
     manifest = read_json(folder / "manifest.json")
     config = NativeConfig.model_validate(manifest["config"])
+    # Resolve imported Matterix asset USD paths from the shipped internal assets,
+    # exactly as the scene probe does. Without this, matterix_assets falls back to
+    # the empty engine submodule path and the Flex gripper USD is not found.
+    os.environ["MATTERIX_ASSETS_DATA_DIR"] = config.assets_data_dir
     binding, request = manifest["binding"], manifest["request"]
     RemoteRunRequest.model_validate(request)  # Includes the complete saved-plan hash.
     plan, origins, steps = compile_plan(request["experiment"])
@@ -273,6 +278,7 @@ def run(folder, *, probe=False):
         headless=config.headless,
         protected_roots=(config.matterix_root, config.assets_data_dir),
     )
+    mark_scene_started(folder, binding["native_session_id"])
     env, frame = None, None
     try:
         import builtins

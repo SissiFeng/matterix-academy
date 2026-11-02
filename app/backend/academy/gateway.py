@@ -35,6 +35,17 @@ class RemoteOperationPending(GatewayUnavailable):
     """A recorded operation is still in flight; only read its original IDs."""
 
 
+class NativeLaunchFailed(RuntimeError):
+    """The simulator exited before creating any scene and every child is stopped.
+
+    Not a GatewayUnavailable: this is proof that nothing ran, not an unknown outcome.
+    """
+
+    def __init__(self, receipt):
+        super().__init__(receipt.get("reason", "Native launch failed"))
+        self.receipt = receipt
+
+
 class RemoteCommand(StrictModel):
     command_id: UUID
     expected_revision: int = Field(ge=1)
