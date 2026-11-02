@@ -1,3 +1,4 @@
+import GpuRequestPanel from "./GpuRequestPanel";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Play, RefreshCw } from "lucide-react";
 import { api, ApiError, json } from "./api";
@@ -271,6 +272,7 @@ export default function RemoteRunPanel({
             : "Awaiting native execution"}
         </span>
       </div>
+      <GpuRequestPanel key={session.id} session={session} />
       {!enabled && (
         <p>
           Remote execution is awaiting Ubuntu qualification. Your teaching

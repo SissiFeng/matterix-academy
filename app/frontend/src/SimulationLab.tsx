@@ -1,3 +1,4 @@
+import GpuRequestPanel from "./GpuRequestPanel";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, FlaskConical, Play, RefreshCw } from "lucide-react";
 import { api, json } from "./api";
@@ -128,6 +129,53 @@ export default function SimulationLab() {
     if (window.location.hash.startsWith("#/sim")) changed();
     return () => window.removeEventListener("hashchange", changed);
   }, [selectedId]);
+  const prepareSession = async () => {
+    if (session) return session;
+    launch.current ??= { session_id: crypto.randomUUID(), seed: 42 };
+    const prepared = await api<SimulationSession>(
+      "/simulations",
+      json(launch.current),
+    );
+    if (alive.current) {
+      setSession(prepared);
+      setSelectedId(prepared.id);
+      window.history.replaceState({}, "", `/#/sim/${prepared.id}`);
+      launch.current = null;
+    }
+    return prepared;
+  };
+  const requestGpu = async () => {
+    if (inFlight.current || !resolved || selectedId || delayed) return;
+    inFlight.current = true;
+    mutation.current += 1;
+    setBusy(true);
+    setError("");
+    try {
+      const prepared = await prepareSession();
+      if (!alive.current) return;
+      // Capacity demand is separate from /runs, including on a first visit.
+      await api(
+        `/sessions/${prepared.id}/gpu-request`,
+        json({
+          request_id: prepared.id,
+          expected_version: prepared.version,
+        }),
+      );
+    } catch (cause) {
+      if (alive.current)
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "The GPU request could not be confirmed. Check GPU connection to recover it.",
+        );
+    } finally {
+      inFlight.current = false;
+      if (alive.current) {
+        setBusy(false);
+        setRefresh((n) => n + 1);
+      }
+    }
+  };
   const start = async () => {
     if (
       inFlight.current ||
@@ -141,19 +189,8 @@ export default function SimulationLab() {
     setBusy(true);
     setError("");
     try {
-      let current = session;
-      if (!current) {
-        launch.current ??= { session_id: crypto.randomUUID(), seed: 42 };
-        current = await api<SimulationSession>(
-          "/simulations",
-          json(launch.current),
-        );
-        if (!alive.current) return;
-        setSession(current);
-        setSelectedId(current.id);
-        window.history.replaceState({}, "", `/#/sim/${current.id}`);
-        launch.current = null;
-      }
+      const current = await prepareSession();
+      if (!alive.current) return;
       const key = `lab.mixing.submit.${current.id}`;
       const request = JSON.parse(sessionStorage.getItem(key) ?? "null") ?? {
         run_id: crypto.randomUUID(),
@@ -218,6 +255,15 @@ export default function SimulationLab() {
                   : "Run mixing experiment"}
             </button>
           )}
+          {!session && (
+            <button
+              className={s.primary}
+              disabled={busy || !resolved || !!selectedId || delayed}
+              onClick={() => void requestGpu()}
+            >
+              {busy ? "Requesting GPU…" : "Request GPU"}
+            </button>
+          )}
           <small>
             {catalog?.enabled
               ? "1 simulation · seed 42 · 4 fresh tips"
@@ -225,15 +271,7 @@ export default function SimulationLab() {
           </small>
         </div>
       </header>
-      {run?.gpu && (
-        <p
-          className={s.notice}
-          role="status"
-          aria-label="Digital twin availability"
-        >
-          {run.gpu.message} GPU idle timeout: one hour.
-        </p>
-      )}
+      {session && <GpuRequestPanel key={session.id} session={session} />}
       {catalog?.commissioning && (
         <p className={s.notice}>
           Operator commissioning window · fixed seed 42 · at most two runs. This

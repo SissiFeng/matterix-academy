@@ -1,3 +1,4 @@
+import GpuRequestPanel from "./GpuRequestPanel";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -483,19 +484,7 @@ export default function NativeStudioRun({
             : "No native result yet"}
         </span>
       </header>
-      {(run?.gpu ?? preflight?.gpu) && (
-        <div
-          className={s.notice}
-          role="status"
-          aria-label="Digital twin availability"
-        >
-          <strong>{(run?.gpu ?? preflight?.gpu)?.message}</strong>
-          <p>
-            The GPU stays available for one hour after its last run. Active runs
-            and unverified cleanup prevent automatic shutdown.
-          </p>
-        </div>
-      )}
+      <GpuRequestPanel key={session.id} session={session} />
       <div className={s.preflight} aria-live="polite">
         <strong>
           {!loaded

@@ -38,6 +38,15 @@ class SubmitRun(StrictModel):
     expected_version: int = Field(ge=1)
 
 
+class _GpuDemandConflict(Conflict):
+    """Only a rejected GPU-demand transaction is eligible for contention retry."""
+
+
+class GpuRequest(StrictModel):
+    request_id: UUID
+    expected_version: int = Field(ge=1)
+
+
 class RunControl(StrictModel):
     command_id: UUID
     expected_version: int = Field(ge=1)
@@ -220,6 +229,70 @@ class RunService:
             raise HTTPException(404, "Experiment not found")
         pointer = self.store.get(owner, f"remote#{session_id}")
         return self.get(owner, pointer["run_id"]) if pointer else None
+
+    def gpu_request_status(self, owner, session_id):
+        if not self.store.get(owner, f"session#{session_id}"):
+            raise HTTPException(404, "Experiment not found")
+        receipt = self.store.get(owner, f"gpu-request#{session_id}")
+        return {
+            "configured": self.gpu is not None,
+            "request": receipt,
+            "active": bool(receipt and receipt["expires_at"] > self.clock()),
+            "gpu": self.gpu.status() if self.gpu else None,
+        }
+
+    def request_gpu(self, owner, session_id, data: GpuRequest):
+        # Independent learners can race on shared demand. Retry only rejected
+        # transactions; no external power mutation has occurred at this point.
+        for _ in range(4):
+            try:
+                return self._request_gpu(owner, session_id, data)
+            except _GpuDemandConflict:
+                session = self.store.get(owner, f"session#{session_id}")
+                if not session or session["version"] != data.expected_version:
+                    raise
+        raise HTTPException(503, "GPU request service is busy. Check connection and try again")
+
+    def _request_gpu(self, owner, session_id, data: GpuRequest):
+        # GPU demand is independent of execution qualification and plan support.
+        # Rewriting the unchanged session in this transaction supplies a CAS
+        # barrier against concurrent edits/deletion without creating a revision.
+        session = self.store.get(owner, f"session#{session_id}")
+        if not session:
+            raise HTTPException(404, "Experiment not found")
+        if not self.gpu:
+            raise HTTPException(503, "GPU allocation is not configured in this deployment")
+        key = f"gpu-request#{session_id}"
+        old = self.store.get(owner, key)
+        if old and old["request_id"] == str(data.request_id):
+            if old["submitted_version"] != data.expected_version:
+                raise Conflict
+            return self.gpu_request_status(owner, session_id)
+        if session["version"] != data.expected_version:
+            raise Conflict
+        # One outstanding request per saved session. Extra clicks cannot extend
+        # the lease or allocate another host. Runs retain their own queue locks.
+        if old and old["expires_at"] > self.clock():
+            return self.gpu_request_status(owner, session_id)
+        demand = self.gpu.demand_write()
+        receipt = {
+            "version": (old or {}).get("version", 0) + 1,
+            "request_id": str(data.request_id),
+            "submitted_version": data.expected_version,
+            "requested_at": self.clock(),
+            "expires_at": demand.body["desired_until"],
+        }
+        try:
+            self.store.transact(
+                [
+                    Write(owner, f"session#{session_id}", session, session["version"]),
+                    Write(owner, key, receipt, old["version"] if old else None),
+                    demand,
+                ]
+            )
+        except Conflict as exc:
+            raise _GpuDemandConflict from exc
+        return self.gpu_request_status(owner, session_id)
 
     def submit(self, owner, data: SubmitRun):
         run_id, session_id = str(data.run_id), str(data.session_id)
