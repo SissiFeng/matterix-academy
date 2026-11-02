@@ -130,10 +130,19 @@ class GpuLifecycle:
         worker = self.store.get("system#workers", self.worker)
         now = self.clock()
         queued = self.store.partition("system#queue", limit=1)
-        # A busy/unknown run retains this guard even after its lease expires.
+        # A live run retains this guard even after its lease expires. An unknown
+        # outcome holds the host for one inspection window, not indefinitely: the
+        # run is terminal, never replayed, and its evidence stays on the volume.
         busy = bool(worker and worker.get("active_run"))
+        parked = False
         if busy:
-            desired = max(old.get("desired_until", 0), now + IDLE_SECONDS)
+            run = self.store.get("system#runs", worker["active_run"])
+            if run and run.get("status") == "outcome_unknown":
+                desired = max(old.get("desired_until", 0), run["updated_at"] + IDLE_SECONDS)
+                parked = desired <= now
+                busy = not parked
+            else:
+                desired = max(old.get("desired_until", 0), now + IDLE_SECONDS)
         else:
             desired = old.get("desired_until", 0)
         if worker and worker.get("last_cleanup_at"):
@@ -168,7 +177,7 @@ class GpuLifecycle:
             response = self.client("ec2").describe_instances(InstanceIds=[self.instance])
             instance = response["Reservations"][0]["Instances"][0]
             power = instance["State"]["Name"]
-            changes = self.advance(record, worker, power, bool(queued), busy, now)
+            changes = self.advance(record, worker, power, bool(queued), busy, now, parked)
         except ClientError as exc:
             code = exc.response["Error"]["Code"]
             if code in {"InvalidInstanceId", "InvocationDoesNotExist", "ThrottlingException"}:
@@ -212,7 +221,7 @@ class GpuLifecycle:
                     pass
         return self.status()
 
-    def advance(self, record, worker, power, queued, busy, now):
+    def advance(self, record, worker, power, queued, busy, now, parked=False):
         wanted = record.get("desired_until", 0) > now
         if power == "stopped":
             if wanted:
@@ -251,7 +260,8 @@ class GpuLifecycle:
             worker
             and worker.get("last_seen", 0) > max(now - FRESH_SECONDS, record.get("boot_after", 0))
         )
-        if not wanted and not queued and not busy and fresh:
+        # A parked worker cannot serve its queue until an operator reconciles it.
+        if not wanted and not busy and ((not queued and fresh) or parked):
             # The operation lock blocks new native claims before this API call.
             self.mutation_intent(record, state="stopping", stop_requested=True)
             self.client("ec2").stop_instances(InstanceIds=[self.instance])

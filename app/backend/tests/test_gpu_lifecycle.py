@@ -131,16 +131,44 @@ def test_idle_shutdown_requires_one_hour_no_active_run_and_fresh_journal_empty_w
     assert gpu.status()["state"] == "stopping"
 
 
-def test_unknown_run_prevents_shutdown_even_after_a_day(managed):
+def hold(gpu, run_id, **run):
+    if run:
+        gpu.store.put("system#runs", run_id, {"version": 1, "run_id": run_id, **run}, None)
+    old = gpu.store.get("system#workers", "lab-1")
+    gpu.store.put("system#workers", "lab-1", revised(old, active_run=run_id), old["version"])
+
+
+def test_live_or_unresolvable_run_prevents_shutdown_even_after_a_day(managed):
     gpu, ec2, _, now = managed
     demand(gpu)
-    old = gpu.store.get("system#workers", "lab-1")
-    gpu.store.put("system#workers", "lab-1", revised(old, active_run="unresolved"), old["version"])
+    hold(gpu, "unresolved")
     power(ec2, "running")
     now[0] += 86400
     gpu.reconcile()
     ec2.stop_instances.assert_not_called()
     assert gpu.status()["state"] == "busy"
+
+
+def test_unknown_outcome_holds_the_host_for_one_inspection_window(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    power(ec2, "running")
+    gpu.reconcile()
+    hold(gpu, "quarantined", status="outcome_unknown", updated_at=now[0])
+    # The quarantined worker keeps its journal and stops claiming, so it goes stale.
+    now[0] += 1800
+    gpu.reconcile()
+    ec2.stop_instances.assert_not_called()
+    assert gpu.status()["state"] == "busy"
+    now[0] += 1801
+    gpu.reconcile()
+    ec2.stop_instances.assert_called_once_with(InstanceIds=["i-pinned"])
+    # Stopped and no longer wanted: the unresolved run never powers the GPU again.
+    power(ec2, "stopped")
+    now[0] += 120
+    gpu.reconcile()
+    ec2.start_instances.assert_not_called()
+    assert gpu.status()["state"] == "sleeping"
 
 
 def test_new_workflow_during_shutdown_is_queued_and_cannot_claim_until_restarted(managed):
