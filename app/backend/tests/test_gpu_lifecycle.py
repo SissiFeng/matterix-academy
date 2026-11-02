@@ -171,6 +171,54 @@ def test_unknown_outcome_holds_the_host_for_one_inspection_window(managed):
     assert gpu.status()["state"] == "sleeping"
 
 
+def revoke(gpu):
+    old = gpu.store.get("system#workers", "lab-1")
+    gpu.store.put("system#workers", "lab-1", revised(old, revoked=True), old["version"])
+
+
+def test_revoked_worker_never_powers_the_host_even_with_demand(managed):
+    gpu, ec2, _, now = managed
+    revoke(gpu)
+    demand(gpu)
+    gpu.reconcile()
+    ec2.start_instances.assert_not_called()
+    assert gpu.status()["state"] == "sleeping"
+    # Already running (for example restarted before the revocation): stop despite demand.
+    power(ec2, "running")
+    now[0] += 61
+    gpu.reconcile()
+    ec2.stop_instances.assert_called_once_with(InstanceIds=["i-pinned"])
+
+
+def test_worker_that_never_reports_after_boot_stops_once_demand_and_window_pass(managed):
+    gpu, ec2, ssm, now = managed
+    demand(gpu)
+    gpu.reconcile()
+    power(ec2, "running")
+    now[0] += 61
+    gpu.reconcile()
+    now[0] += 601
+    gpu.reconcile()
+    assert gpu.status()["state"] == "error"
+    ec2.stop_instances.assert_not_called()  # Still wanted: demand keeps the host for retries.
+    now[0] += 3600
+    gpu.reconcile()
+    ec2.stop_instances.assert_called_once_with(InstanceIds=["i-pinned"])
+
+
+def test_queued_work_does_not_hold_a_host_whose_worker_is_silent(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    gpu.reconcile()
+    power(ec2, "running")
+    gpu.store.put("system#queue", "queued-run", {"version": 1}, None)
+    now[0] += 61
+    gpu.reconcile()
+    now[0] += 3600 + 601
+    gpu.reconcile()
+    ec2.stop_instances.assert_called_once_with(InstanceIds=["i-pinned"])
+
+
 def test_new_workflow_during_shutdown_is_queued_and_cannot_claim_until_restarted(managed):
     gpu, ec2, _, now = managed
     service = RunService(gpu.store, enabled=True, gpu=gpu, clock=lambda: now[0])

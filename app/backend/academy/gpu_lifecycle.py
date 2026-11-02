@@ -223,8 +223,10 @@ class GpuLifecycle:
 
     def advance(self, record, worker, power, queued, busy, now, parked=False):
         wanted = record.get("desired_until", 0) > now
+        # A revoked or missing worker can never claim, so its host is never worth powering.
+        unusable = not worker or bool(worker.get("revoked"))
         if power == "stopped":
-            if wanted:
+            if wanted and not unusable:
                 self.mutation_intent(
                     record,
                     state="starting",
@@ -236,7 +238,7 @@ class GpuLifecycle:
                 )
                 self.client("ec2").start_instances(InstanceIds=[self.instance])
             return {
-                "state": "starting" if wanted else "sleeping",
+                "state": "starting" if wanted and not unusable else "sleeping",
                 "command_id": None,
                 "service_requested": False,
                 "stop_requested": False,
@@ -260,8 +262,18 @@ class GpuLifecycle:
             worker
             and worker.get("last_seen", 0) > max(now - FRESH_SECONDS, record.get("boot_after", 0))
         )
-        # A parked worker cannot serve its queue until an operator reconciles it.
-        if not wanted and not busy and ((not queued and fresh) or parked):
+        # A brief heartbeat gap is not cleanup proof, but a worker silent for a whole
+        # startup window past its deadline is not coming back without a reboot.
+        stalled = (
+            not fresh
+            and record.get("startup_deadline", now + 1) <= now
+            and (worker or {}).get("last_seen", 0) < now - STARTUP_SECONDS
+        )
+        # A parked, stalled or revoked worker cannot serve its queue; the next demand
+        # reboots the host and the queue waits for a worker that can.
+        if not busy and (
+            unusable or (not wanted and ((not queued and fresh) or parked or stalled))
+        ):
             # The operation lock blocks new native claims before this API call.
             self.mutation_intent(record, state="stopping", stop_requested=True)
             self.client("ec2").stop_instances(InstanceIds=[self.instance])
