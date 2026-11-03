@@ -12,7 +12,7 @@ The interface remains English. The implementation uses React + TypeScript and Fa
 
 The public welcome page and signed-in Overview now begin with **Meet the instruments**: choose Flex or OT-2, watch a common workflow, then open it in the visual **Workflow studio** or begin with a blank deck. See [introductions and studio](docs/INSTRUMENT-STUDIO.md) for the full journey and teaching limits.
 
-The workcell tools remain available under **Overview → Onboard → Twin → Sim → Real → Runs**. Register a Flex, save its connection plan and capability declarations, pair a teaching session, and inspect saved trial evidence next to explicitly missing physical observations. The five-step device wizard persists progress and protects concurrent edits. See [workcell onboarding](docs/WORKCELL-ONBOARDING.md) for the user flow and evidence boundaries. Existing lessons and native simulation remain available under **Learn & Explore**.
+The workcell tools remain available under **Overview → Onboard → Twin → Sim → Real → Runs**. Register a Flex, save its connection plan and capability declarations, pair a teaching session, and inspect saved trial evidence next to explicitly missing physical observations. The five-step device wizard persists progress and protects concurrent edits. See [workcell onboarding](docs/WORKCELL-ONBOARDING.md) for the user flow and evidence boundaries. **Onboard → Multi-device case** adds a synthesis workcell (Flex, UR5e, balance, OT-2) with arm path design, a linked workflow and registered 3D assets; see [workcell cases](docs/WORKCELL-CASES.md). Existing lessons and native simulation remain available under **Learn & Explore**.
 
 Requirements: Node.js 22.12+, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 

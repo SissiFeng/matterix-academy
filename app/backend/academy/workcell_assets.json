@@ -1,0 +1,208 @@
+{
+  "schema_version": "academy.workcell-assets/1",
+  "base_path": "/workcell-assets/",
+  "assets": [
+    {
+      "id": "ur5e-robotiq-2f140",
+      "kind": "robot",
+      "name": "UR5e arm with Robotiq 2F-140 gripper",
+      "media_type": "model/gltf-binary",
+      "file": "ur5e_2f140.glb",
+      "sha256": "872e38df4cb5dac451822011e293da734c10c52326237b166ec9597e97561b96",
+      "size_bytes": 1557516,
+      "license": "BSD-3-Clause",
+      "sources": [
+        {
+          "repository": "UniversalRobots/Universal_Robots_ROS2_Description",
+          "commit": "0eb1a861f7772fceb38510d90fa2f98ec668070c",
+          "paths": [
+            "meshes/ur5e/visual",
+            "config/ur5e/default_kinematics.yaml",
+            "config/ur5e/visual_parameters.yaml"
+          ]
+        },
+        {
+          "repository": "PickNikRobotics/ros2_robotiq_gripper",
+          "commit": "a74d007d8f2f06dc6a503ad21038ba869d4999a6",
+          "paths": [
+            "robotiq_description/meshes/visual/2f_140",
+            "robotiq_description/urdf/robotiq_2f_140_macro.urdf.xacro"
+          ]
+        }
+      ],
+      "frame": "Each node in its URDF link frame (visual offsets baked); metres; base_link_inertia equals the controller base frame.",
+      "notes": "Link meshes decimated to about half for the browser. Pads are drawn from the URDF box geometry."
+    },
+    {
+      "id": "opentrons-flex-shell",
+      "kind": "instrument",
+      "name": "Opentrons Flex enclosure, gantry, pipette, tip rack and reservoir",
+      "media_type": "model/gltf-binary",
+      "file": "flex.glb",
+      "sha256": "1b32b7ef2a399d28e29e8acae69d3c1235d710b288e40626b76f2f6b2481ce06",
+      "size_bytes": 1976384,
+      "license": "MIT",
+      "sources": [
+        {
+          "repository": "SmartisanNaive/MOSS-Lab",
+          "commit": "edb91428c124db6cec196c16214ba2e565d8a38d",
+          "paths": [
+            "labscriptai-ot/automation/flex3d/sim/flex_shell.py",
+            "labscriptai-ot/automation/flex3d/sim/flex_scene.py"
+          ]
+        }
+      ],
+      "frame": "Opentrons Flex deck frame (deck mm + cornerOffsetFromOrigin), metres, Z up, front toward -Y. Moving bodies are body-local.",
+      "notes": "Photo-informed project geometry, not manufacturer CAD. Exported from the generated MuJoCo model with the 1000 uL pipette, tip rack in A1 and reservoir in B1."
+    },
+    {
+      "id": "opentrons-flex-shell-frames",
+      "kind": "metadata",
+      "name": "Flex body home transforms and joint ranges",
+      "media_type": "application/json",
+      "file": "flex_meta.json",
+      "sha256": "bcd78cf9b9c5a12664cb07f3e7dfd8aea17c99ebed9a23a90a7f2c0f2f792ba0",
+      "size_bytes": 2710,
+      "license": "MIT",
+      "sources": [
+        {
+          "repository": "SmartisanNaive/MOSS-Lab",
+          "commit": "edb91428c124db6cec196c16214ba2e565d8a38d",
+          "paths": [
+            "labscriptai-ot/automation/flex3d/sim/flex_scene.py"
+          ]
+        }
+      ],
+      "frame": "Same frame as opentrons-flex-shell.",
+      "notes": "Gantry joints x, y, z and z_gripper are slides; the 1000 uL tip end equals (x, y, z)."
+    },
+    {
+      "id": "opentrons-labware",
+      "kind": "labware",
+      "name": "Opentrons labware definitions used by the case",
+      "media_type": "application/json",
+      "file": "labware.json",
+      "sha256": "254226c7ebe201921a7de91de73a98e3fc61284793aa7e5120688b8213d4c633",
+      "size_bytes": 31813,
+      "license": "Apache-2.0",
+      "sources": [
+        {
+          "repository": "Opentrons/opentrons",
+          "commit": "aa1a20c6002e2af30bcdca70b8e5f3e2787e662d",
+          "paths": [
+            "shared-data/labware/definitions/2"
+          ]
+        }
+      ],
+      "frame": "Labware front-left-bottom; millimetres, as in the definitions.",
+      "notes": "Load names: nest_12_reservoir_15ml, nest_1_reservoir_195ml, opentrons_24_tuberack_nest_1.5ml_snapcap, opentrons_24_tuberack_nest_2ml_screwcap, opentrons_96_tiprack_300ul, opentrons_flex_96_tiprack_1000ul. Wells, depths, footprints and tip lengths are kept; other fields are dropped."
+    },
+    {
+      "id": "opentrons-decks",
+      "kind": "deck",
+      "name": "OT-2 and Flex deck definitions",
+      "media_type": "application/json",
+      "file": "decks.json",
+      "sha256": "fc19cc732d767ea014e0c71fcf8a4e9c7b90731a3bbf2a5dd7aa005dcdcf0365",
+      "size_bytes": 9007,
+      "license": "Apache-2.0",
+      "sources": [
+        {
+          "repository": "Opentrons/opentrons",
+          "commit": "aa1a20c6002e2af30bcdca70b8e5f3e2787e662d",
+          "paths": [
+            "shared-data/deck/definitions/5/ot2_standard.json",
+            "shared-data/deck/definitions/5/ot3_standard.json"
+          ]
+        }
+      ],
+      "frame": "Deck millimetres with cornerOffsetFromOrigin.",
+      "notes": "Cutout positions and addressable areas only."
+    },
+    {
+      "id": "ot2-teaching-model",
+      "kind": "instrument",
+      "name": "OT-2 enclosure, deck and P300 gantry",
+      "media_type": "application/x-academy-procedural",
+      "file": null,
+      "sha256": null,
+      "size_bytes": null,
+      "license": "Project",
+      "sources": [
+        {
+          "repository": "SissiFeng/matterix-academy",
+          "commit": null,
+          "paths": [
+            "app/frontend/src/workcellCase/ot2Model.ts"
+          ]
+        }
+      ],
+      "frame": "Opentrons OT-2 deck frame, metres, Z up, front toward -Y.",
+      "notes": "Drawn from published photos and the 63 x 57 x 66 cm envelope. Slot positions and the fixed trash come from opentrons-decks."
+    },
+    {
+      "id": "precision-balance-teaching-model",
+      "kind": "fixture",
+      "name": "Top-loading precision balance",
+      "media_type": "application/x-academy-procedural",
+      "file": null,
+      "sha256": null,
+      "size_bytes": null,
+      "license": "Project",
+      "sources": [
+        {
+          "repository": "SissiFeng/matterix-academy",
+          "commit": null,
+          "paths": [
+            "app/frontend/src/workcellCase/balanceModel.ts"
+          ]
+        }
+      ],
+      "frame": "UR5e base frame, metres, Z up.",
+      "notes": "Generic, unbranded. Readings are synthetic."
+    }
+  ],
+  "cases": [
+    {
+      "id": "synthesis-cell",
+      "name": "Synthesis workcell",
+      "summary": "Flex prepares six samples, a UR5e weighs the vial rack on a balance and hands it to an OT-2 for the reaction step.",
+      "devices": [
+        {
+          "id": "flex",
+          "name": "Opentrons Flex",
+          "role": "Sample preparation",
+          "asset": "opentrons-flex-shell"
+        },
+        {
+          "id": "ur5e",
+          "name": "UR5e + Robotiq 2F-140",
+          "role": "Rack transfer",
+          "asset": "ur5e-robotiq-2f140"
+        },
+        {
+          "id": "balance",
+          "name": "Precision balance",
+          "role": "Gravimetric check",
+          "asset": "precision-balance-teaching-model"
+        },
+        {
+          "id": "ot2",
+          "name": "Opentrons OT-2",
+          "role": "Reagent preparation and synthesis",
+          "asset": "ot2-teaching-model"
+        }
+      ],
+      "assets": [
+        "ur5e-robotiq-2f140",
+        "opentrons-flex-shell",
+        "opentrons-flex-shell-frames",
+        "opentrons-labware",
+        "opentrons-decks",
+        "ot2-teaching-model",
+        "precision-balance-teaching-model"
+      ],
+      "evidence": "synthetic"
+    }
+  ]
+}

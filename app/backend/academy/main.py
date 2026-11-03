@@ -36,6 +36,7 @@ from .simple_twins import (
 from .simple_twins import Revision as TwinRevision
 from .store import Conflict, DynamoStore, SQLiteStore
 from .teaching import InvalidTransition, control, execute_step, initial_state, new_session
+from .workcell_assets import router as workcell_router
 from .workflow_course import KEY as COURSE_KEY
 from .workflow_course import CourseCommand, initial, transition
 
@@ -72,6 +73,7 @@ def create_app(settings: Settings | None = None, store=None):
     app.include_router(mock_connector_router)
     app.include_router(connector_router)
     app.include_router(catalog_router)
+    app.include_router(workcell_router)
     app.state.media = MediaService(app.state.runs)
     app.state.twins = SimpleTwinService(app.state.store, settings)
     if settings.runtime == "local":
