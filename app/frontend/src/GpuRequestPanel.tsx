@@ -114,6 +114,14 @@ export default function GpuRequestPanel({
             ? "GPU allocation is not configured in this deployment."
             : "Checking GPU availability…")}
       </p>
+      {capacity?.gpu?.detail && (
+        <p className={s.gpuDetail}>Worker reports: {capacity.gpu.detail}</p>
+      )}
+      {capacity?.gpu?.state === "capacity_wait" && capacity.gpu.attempts ? (
+        <p className={s.gpuDetail}>
+          Capacity attempts so far: {capacity.gpu.attempts}
+        </p>
+      ) : null}
       <div className={s.actions}>
         <button
           disabled={busy || capacity?.active}

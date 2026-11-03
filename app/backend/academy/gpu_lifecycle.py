@@ -3,6 +3,11 @@
 This is power management, never native qualification or workflow authority.
 Authenticated capacity requests and validated runs can create demand. EC2 state is reconciled before
 every retry; neither native runs nor unknown SSM commands are replayed.
+
+A host whose worker never connects after boot is recovered in bounded steps: one restart of the
+worker service (only when the previous SSM command is known to have finished), one stop/start of
+the host, then a stop and hold for operator attention. A worker that has not polled since boot
+cannot hold a claimed run, so stopping it never interrupts native work.
 """
 
 import os
@@ -20,6 +25,13 @@ KEY = "host"
 IDLE_SECONDS = 3600
 FRESH_SECONDS = 45
 STARTUP_SECONDS = 600
+# A worker that reports an unusable GPU after boot gets this long before the host is restarted.
+UNREADY_GRACE_SECONDS = 120
+# An accepted stop that EC2 still reports as running is re-issued after this long.
+STOP_RETRY_SECONDS = 300
+CAPACITY_RETRY_MAX = 300
+SSM_FINISHED = {"Success", "Failed", "Cancelled", "TimedOut"}
+READINESS = "system#worker-readiness"
 # Exceeds both callers' hard Lambda lifetimes (API 15s, reaper 30s), including
 # DynamoDB response delays after its conditional transaction has committed.
 OPERATION_SECONDS = 90
@@ -33,6 +45,22 @@ MESSAGES = {
     "stopping": "The digital twin is shutting down. New workflows wait for it to restart.",
     "error": "The digital twin needs operator attention. Your workflow has not been replayed.",
 }
+# Recovery notes refine the message of the current state.
+NOTES = {
+    "restarting_service": "The GPU started but its worker did not connect. Restarting the worker.",
+    "power_cycle": "The GPU worker did not connect. Restarting the GPU host.",
+    "gpu_unready": "The GPU host is up but its GPU is not ready yet.",
+    "halted": "The GPU host could not prepare its worker after automatic restarts and was stopped. "
+    "An operator needs to check it; your workflow has not been replayed.",
+}
+
+
+def startup_seconds():
+    try:
+        value = int(os.getenv("ACADEMY_GPU_STARTUP_SECONDS", STARTUP_SECONDS))
+    except ValueError:
+        return STARTUP_SECONDS
+    return min(1800, max(300, value))
 
 
 def configured(store, clock=time.time):
@@ -48,16 +76,28 @@ def configured(store, clock=time.time):
         document,
         region=os.getenv("ACADEMY_GPU_REGION") or None,
         clock=clock,
+        startup=startup_seconds(),
     )
 
 
 class GpuLifecycle:
     def __init__(
-        self, store, instance, worker, document, *, region=None, ec2=None, ssm=None, clock=time.time
+        self,
+        store,
+        instance,
+        worker,
+        document,
+        *,
+        region=None,
+        ec2=None,
+        ssm=None,
+        clock=time.time,
+        startup=STARTUP_SECONDS,
     ):
         self.store, self.instance, self.worker, self.document = store, instance, worker, document
         self.clock, self._ec2, self._ssm = clock, ec2, ssm
         self.region = region
+        self.startup = startup
 
     def client(self, name):
         attr = "_" + name
@@ -89,16 +129,25 @@ class GpuLifecycle:
         }
         return Write(PARTITION, KEY, record, old["version"] if old else None)
 
+    def readiness(self):
+        return self.store.get(READINESS, self.worker)
+
     def status(self):
         record = self.record() or {}
         state = record.get("state", "sleeping")
-        return {
+        note = record.get("note")
+        result = {
             "state": state,
-            "message": MESSAGES.get(state, MESSAGES["error"]),
+            "message": NOTES.get(note) or MESSAGES.get(state, MESSAGES["error"]),
             "idle_seconds": IDLE_SECONDS,
             "retry_at": record.get("retry_at"),
             "updated_at": record.get("updated_at"),
         }
+        if state == "capacity_wait":
+            result["attempts"] = record.get("capacity_attempts", 1)
+        if note == "gpu_unready":
+            result["detail"] = (self.readiness() or {}).get("issue")
+        return result
 
     def claim_writes(self):
         old = self.record()
@@ -194,10 +243,15 @@ class GpuLifecycle:
                 "InstanceLimitExceeded",
                 "VcpuLimitExceeded",
             }
+            attempts = record.get("capacity_attempts", 0) + 1 if capacity else 0
             changes = {
                 "state": "capacity_wait" if capacity else "error",
-                "retry_at": now + (60 if capacity else 300),
+                # Capacity often returns within minutes; back off 60, 120, 240, then 300 s.
+                "retry_at": now
+                + (min(CAPACITY_RETRY_MAX, 60 * 2 ** (attempts - 1)) if capacity else 300),
                 "error_code": code,
+                "capacity_attempts": attempts,
+                "note": None,
             }
         except (BotoCoreError, KeyError, IndexError):
             # Reconcile EC2 power next tick. SSM ambiguity is latched below.
@@ -224,25 +278,39 @@ class GpuLifecycle:
     def advance(self, record, worker, power, queued, busy, now, parked=False):
         wanted = record.get("desired_until", 0) > now
         if power == "stopped":
+            halted = record.get("halted_until", 0) > now
+            if wanted and halted:
+                # Repeated failed preparation: stay stopped instead of paying for more boots.
+                return {
+                    "state": "error",
+                    "note": "halted",
+                    "stop_requested": False,
+                    "error_code": "worker_start_failed",
+                    "retry_at": now + 60,
+                }
             if wanted:
                 self.mutation_intent(
                     record,
                     state="starting",
                     stop_requested=False,
                     boot_after=now,
-                    startup_deadline=now + STARTUP_SECONDS,
+                    startup_deadline=now + self.startup,
                     command_id=None,
                     service_requested=False,
                 )
                 self.client("ec2").start_instances(InstanceIds=[self.instance])
+            reset = {} if wanted else {"recovery": 0, "halted_until": 0}
             return {
                 "state": "starting" if wanted else "sleeping",
                 "command_id": None,
                 "service_requested": False,
                 "stop_requested": False,
                 "boot_after": now,
-                "startup_deadline": now + STARTUP_SECONDS,
+                "startup_deadline": now + self.startup,
                 "retry_at": now + 10,
+                "capacity_attempts": 0,
+                "note": "power_cycle" if wanted and record.get("recovery", 0) >= 2 else None,
+                **reset,
             }
         if power == "pending":
             if record.get("startup_deadline", now + 1) <= now:
@@ -255,7 +323,23 @@ class GpuLifecycle:
         if record.get("stop_requested"):
             # EC2's running observation is not proof that an accepted stop won't
             # propagate. Keep claims fenced until stopped or operator recovery.
-            return {"state": "error", "retry_at": now + 30, "error_code": "stop_not_confirmed"}
+            asked = record.get("stop_requested_at") or now
+            if not busy and asked + STOP_RETRY_SECONDS <= now:
+                # The fence still blocks claims, so asking again cannot stop a new run.
+                self.mutation_intent(record, stop_requested_at=now)
+                self.client("ec2").stop_instances(InstanceIds=[self.instance])
+                return {
+                    "state": "stopping",
+                    "stop_requested_at": now,
+                    "retry_at": now + 10,
+                    "error_code": "stop_reissued",
+                }
+            return {
+                "state": "error",
+                "retry_at": now + 30,
+                "error_code": "stop_not_confirmed",
+                "stop_requested_at": asked,
+            }
         fresh = bool(
             worker
             and worker.get("last_seen", 0) > max(now - FRESH_SECONDS, record.get("boot_after", 0))
@@ -263,20 +347,44 @@ class GpuLifecycle:
         # A parked worker cannot serve its queue until an operator reconciles it.
         if not wanted and not busy and ((not queued and fresh) or parked):
             # The operation lock blocks new native claims before this API call.
-            self.mutation_intent(record, state="stopping", stop_requested=True)
+            self.mutation_intent(
+                record, state="stopping", stop_requested=True, stop_requested_at=now
+            )
             self.client("ec2").stop_instances(InstanceIds=[self.instance])
             return {
                 "state": "stopping",
                 "command_id": None,
                 "service_requested": False,
+                "stop_requested_at": now,
                 "retry_at": now + 10,
             }
         if busy:
             return {"state": "busy", "retry_at": now + 10}
         if fresh:
-            return {"state": "ready", "retry_at": now + 10}
-        if record.get("startup_deadline", now + 1) <= now:
+            return {
+                "state": "ready",
+                "retry_at": now + 10,
+                "recovery": 0,
+                "halted_until": 0,
+                "note": None,
+                "capacity_attempts": 0,
+            }
+        boot = record.get("boot_after", 0)
+        connected = bool(worker and worker.get("last_seen", 0) > boot)
+        report = self.readiness() or {}
+        unready = bool(report.get("issue")) and report.get("at", 0) > boot
+        deadline_passed = record.get("startup_deadline", now + 1) <= now
+        if not connected and (
+            deadline_passed
+            or (unready and max(report.get("since", 0), boot) + UNREADY_GRACE_SECONDS <= now)
+        ):
+            # Never connected since boot, so no run can be claimed on this host.
+            return self.recover(record, now, unready)
+        if deadline_passed:
+            # The worker connected once and went quiet; its journal may hold work.
             return {"state": "error", "retry_at": now + 60, "error_code": "worker_start_timeout"}
+        if unready and not connected:
+            return {"state": "preparing", "note": "gpu_unready", "retry_at": now + 10}
         if record.get("service_requested"):
             command_id = record.get("command_id")
             if not command_id:
@@ -286,12 +394,14 @@ class GpuLifecycle:
             )
             if result["Status"] in {"Failed", "Cancelled", "TimedOut"}:
                 return {"state": "error", "retry_at": now + 300}
-            return {"state": "preparing", "retry_at": now + 10}
+            # An unready report that has since cleared no longer explains the wait.
+            note = None if record.get("note") == "gpu_unready" else record.get("note")
+            return {"state": "preparing", "retry_at": now + 10, "note": note}
         # Persist intent before SendCommand. A lost response must not replay it.
         self.mutation_intent(
             record,
             service_requested=True,
-            startup_deadline=record.get("startup_deadline") or now + STARTUP_SECONDS,
+            startup_deadline=record.get("startup_deadline") or now + self.startup,
         )
         response = self.client("ssm").send_command(
             InstanceIds=[self.instance],
@@ -303,8 +413,87 @@ class GpuLifecycle:
             "state": "preparing",
             "command_id": response["Command"]["CommandId"],
             "service_requested": True,
-            "startup_deadline": record.get("startup_deadline") or now + STARTUP_SECONDS,
+            "startup_deadline": record.get("startup_deadline") or now + self.startup,
             "retry_at": now + 10,
+            "note": None,
+        }
+
+    def recover(self, record, now, unready):
+        """Bounded recovery for a worker that never connected since this boot."""
+        step = record.get("recovery", 0)
+        if step == 0 and not unready:
+            status = None
+            if record.get("command_id"):
+                try:
+                    status = self.client("ssm").get_command_invocation(
+                        CommandId=record["command_id"], InstanceId=self.instance
+                    )["Status"]
+                except (ClientError, BotoCoreError, KeyError):
+                    status = None
+            if status in SSM_FINISHED:
+                # The previous command is finished, so sending the fixed document again
+                # cannot double-start it; the service start itself is idempotent.
+                deadline = now + self.startup // 2
+                self.mutation_intent(
+                    record,
+                    recovery=1,
+                    note="restarting_service",
+                    service_requested=True,
+                    command_id=None,
+                    startup_deadline=deadline,
+                )
+                response = self.client("ssm").send_command(
+                    InstanceIds=[self.instance],
+                    DocumentName=self.document,
+                    TimeoutSeconds=120,
+                    Comment="Academy digital twin worker restart",
+                )
+                return {
+                    "state": "preparing",
+                    "recovery": 1,
+                    "note": "restarting_service",
+                    "command_id": response["Command"]["CommandId"],
+                    "service_requested": True,
+                    "startup_deadline": deadline,
+                    "retry_at": now + 10,
+                }
+            # The command's outcome is unknown: never replay it. Restart the host instead.
+        if step <= 1:
+            self.mutation_intent(
+                record,
+                recovery=2,
+                note="power_cycle",
+                stop_requested=True,
+                stop_requested_at=now,
+                state="stopping",
+            )
+            self.client("ec2").stop_instances(InstanceIds=[self.instance])
+            return {
+                "state": "stopping",
+                "recovery": 2,
+                "note": "power_cycle",
+                "command_id": None,
+                "service_requested": False,
+                "stop_requested_at": now,
+                "retry_at": now + 10,
+            }
+        self.mutation_intent(
+            record,
+            note="halted",
+            halted_until=now + IDLE_SECONDS,
+            stop_requested=True,
+            stop_requested_at=now,
+        )
+        self.client("ec2").stop_instances(InstanceIds=[self.instance])
+        return {
+            "state": "error",
+            "note": "halted",
+            "halted_until": now + IDLE_SECONDS,
+            "error_code": "worker_start_failed",
+            "command_id": None,
+            "service_requested": False,
+            "stop_requested_at": now,
+            "retry_at": now + 60,
         }
 
     def mutation_intent(self, record, **changes):

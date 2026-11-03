@@ -4,7 +4,14 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from academy.gpu_lifecycle import KEY, PARTITION, GpuLifecycle, configured
+from academy.gpu_lifecycle import (
+    KEY,
+    PARTITION,
+    READINESS,
+    GpuLifecycle,
+    configured,
+    startup_seconds,
+)
 from academy.runs import RunService, SubmitRun, revised
 from botocore.exceptions import ClientError, ReadTimeoutError
 from fastapi import HTTPException
@@ -565,3 +572,227 @@ def test_capacity_request_id_cannot_be_reused_with_another_saved_version(managed
             session["id"],
             GpuRequest(request_id=request_id, expected_version=changed["version"]),
         )
+
+
+# Automatic recovery for a host whose worker never connects after a boot.
+
+
+def silent(gpu):
+    """A worker that has never heartbeated, so no boot can count it as connected."""
+    old = gpu.store.get("system#workers", "lab-1")
+    gpu.store.put("system#workers", "lab-1", revised(old, last_seen=0), old["version"])
+
+
+def tick(gpu, now, seconds=11):
+    now[0] += seconds
+    return gpu.reconcile()
+
+
+def boot(gpu, ec2, ssm, now):
+    """Stopped → started → SSM sent; returns once the worker is being prepared."""
+    tick(gpu, now)
+    power(ec2, "running")
+    status = tick(gpu, now, 61)
+    assert status["state"] == "preparing"
+    return status
+
+
+def report(gpu, now, issue, since=None):
+    old = gpu.store.get(READINESS, "lab-1")
+    fields = {"issue": issue, "at": now[0], "since": now[0] if since is None else since}
+    gpu.store.put(
+        READINESS,
+        "lab-1",
+        revised(old, **fields) if old else {"version": 1, **fields},
+        old["version"] if old else None,
+    )
+
+
+def test_silent_worker_restarts_service_once_then_power_cycles_then_halts(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    demand(gpu)
+    boot(gpu, ec2, ssm, now)
+    assert ssm.send_command.call_count == 1
+    # Startup deadline passes with a finished SSM command: resend the fixed document once.
+    status = tick(gpu, now, 601)
+    assert status["state"] == "preparing" and "Restarting the worker" in status["message"]
+    assert ssm.send_command.call_count == 2
+    assert ec2.stop_instances.call_count == 0
+    # The shorter second deadline passes too: power-cycle the host.
+    status = tick(gpu, now, 301)
+    assert status["state"] == "stopping" and "Restarting the GPU host" in status["message"]
+    ec2.stop_instances.assert_called_once_with(InstanceIds=["i-pinned"])
+    assert gpu.claim_writes() is None  # The stop fence blocks claims.
+    power(ec2, "stopped")
+    status = tick(gpu, now)
+    assert status["state"] == "starting" and ec2.start_instances.call_count == 2
+    power(ec2, "running")
+    tick(gpu, now)
+    assert ssm.send_command.call_count == 3
+    # Still silent after the power cycle: stop and stay stopped.
+    status = tick(gpu, now, 601)
+    assert status["state"] == "error" and "operator" in status["message"]
+    assert ec2.stop_instances.call_count == 2
+    assert ssm.send_command.call_count == 3
+    power(ec2, "stopped")
+    for _ in range(3):
+        status = tick(gpu, now, 61)
+    demand(gpu)  # A new request while halted does not pay for another boot.
+    status = tick(gpu, now, 61)
+    assert status["state"] == "error" and gpu.record()["error_code"] == "worker_start_failed"
+    assert ec2.start_instances.call_count == 2
+
+
+def test_halt_lapses_with_demand_and_a_later_request_boots_fresh(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    gpu.store.put(
+        PARTITION, KEY, {"version": 1, "halted_until": now[0] + 3600, "recovery": 2}, None
+    )
+    power(ec2, "stopped")
+    tick(gpu, now)  # No demand: sleeping resets the ladder.
+    assert gpu.record()["recovery"] == 0 and gpu.record()["halted_until"] == 0
+    demand(gpu)
+    assert tick(gpu, now)["state"] == "starting"
+
+
+def test_unknown_ssm_outcome_power_cycles_without_replaying_the_command(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    demand(gpu)
+    boot(gpu, ec2, ssm, now)
+    ssm.get_command_invocation.side_effect = ClientError(
+        {"Error": {"Code": "InvocationDoesNotExist"}}, "GetCommandInvocation"
+    )
+    status = tick(gpu, now, 601)
+    assert status["state"] == "stopping"
+    assert ssm.send_command.call_count == 1
+    ec2.stop_instances.assert_called_once()
+
+
+def test_lost_send_response_power_cycles_without_replay(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    demand(gpu)
+    tick(gpu, now)
+    power(ec2, "running")
+    ssm.send_command.side_effect = ReadTimeoutError(endpoint_url="https://ssm.invalid")
+    tick(gpu, now, 61)
+    ssm.send_command.side_effect = None
+    for _ in range(3):
+        tick(gpu, now, 61)
+    assert ssm.send_command.call_count == 1
+    status = tick(gpu, now, 601)
+    assert status["state"] == "stopping" and ssm.send_command.call_count == 1
+
+
+def test_unready_gpu_report_is_shown_and_cycles_the_host_early(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    demand(gpu)
+    boot(gpu, ec2, ssm, now)
+    report(gpu, now, "GPU device /dev/nvidia-uvm is missing")
+    status = tick(gpu, now)
+    assert status["state"] == "preparing"
+    assert status["detail"] == "GPU device /dev/nvidia-uvm is missing"
+    assert "GPU is not ready" in status["message"]
+    since = now[0] - 11
+    now[0] += 110
+    report(gpu, now, "GPU device /dev/nvidia-uvm is missing", since=since)
+    status = tick(gpu, now)
+    # Well before the 600 s deadline; a service restart cannot load a kernel module.
+    assert status["state"] == "stopping"
+    assert ssm.send_command.call_count == 1
+    ec2.stop_instances.assert_called_once()
+
+
+def test_report_from_before_this_boot_is_ignored(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    report(gpu, now, "driver not loaded", since=0)
+    demand(gpu)
+    boot(gpu, ec2, ssm, now)
+    status = tick(gpu, now, 200)
+    assert status["state"] == "preparing" and "detail" not in status
+    ec2.stop_instances.assert_not_called()
+
+
+def test_cleared_unready_report_restores_the_preparing_message(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    demand(gpu)
+    boot(gpu, ec2, ssm, now)
+    report(gpu, now, "driver not loaded")
+    assert "detail" in tick(gpu, now)
+    report(gpu, now, None)
+    status = tick(gpu, now)
+    assert status["state"] == "preparing" and "detail" not in status
+    assert status["message"] == "GPU started. Preparing the Isaac worker."
+
+
+def test_worker_that_connects_after_a_power_cycle_resets_the_ladder(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    demand(gpu)
+    boot(gpu, ec2, ssm, now)
+    tick(gpu, now, 601)
+    tick(gpu, now, 301)
+    power(ec2, "stopped")
+    tick(gpu, now)
+    power(ec2, "running")
+    tick(gpu, now)
+    now[0] += 30
+    heartbeat(gpu, now)
+    status = tick(gpu, now, 1)
+    assert status["state"] == "ready"
+    record = gpu.record()
+    assert record["recovery"] == 0 and record["note"] is None
+
+
+def test_unconfirmed_stop_is_reissued_while_claims_stay_fenced(managed):
+    gpu, ec2, ssm, now = managed
+    silent(gpu)
+    demand(gpu)
+    boot(gpu, ec2, ssm, now)
+    tick(gpu, now, 601)
+    tick(gpu, now, 301)  # power cycle: one stop accepted, EC2 still reports running
+    assert ec2.stop_instances.call_count == 1
+    assert tick(gpu, now, 60)["state"] == "error"
+    assert ec2.stop_instances.call_count == 1
+    status = tick(gpu, now, 300)
+    assert status["state"] == "stopping" and gpu.record()["error_code"] == "stop_reissued"
+    assert ec2.stop_instances.call_count == 2
+    assert gpu.claim_writes() is None
+
+
+def test_capacity_backoff_doubles_to_five_minutes_and_resets_on_start(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    ec2.start_instances.side_effect = ClientError(
+        {"Error": {"Code": "InsufficientInstanceCapacity"}}, "StartInstances"
+    )
+    waits = []
+    gpu.reconcile()
+    for _ in range(5):
+        record = gpu.record()
+        waits.append(record["retry_at"] - now[0])
+        now[0] = record["retry_at"]
+        status = gpu.reconcile()
+    assert waits == [60, 120, 240, 300, 300]
+    assert status["state"] == "capacity_wait" and status["attempts"] == 6
+    ec2.start_instances.side_effect = None
+    now[0] = gpu.record()["retry_at"]
+    assert gpu.reconcile()["state"] == "starting"
+    assert gpu.record()["capacity_attempts"] == 0
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"), [(None, 600), ("900", 900), ("30", 300), ("9999", 1800), ("x", 600)]
+)
+def test_startup_bound_is_configurable_within_limits(monkeypatch, value, expected):
+    if value is None:
+        monkeypatch.delenv("ACADEMY_GPU_STARTUP_SECONDS", raising=False)
+    else:
+        monkeypatch.setenv("ACADEMY_GPU_STARTUP_SECONDS", value)
+    assert startup_seconds() == expected
