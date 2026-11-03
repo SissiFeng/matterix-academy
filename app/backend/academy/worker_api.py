@@ -10,10 +10,12 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from mangum import Mangum
+from pydantic import Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import external, protocol_api
+from .gpu_lifecycle import READINESS
 from .gpu_lifecycle import configured as configured_gpu
 from .instruments import gateway_credential
 from .media import MediaService
@@ -41,6 +43,12 @@ class HostProbe(StrictModel):
     environments: list[dict]
     repositories: list[dict]
     gpu: str
+
+
+class WorkerReadiness(StrictModel):
+    """Why the worker is not claiming runs; None once the local runtime is ready."""
+
+    issue: str | None = Field(default=None, max_length=500)
 
 
 def machine_store():
@@ -230,6 +238,18 @@ def create_worker_app(
         old = store.get("system#host-probes", worker_id)
         record = revised(old, report=payload) if old else {"version": 1, "report": payload}
         store.put("system#host-probes", worker_id, record, old["version"] if old else None)
+        return {"received": True, "worker_id": worker_id}
+
+    @app.post("/internal/workers/readiness")
+    def readiness(data: WorkerReadiness, worker_id: str = Depends(identify_worker)):
+        # Server time only: the GPU lifecycle compares these against its own clock,
+        # and a host that just booted may not have synchronised yet.
+        now = service.clock()
+        old = store.get(READINESS, worker_id)
+        since = old.get("since", now) if old and old.get("issue") and data.issue else now
+        fields = {"issue": data.issue, "at": now, "since": since}
+        record = revised(old, **fields) if old else {"version": 1, **fields}
+        store.put(READINESS, worker_id, record, old["version"] if old else None)
         return {"received": True, "worker_id": worker_id}
 
     @app.post("/internal/runs/claim")

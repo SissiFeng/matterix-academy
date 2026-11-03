@@ -79,6 +79,10 @@ export type GpuStatus = {
   idle_seconds: number;
   retry_at: number | null;
   updated_at: number | null;
+  /** Capacity retries so far, while waiting for AWS GPU capacity. */
+  attempts?: number;
+  /** The worker's own reason it cannot use the GPU yet. */
+  detail?: string | null;
 };
 export const terminalRuns = new Set([
   "completed",

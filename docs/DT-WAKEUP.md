@@ -53,7 +53,8 @@ is automatically submitted when capacity becomes ready.
 
 The page shows sleeping, GPU startup, worker preparation, queue/busy, capacity
 wait, shutdown and operator-attention states. If AWS reports insufficient
-capacity, demand stays durable and retries are spaced by at least 60 seconds.
+capacity, demand stays durable and retries back off 60, 120, 240, then every
+300 seconds; the page shows the attempt count, and the count resets on start.
 No start-latency guarantee is made when AWS cannot allocate the GPU. A request
 queued for an hour expires without dispatch; its versioned reservation is released
 with an explicit `never_started` receipt, not a claimed native reset.
@@ -69,9 +70,37 @@ or missing worker is not sufficient cleanup evidence.
 Power operations acquire a 90-second versioned operation fence against worker
 claims. A workflow submitted during shutdown remains queued and renews demand;
 it cannot claim until shutdown completes and power has been restored. An unknown
-SSM result is latched and is not replayed. Worker startup has a ten-minute bound;
-failure becomes operator attention, not an endless preparation message. Stale
-workers retain the shutdown guard and require operator reconciliation.
+SSM result is latched and is not replayed. Worker startup has a ten-minute bound
+(`ACADEMY_GPU_STARTUP_SECONDS`, clamped to 300–1800); a missed bound starts the
+recovery ladder below, not an endless preparation message. Stale workers that
+connected once retain the shutdown guard and require operator reconciliation.
+
+## Start recovery
+
+A worker that has **not polled since this boot** cannot have claimed a run on it,
+so the controller may restart it without risking native replay:
+
+1. **Service restart, once.** If the previous SSM command is confirmed finished,
+   the fixed document is sent again with half the startup bound. Its effect is
+   idempotent (start the installed firewall and service). An unknown command
+   status skips this step: an ambiguous command is never resent.
+2. **Power cycle.** The host is stopped, observed stopped, started and given the
+   SSM document again. Claims stay fenced by the stop.
+3. **Halt.** After a failed power cycle the host is stopped and stays stopped for
+   one idle window even if new requests arrive; the page asks for an operator.
+   The ladder resets when a worker connects or when demand lapses.
+
+The worker reports why it is not claiming (`POST /internal/workers/readiness`,
+machine credential only, every 30 s while the issue lasts and once when it
+clears). Timestamps are the server's. A report made after this boot shows its
+reason on the page and, if it persists for two minutes without a connection,
+skips the service restart and power-cycles at once, because a service restart
+cannot load a missing kernel module. A report from before the boot is ignored.
+If an accepted stop still shows running after five minutes with no active run,
+the stop is re-issued while claims stay fenced.
+
+A worker that connected and then went quiet is not restarted: its journal may
+hold a run, so it still becomes operator attention.
 
 The fence exceeds the hard timeout of both calling Lambdas (15/30 seconds), so
 an expired invocation cannot later stop a newly claimed run. Before issuing a
@@ -104,7 +133,8 @@ learner execution. A one-hour Cognito login is not native execution authority.
 
 Tests exercise the controller with SQLite and mocked DynamoDB/EC2/SSM, including
 concurrent demand, capacity backoff, unknown command responses, worker startup
-deadline, shutdown/claim fencing, queued expiry and owner rejection. Browser
+deadline, the start recovery ladder and readiness reports, stop re-issue,
+shutdown/claim fencing, queued expiry and owner rejection. Browser
 journeys check startup/capacity messaging, requesting while native execution is
 blocked, lost-response recovery, mobile layout and no resubmission across refresh.
 These tests are control-plane evidence. Real boot, SSM service start, native

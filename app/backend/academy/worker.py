@@ -34,6 +34,8 @@ from .remote_run import (
 from .runs import TERMINAL
 
 logger = logging.getLogger("academy.worker")
+# Below the GPU lifecycle's 120 s unready grace, so a persisting issue is always fresh.
+READINESS_REPORT_SECONDS = 30
 
 
 class Journal:
@@ -235,6 +237,7 @@ class Worker:
     def __init__(self, client, runner, journal, clock=time.time):
         self.client, self.runner, self.journal, self.clock = client, runner, journal, clock
         self.readiness = None
+        self.reported = None  # (issue, at) last accepted by the cloud
 
     def ready(self):
         """Never claim work the local runtime cannot start (for example, no GPU driver)."""
@@ -245,7 +248,28 @@ class Worker:
             elif self.readiness:
                 logger.info("Native runtime ready; claiming runs")
             self.readiness = issue
+        self.report(issue)
         return issue is None
+
+    def report(self, issue):
+        """Tell the GPU lifecycle why this host is not claiming, so it can recover early.
+
+        An unready worker never calls claim, so without this the cloud only sees
+        silence until the startup deadline. Reports repeat while the issue lasts
+        and once when it clears; a failed report never blocks local work.
+        """
+        now = self.clock()
+        if self.reported is None and issue is None:
+            return  # Claim's heartbeat already proves a healthy worker.
+        if self.reported and self.reported[0] == issue:
+            if issue is None or now - self.reported[1] < READINESS_REPORT_SECONDS:
+                return
+        try:
+            self.client.request("POST", "internal/workers/readiness", {"issue": issue})
+        except Exception as error:  # noqa: BLE001 - reporting is advisory
+            logger.info("Readiness report not delivered: %s", error)
+            return
+        self.reported = (issue, now)
 
     def valid_lease(self, run):
         if min(run["lease_expires"], run["deadline"]) <= self.clock() + 2:

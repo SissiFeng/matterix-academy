@@ -47,6 +47,12 @@
   margin: 8px 0;
   color: var(--ink-2);
 }
+.preflight p.gpuDetail {
+  margin-top: -4px;
+  color: var(--muted);
+  font-family: var(--mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
 .preflight small {
   color: var(--muted);
   font-size: 10px;

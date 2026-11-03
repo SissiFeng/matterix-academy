@@ -5,16 +5,21 @@ import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 from uuid import uuid4
 
 import academy.native_supervisor as supervisor
+import httpx
 import pytest
 from academy.gateway import GatewayUnavailable, NativeLaunchFailed, RemoteOperationPending
 from academy.gpu_health import gpu_issue
+from academy.gpu_lifecycle import READINESS
 from academy.native_files import SCENE_STARTED, read_json, write_json
 from academy.native_runner import NativeFlexRunner
 from academy.runs import LAUNCH_FAILED_REASON, WORKERS, SubmitRun
 from academy.worker import Journal, Worker
+from academy.worker_api import create_worker_app
+from fastapi.testclient import TestClient
 from test_worker import FixtureRunner, worker_system  # noqa: F401
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -358,3 +363,64 @@ def test_worker_service_cannot_start_without_the_root_gpu_unit():
     finalize = (ROOT / "ops/ec2-gpu/image/finalize.sh").read_text()
     gate = finalize.index("setpriv --no-new-privs")
     assert gate < finalize.index("nvidia-smi")  # before any root GPU access
+
+
+def readiness_record(service):
+    return service.store.get(READINESS, service.store.partition(WORKERS)[0]["worker_id"])
+
+
+def test_unready_worker_reports_why_and_clears_once_ready(worker_system):  # noqa: F811
+    service, submitted, client, path, now = worker_system
+    clock = [now]
+    runner = LaunchFailingRunner("GPU device /dev/nvidia0 is missing")
+    journal = Journal(path)
+    try:
+        engine = Worker(client, runner, journal, clock=lambda: clock[0])
+        assert engine.step() is False
+        first = readiness_record(service)
+        assert first["issue"] == "GPU device /dev/nvidia0 is missing"
+        assert first["at"] == now and first["since"] == now
+        engine.step()  # Same issue within 30 s: no new report.
+        assert readiness_record(service)["version"] == first["version"]
+        clock[0] += 31
+        engine.step()  # Persisting issue is refreshed and keeps its original start.
+        assert readiness_record(service)["version"] == first["version"] + 1
+        assert readiness_record(service)["since"] == now
+        runner.issue = None
+        engine.ready()
+        cleared = readiness_record(service)
+        assert cleared["issue"] is None
+        engine.ready()
+        assert readiness_record(service)["version"] == cleared["version"]
+    finally:
+        journal.close()
+
+
+def test_healthy_worker_never_posts_readiness(worker_system):  # noqa: F811
+    service, submitted, client, path, now = worker_system
+    journal = Journal(path)
+    try:
+        Worker(client, FixtureRunner(), journal, clock=lambda: now).ready()
+        assert service.store.partition(READINESS) == []
+    finally:
+        journal.close()
+
+
+def test_failed_readiness_report_never_blocks_the_worker(tmp_path):
+    client = Mock()
+    client.request.side_effect = httpx.ConnectError("offline")
+    journal = Journal(tmp_path / "worker.sqlite")
+    try:
+        engine = Worker(client, LaunchFailingRunner("driver not loaded"), journal)
+        assert engine.ready() is False
+        assert engine.ready() is False
+        assert client.request.call_count == 2  # Undelivered reports retry next step.
+    finally:
+        journal.close()
+
+
+def test_readiness_route_requires_a_machine_credential(store):
+    app = TestClient(create_worker_app(store, enabled=True))
+    response = app.post("/internal/workers/readiness", json={"issue": "x"})
+    assert response.status_code in {401, 403}
+    assert store.partition(READINESS) == []
