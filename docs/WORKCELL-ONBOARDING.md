@@ -14,6 +14,10 @@ The workspace opens on **Overview**, followed by **Onboard**, **Twin**, **Sim â†
 
 **Runs** aligns the current teaching attempt's action sequence with its saved success/failure events. The physical column is unrecorded. Timing and state deviation remain not comparable. Prior attempts have summaries only, because the existing teaching store does not retain their full step traces or durations. Native simulation records retain their existing separate Simulation lab interface.
 
+## Multi-device case
+
+The Onboard page also opens a worked multi-device case: Flex, UR5e with a Robotiq 2F-140, a balance and an OT-2 share one bench, and the learner designs the arm path that links them. See [multi-device workcell cases](WORKCELL-CASES.md).
+
 ## Persistence and authority
 
 - `GET /api/devices` lists the authenticated owner's first 100 device records with derived teaching checks. The list and all details use the existing identity dependency, including the trusted API Gateway authorizer context in AWS.

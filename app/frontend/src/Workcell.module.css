@@ -295,6 +295,12 @@
   gap: 16px;
   margin-bottom: 26px;
 }
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
 .toolbar label {
   font-size: 11px;
   color: var(--muted);

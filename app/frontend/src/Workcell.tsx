@@ -824,13 +824,25 @@ export default function Workcell({
                   </select>
                 </label>
                 {view === "onboard" ? (
-                  <button
-                    className={s.secondary}
-                    onClick={() => chooseDevice("")}
-                    disabled={busy}
-                  >
-                    <Plus size={16} /> New device
-                  </button>
+                  <div className={s.toolbarActions}>
+                    <button
+                      className={s.secondary}
+                      onClick={() => {
+                        window.location.hash = "/onboard/case-synthesis-cell";
+                      }}
+                      disabled={busy}
+                    >
+                      <Layers3 size={16} /> Multi-device case: synthesis
+                      workcell
+                    </button>
+                    <button
+                      className={s.secondary}
+                      onClick={() => chooseDevice("")}
+                      disabled={busy}
+                    >
+                      <Plus size={16} /> New device
+                    </button>
+                  </div>
                 ) : (
                   <button
                     className={s.secondary}

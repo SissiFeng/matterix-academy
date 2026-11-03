@@ -60,6 +60,7 @@ const LearningLab = lazy(() => import("./LearningLab"));
 const ConnectorExplorer = lazy(() => import("./ConnectorExplorer"));
 const ConnectorSetup = lazy(() => import("./ConnectorSetup"));
 const Workcell = lazy(() => import("./Workcell"));
+const WorkcellCase = lazy(() => import("./workcellCase/WorkcellCase"));
 const DilutionWorkspace = lazy(() => import("./DilutionWorkspace"));
 const WorkflowMarketplace = lazy(() =>
   import("./Discovery").then((m) => ({ default: m.WorkflowMarketplace })),
@@ -952,7 +953,16 @@ export default function App() {
                 </p>
               }
             >
-              {workspaceViews.includes(view as WorkspaceView) ? (
+              {view === "onboard" &&
+              /^#\/onboard\/case-[a-z0-9-]+$/.test(window.location.hash) ? (
+                <WorkcellCase
+                  key={`case:${workspaceRouteRevision}`}
+                  caseId={window.location.hash.split("/case-")[1]}
+                  onBack={() => {
+                    window.location.hash = "/onboard";
+                  }}
+                />
+              ) : workspaceViews.includes(view as WorkspaceView) ? (
                 <Workcell
                   key={`${view}:${workspaceRouteRevision}`}
                   view={view as WorkspaceView}
