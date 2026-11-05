@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
-test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", async ({
+test("instrument twins run a multi-device workflow on the mock contract", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -18,7 +19,7 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
   // The twin builder sits below the Flex/OT-2 introductions on the same page.
   await expect(page.getByTestId("instrument-stories")).toBeVisible();
   const studio = page.getByRole("region", {
-    name: "Photograph an instrument. Run it as a twin.",
+    name: "Find your instrument. Run it as a twin.",
   });
   await expect(studio).toBeVisible();
   await expect(
@@ -26,7 +27,7 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
   ).toBeVisible();
 
   for (const name of ["Heating station", "Plate reader", "Transfer robot"]) {
-    await studio.getByRole("button", { name }).click();
+    await page.getByRole("button", { name, exact: true }).click();
   }
   const confirm = studio.getByRole("button", { name: "Confirm twin" });
   await expect(confirm).toHaveCount(3);
@@ -37,8 +38,8 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
   await page.reload();
   await expect(studio.getByText("Confirmed")).toHaveCount(3);
 
-  await studio.getByRole("tab", { name: "2 · Workflow" }).click();
-  const add = studio.getByRole("button", { name: "Add step" });
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  const add = page.getByRole("button", { name: "Add step" });
   await add.click();
   await add.click();
   await studio.getByLabel("Step 2 operation").selectOption("heat");
@@ -66,8 +67,13 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
     studio.getByText("4. Plate reader · Read → 150 µL, 42 °C, not mixed"),
   ).toBeVisible();
   await expect(
-    studio.getByText("Synthetic · mock SiLA 2 connectors"),
+    page.getByText("Synthetic · in-process mock contract"),
   ).toBeVisible();
+
+  await page.screenshot({
+    path: "/tmp/academy-instruments-workflow-desktop.png",
+    fullPage: true,
+  });
 
   // Detail is added only against a recorded failure residual.
   await studio.getByRole("tab", { name: "1 · Instruments" }).click();
@@ -93,7 +99,7 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
     reader.getByText("Academy USD template · revision 2"),
   ).toBeVisible();
 
-  await studio.getByRole("tab", { name: "3 · Connectors" }).click();
+  await page.getByRole("tab", { name: "4 · Connectors" }).click();
   await expect(
     studio.getByRole("radio", { name: /Real device/ }).first(),
   ).toBeDisabled();
@@ -108,7 +114,7 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
     "<Identifier>Heat</Identifier>",
   );
   await page.setViewportSize({ width: 390, height: 844 });
-  await studio.getByRole("tab", { name: "2 · Workflow" }).click();
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
   await expect
     .poll(() =>
       page.evaluate(
@@ -116,5 +122,391 @@ test("instrument twins run a multi-device workflow on mock SiLA 2 connectors", a
       ),
     )
     .toBe(true);
+  await page.screenshot({
+    path: "/tmp/academy-instruments-workflow-mobile.png",
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});
+
+async function openInstruments(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await page.getByPlaceholder("Your first name").fill("Ada");
+  await page.getByRole("button", { name: "Enter the learning lab" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "This is my first time" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Open my workspace" }).click();
+  await page
+    .getByRole("button", { name: "Meet the instruments", exact: true })
+    .click();
+}
+
+async function enterInstruments(page: import("@playwright/test").Page) {
+  await openInstruments(page);
+  await page
+    .getByRole("button", { name: "Heating station", exact: true })
+    .click();
+}
+
+test("catalog refresh preserves instrument edits and navigation protects drafts", async ({
+  page,
+}) => {
+  await enterInstruments(page);
+  await page
+    .getByLabel("Instrument name", { exact: true })
+    .fill("My edited heater");
+  await page.getByRole("button", { name: "Plate reader", exact: true }).click();
+  await expect(
+    page.getByLabel("Instrument name", { exact: true }).first(),
+  ).toHaveValue("My edited heater");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page
+    .getByRole("button", { name: "Simulation lab", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Instrument name", { exact: true }).first(),
+  ).toHaveValue("My edited heater");
+  await page.getByRole("button", { name: "Confirm twin" }).first().click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "USD", exact: true }).first().click();
+  expect((await download).suggestedFilename()).toBe("My edited heater.usda");
+});
+
+test("a stale workflow save preserves local steps and can be reconciled", async ({
+  page,
+}) => {
+  await enterInstruments(page);
+  await page.getByRole("button", { name: "Confirm twin" }).click();
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  await page.getByRole("button", { name: "Add step" }).click();
+  await page.getByRole("button", { name: "Add step" }).click();
+  await page.getByLabel("Step 2 operation").selectOption("heat");
+  await page.getByLabel("Step 2 temperature").fill("42");
+  const current = await (await page.request.get("/api/twins")).json();
+  const competing = await page.request.post("/api/twins", {
+    data: {
+      expected_version: current.version,
+      id: crypto.randomUUID(),
+      template_id: "reader",
+    },
+  });
+  expect(competing.ok()).toBe(true);
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(page.getByRole("alert")).toContainText("This record changed");
+  await expect(page.getByLabel("Step 2 temperature")).toHaveValue("42");
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Run on mock connectors" }),
+  ).toBeEnabled();
+  const saved = await (await page.request.get("/api/twins")).json();
+  expect(saved.steps[1].value).toBe(42);
+  await page
+    .getByRole("button", { name: "Connector explorer", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Open instrument mock connectors" })
+    .click();
+  await expect(
+    page.getByRole("tab", { name: "4 · Connectors" }),
+  ).toHaveAttribute("aria-selected", "true");
+  const downloaded = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Download runnable SiLA bundle" })
+    .click();
+  expect((await downloaded).suggestedFilename()).toMatch(
+    /^mock-workcell-.*\.zip$/,
+  );
+  await page
+    .getByRole("button", { name: "Simulation lab", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Design a multi-device workflow" })
+    .click();
+  await expect(page.getByRole("tab", { name: "3 · Workflow" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});
+
+test("a SimReady asset starts an attributed twin that becomes a mock connector", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await enterInstruments(page);
+  await page
+    .getByRole("button", { name: "Add Microplate reader", exact: true })
+    .click();
+  const card = page.locator("article", {
+    hasText: "SimReady asset · ForgeCAD",
+  });
+  await expect(
+    card.getByRole("link", { name: /Microplate reader © ForgeCAD, CC-BY-4.0/ }),
+  ).toHaveAttribute("href", /huggingface\.co\/datasets\/ForgeCAD\//);
+  await card.getByRole("button", { name: "Confirm twin" }).click();
+  await expect(card.getByText("revision 1")).toBeVisible();
+  await page.getByRole("tab", { name: "4 · Connectors" }).click();
+  await page
+    .getByRole("button", { name: "View mock connector" })
+    .last()
+    .click();
+  await expect(
+    page.getByText("MicroplateReaderMock.sila.xml", { exact: true }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("a ChemLab asset starts a non-commercial reference twin", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await enterInstruments(page);
+  await page.getByLabel("Search the asset library").fill("xpr204e");
+  await expect(page.getByText("1 match", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Add Analytical balance (XPR204E)" })
+    .click();
+  const card = page.locator("article", {
+    hasText: "ChemLab reference · CC-BY-NC-4.0",
+  });
+  await expect(
+    card.getByRole("link", { name: /XPR204E .* © MBZUAI, CC-BY-NC-4.0/ }),
+  ).toHaveAttribute(
+    "href",
+    /huggingface\.co\/datasets\/MBZUAI\/ChemLab-Assets\//,
+  );
+  await card.getByRole("button", { name: "Confirm twin" }).click();
+  await expect(card.getByText("revision 1")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("a photo match swaps the Astra sketch for the catalogued footprint", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const id = "8f0c2a1e-6b7d-4c3a-9e2f-1a2b3c4d5e6f";
+  let photo: Record<string, unknown> | null = null;
+  let matched: unknown = null;
+  // Astra is not configured in e2e, so the photo outcome is stubbed at the API edge.
+  await page.route("**/api/twins", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const catalog = await (await route.fetch()).json();
+    if (!photo) {
+      const { results } = await (
+        await page.request.get("/api/twins/library?q=balance")
+      ).json();
+      const xpr = results.find((r: { id: string }) => r.id === "mt_xpr204e");
+      photo = {
+        id,
+        status: "draft",
+        confirmed: false,
+        mode: "mock",
+        source: "astra_image",
+        spec: { ...catalog.templates.reader, name: "Benchtop balance" },
+        asset: null,
+        identification: {
+          library_id: "chemlab:mt_xpr204e",
+          alternatives: [],
+          maker: "METTLER TOLEDO",
+          model: "XPR204E",
+          confidence: "high",
+          evidence: "XPR204E badge on the terminal",
+        },
+        matches: [{ ...xpr, suggested_by: "astra", verified: true }],
+        message: "",
+        evidence: "synthetic",
+        revision: 0,
+        residuals: [],
+      };
+    }
+    await route.fulfill({ json: { ...catalog, twins: [photo] } });
+  });
+  await page.route(`**/api/twins/${id}/match`, async (route) => {
+    matched = route.request().postDataJSON();
+    const catalog = await (await page.request.get("/api/twins")).json();
+    const twin = {
+      ...photo,
+      source: "chemlab_asset",
+      spec: {
+        ...catalog.templates.reader,
+        name: "Analytical balance (XPR204E)",
+      },
+      asset: {
+        id: "mt_xpr204e",
+        label: "METTLER TOLEDO XPR204E analytical balance",
+        provider: "MBZUAI ChemLab-Assets",
+        license: "CC-BY-NC-4.0",
+        attribution:
+          "METTLER TOLEDO XPR204E analytical balance model © MBZUAI, CC-BY-NC-4.0, via ChemLab-Assets",
+        repo: "MBZUAI/ChemLab-Assets",
+        revision: "pinned",
+        path: "assets/mt_xpr204e",
+        url: "https://huggingface.co/datasets/MBZUAI/ChemLab-Assets",
+      },
+    };
+    await route.fulfill({
+      json: { ...catalog, version: catalog.version + 1, twins: [twin] },
+    });
+  });
+  await openInstruments(page);
+  const matches = page.getByRole("region", { name: "Library matches" });
+  await expect(
+    matches.getByText("Astra read METTLER TOLEDO XPR204E"),
+  ).toBeVisible();
+  await expect(matches.getByText("Label confirmed")).toBeVisible();
+  await matches
+    .getByRole("button", { name: "Use Analytical balance (XPR204E) footprint" })
+    .click();
+  await expect(matches.getByRole("button", { name: /footprint/ })).toHaveText(
+    "In use",
+  );
+  expect(matched).toMatchObject({
+    collection: "chemlab",
+    asset_id: "mt_xpr204e",
+  });
+  await expect(
+    page.getByText("ChemLab reference · CC-BY-NC-4.0", { exact: true }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("an instrument missing from the library points to photo and templates", async ({
+  page,
+}) => {
+  await enterInstruments(page);
+  await page.getByLabel("Search the asset library").fill("no such instrument");
+  await expect(page.getByText("0 matches", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Not in the library. Photograph it or start from a generic"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Not sure of the model, or not listed?",
+    }),
+  ).toBeVisible();
+});
+
+test("bench layout plans a collision-checked arm path for each transfer", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await enterInstruments(page);
+  for (const name of ["Plate reader", "Transfer robot"])
+    await page.getByRole("button", { name, exact: true }).click();
+  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  for (let i = 3; i > 0; i--) {
+    await confirm.first().click();
+    await expect(confirm).toHaveCount(i - 1);
+  }
+
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  const add = page.getByRole("button", { name: "Add step" });
+  await add.click();
+  await add.click();
+  await page
+    .getByLabel("Step 2 instrument")
+    .selectOption({ label: "Sample transfer robot" });
+  await page
+    .getByLabel("Step 2 from")
+    .selectOption({ label: "From Heating station" });
+  await page.getByLabel("Step 2 to").selectOption({ label: "To Plate reader" });
+  await page.getByLabel("Step 1 volume").fill("150");
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save workflow" }),
+  ).toBeDisabled();
+
+  // A suggested layout is checked against the saved workflow straight away.
+  await page.getByRole("tab", { name: "2 · Layout" }).click();
+  const path = page.getByRole("button", {
+    name: /Step 2 · Heating station → Plate reader/,
+  });
+  await expect(path).toContainText("cm min clearance");
+
+  // Keyboard placement moves the footprint in 10 cm steps.
+  const heater = page.getByRole("button", { name: /^Heating station at x/ });
+  await heater.focus();
+  await page.keyboard.press("Shift+ArrowUp");
+  await expect(heater).toHaveAttribute("aria-label", /z 0\.01 m/);
+
+  // Overlap is caught locally and blocks saving.
+  await page.getByLabel("Heating station x").fill("0");
+  await expect(
+    page.getByText(
+      /Sample transfer robot, Heating station overlap or leave the bench/,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+  await page.getByLabel("Heating station x").fill("-0.54");
+
+  // An out-of-reach station is explained by the server and cannot be saved.
+  await page.getByRole("button", { name: /^Plate reader at x/ }).focus();
+  await page.getByLabel("Plate reader x").fill("0.95");
+  await page.getByLabel("Plate reader z").fill("0.6");
+  await expect(
+    page.getByText(
+      /Plate reader's top access point: it is .* m from the UR5e shoulder/,
+    ),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "arm reaches about 0.85 m",
+  );
+  await page
+    .getByRole("alert")
+    .getByRole("button", { name: "Dismiss" })
+    .click();
+
+  await page.getByLabel("Plate reader x").fill("0.54");
+  await page.getByLabel("Plate reader z").fill("0.11");
+  await expect(path).toContainText("cm min clearance");
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+  // The saved path exports as an action chain for the UR5e SiLA connector.
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Download step 2 as a UR5e action chain" })
+    .click();
+  const file = await (await download).path();
+  const chain = JSON.parse(readFileSync(file, "utf8"));
+  expect(chain.schema).toBe("ur5e.action-chain/2");
+  expect(chain.provenance.evidence).toBe("synthetic");
+  expect(chain.waypoints.length).toBeGreaterThan(1);
+  expect(chain.waypoints.length).toBeLessThanOrEqual(24);
+  await page.screenshot({
+    path: "/tmp/academy-instruments-layout-desktop.png",
+    fullPage: true,
+  });
+
+  await page.reload();
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  await expect(page.getByText(/collision-free arm path/)).toBeVisible();
+  await page.getByRole("button", { name: "Run on mock connectors" }).click();
+  await expect(
+    page.getByText(/Transfer sample · UR5e path .* m, .* cm clearance/),
+  ).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("tab", { name: "2 · Layout" }).click();
+  await expect(path).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: "/tmp/academy-instruments-layout-mobile.png",
+    fullPage: true,
+  });
   expect(errors).toEqual([]);
 });

@@ -14,26 +14,34 @@ import {
   Play,
   Plug,
   Plus,
+  Search,
   Trash2,
 } from "lucide-react";
-import { api, ApiError, json } from "./api";
+import { api, apiText, apiBlob, ApiError, json } from "./api";
 import {
   operationLabels,
   type ConnectorPackage,
   type InstrumentCatalog,
+  type Layout,
+  type LibraryEntry,
+  type LibraryResults,
+  type LayoutPreview,
   type Operation,
   type Step,
   type Twin,
 } from "./instrumentTypes";
 import s from "./InstrumentStudio.module.css";
+import LayoutPanel from "./LayoutPanel";
+import { conflicts, defaultLayout } from "./layoutGeometry";
 import TwinCard from "./TwinCard";
 
 const TwinScene = lazy(() => import("./TwinScene"));
-type Tab = "instruments" | "workflow" | "connectors";
+type Tab = "instruments" | "layout" | "workflow" | "connectors";
 const tabs: { id: Tab; label: string }[] = [
   { id: "instruments", label: "1 · Instruments" },
-  { id: "workflow", label: "2 · Workflow" },
-  { id: "connectors", label: "3 · Connectors" },
+  { id: "layout", label: "2 · Layout" },
+  { id: "workflow", label: "3 · Workflow" },
+  { id: "connectors", label: "4 · Connectors" },
 ];
 const templateLabels: Record<string, string> = {
   "liquid-handler": "Liquid handler",
@@ -71,7 +79,10 @@ async function encodePhoto(file: File) {
 }
 
 function save(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+  saveBlob(name, new Blob([text], { type: "text/plain" }));
+}
+function saveBlob(name: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
   const link = Object.assign(document.createElement("a"), {
     href: url,
     download: name,
@@ -80,9 +91,20 @@ function save(name: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function InstrumentStudio() {
+export default function InstrumentStudio({
+  registerLeaveGuard,
+}: {
+  registerLeaveGuard: (guard: (() => boolean) | null) => void;
+}) {
   const [catalog, setCatalog] = useState<InstrumentCatalog | null>(null);
-  const [tab, setTab] = useState<Tab>("instruments");
+  const [tab, setTab] = useState<Tab>(() => {
+    const section = window.location.hash.split("/")[2];
+    return section === "layout" ||
+      section === "workflow" ||
+      section === "connectors"
+      ? section
+      : "instruments";
+  });
   const [steps, setSteps] = useState<Step[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -90,11 +112,50 @@ export default function InstrumentStudio() {
   const [connector, setConnector] = useState<ConnectorPackage | null>(null);
   const version = useRef(0);
   const dirty = useRef(false);
+  const editRevision = useRef(0);
+  const twinDirty = useRef(new Set<string>());
+  const [layoutDraft, setLayoutDraft] = useState<Layout | null>(null);
+  const layoutDirty = useRef(false);
+  const layoutRevision = useRef(0);
+  const [preview, setPreview] = useState<LayoutPreview | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [selectedMotion, setSelectedMotion] = useState(0);
+  const [armFrame, setArmFrame] = useState(0);
+  const [query, setQuery] = useState("");
+  const [library, setLibrary] = useState<LibraryResults | null>(null);
+  const trackTwinDirty = useCallback((id: string, changed: boolean) => {
+    if (changed) twinDirty.current.add(id);
+    else twinDirty.current.delete(id);
+  }, []);
+  useEffect(() => {
+    const unsaved = () =>
+      dirty.current || layoutDirty.current || twinDirty.current.size > 0;
+    registerLeaveGuard(
+      () =>
+        !unsaved() ||
+        window.confirm(
+          "Your instrument, layout or workflow changes are not saved. Leave this workspace?",
+        ),
+    );
+    const warn = (event: BeforeUnloadEvent) => {
+      if (unsaved()) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      registerLeaveGuard(null);
+      window.removeEventListener("beforeunload", warn);
+    };
+  }, [registerLeaveGuard]);
 
   const accept = useCallback((next: InstrumentCatalog) => {
+    if (next.version < version.current) return;
     version.current = next.version;
     setCatalog(next);
     if (!dirty.current) setSteps(next.steps);
+    if (!layoutDirty.current) setLayoutDraft(next.layout ?? null);
   }, []);
   const load = useCallback(
     async () => accept(await api<InstrumentCatalog>("/twins")),
@@ -117,12 +178,44 @@ export default function InstrumentStudio() {
       return true;
     } catch (e) {
       setError((e as Error).message);
-      if (e instanceof ApiError && e.status === 409)
+      // Reconcile lost receipts by reading; never repeat a mutation automatically.
+      if (!(e instanceof ApiError) || e.status === 409 || e.status >= 500)
         await load().catch(() => undefined);
       return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  useEffect(() => {
+    let current = true;
+    const timer = window.setTimeout(
+      () =>
+        api<LibraryResults>(
+          `/twins/library?q=${encodeURIComponent(query.trim())}`,
+        )
+          .then((found) => current && setLibrary(found))
+          .catch((e) => current && setError((e as Error).message)),
+      query ? 200 : 0,
+    );
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+  const addFromLibrary = async (entry: LibraryEntry) => {
+    const id = crypto.randomUUID();
+    const added = await mutate("/twins", {
+      id,
+      [entry.collection === "chemlab" ? "chemlab_id" : "simready_id"]: entry.id,
+    });
+    // The draft lands below the library; bring it into view for review.
+    if (added)
+      requestAnimationFrame(() =>
+        document
+          .querySelector(`[data-twin="${id}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
   };
 
   const generating = catalog?.twins.find((t) => t.status === "generating");
@@ -159,6 +252,67 @@ export default function InstrumentStudio() {
     return () => window.clearInterval(timer);
   }, [run?.id]);
 
+  const confirmed = catalog?.twins.filter((t) => t.confirmed) ?? [];
+  const confirmedIds = new Set(confirmed.map((t) => t.id));
+  const specs = new Map(confirmed.map((t) => [t.id, t.spec!]));
+  const baseLayout = layoutDraft ?? defaultLayout(confirmed);
+  // Drop placements of instruments that were removed or are no longer confirmed.
+  const draft: Layout = {
+    ...baseLayout,
+    placements: baseLayout.placements.filter((p) =>
+      confirmedIds.has(p.twin_id),
+    ),
+  };
+  const draftKey =
+    tab === "layout" && draft.placements.length ? JSON.stringify(draft) : "";
+  const localConflict = draftKey ? conflicts(draft, specs).size > 0 : false;
+  useEffect(() => {
+    if (!draftKey || localConflict) {
+      setPreview(null);
+      return;
+    }
+    let live = true;
+    setChecking(true);
+    // Debounced so a drag is checked once it settles.
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await api<LayoutPreview>(
+          "/twins/layout/preview",
+          json(JSON.parse(draftKey)),
+        );
+        if (live) {
+          setPreview(result);
+          setSelectedMotion(result.blocked ? result.motions.length : 0);
+        }
+      } catch (e) {
+        if (live) setError((e as Error).message);
+      } finally {
+        if (live) setChecking(false);
+      }
+    }, 350);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
+  }, [draftKey, localConflict, catalog?.version]);
+  const motionFrames =
+    tab === "layout" && preview
+      ? ([
+          ...preview.motions.map((m) => m.frames),
+          ...(preview.blocked ? [preview.blocked.frames] : []),
+        ][selectedMotion] ?? null)
+      : null;
+  useEffect(() => {
+    setArmFrame(0);
+    if (!motionFrames?.length) return;
+    // Loop the path with a short hold on the final pose.
+    const timer = window.setInterval(
+      () => setArmFrame((f) => (f + 1) % (motionFrames.length + 15)),
+      70,
+    );
+    return () => window.clearInterval(timer);
+  }, [motionFrames]);
+
   if (!catalog)
     return (
       <section className={s.page} aria-label="Bring your own instrument">
@@ -170,12 +324,34 @@ export default function InstrumentStudio() {
       </section>
     );
 
-  const confirmed = catalog.twins.filter((t) => t.confirmed);
   const stations = confirmed.filter((t) => t.spec!.operations.includes("load"));
+  const replayTwins = run?.twins.every((t) => t.spec)
+    ? run.twins.map((t) => ({ id: t.id, spec: t.spec!, confirmed: true }))
+    : confirmed;
+  const savedPlaced = new Set(catalog.layout?.placements.map((p) => p.twin_id));
+  const savedLayout = (shown: { id: string }[]) =>
+    catalog.layout && shown.every((t) => savedPlaced.has(t.id))
+      ? catalog.layout
+      : null;
+  const blockedTwin =
+    tab === "layout" && preview?.blocked
+      ? (confirmed.find((t) => t.spec!.name === preview.blocked!.blocked_by)
+          ?.id ?? null)
+      : null;
+  const showingBlocked =
+    !!preview?.blocked && selectedMotion === preview.motions.length;
+  const editLayout = (next: Layout) => {
+    layoutDirty.current = true;
+    layoutRevision.current += 1;
+    setLayoutDraft(next);
+  };
   const name = (id: string | null) =>
-    catalog.twins.find((t) => t.id === id)?.spec?.name ?? "—";
+    (tab === "workflow" ? run?.twins.find((t) => t.id === id)?.name : null) ??
+    catalog.twins.find((t) => t.id === id)?.spec?.name ??
+    "—";
   const editSteps = (next: Step[]) => {
     dirty.current = true;
+    editRevision.current += 1;
     setSteps(next);
   };
   const stepFor = (device: Twin, operation?: Operation): Step => {
@@ -203,14 +379,15 @@ export default function InstrumentStudio() {
       <div className={s.heading}>
         <div>
           <span className={s.eyebrow}>BRING YOUR OWN INSTRUMENT</span>
-          <h2 id="byo-instrument">
-            Photograph an instrument. Run it as a twin.
-          </h2>
+          <h2 id="byo-instrument">Find your instrument. Run it as a twin.</h2>
           <p>
-            Upload a photo and GPT-6 Astra on Amazon Bedrock sketches a simple
-            3D twin, or start from an Academy USD template. Confirm the
-            instruments you will use, design a workflow across them, then run it
-            through mock SiLA 2 connectors.
+            Search the asset library for your instrument to start from its
+            catalogued footprint. Not sure of the model? Upload a photo: GPT-6
+            Astra on Amazon Bedrock matches it against the library and sketches
+            a draft twin if nothing fits. Or start from a generic template.
+            Confirm the instruments you will use, design a workflow across them,
+            then run it through the mock command contract. Export runnable SiLA
+            2 connectors for local testing.
           </p>
         </div>
       </div>
@@ -232,7 +409,18 @@ export default function InstrumentStudio() {
             role="tab"
             aria-selected={tab === t.id}
             className={tab === t.id ? s.activeTab : ""}
-            onClick={() => setTab(t.id)}
+            onClick={() => {
+              if (
+                t.id !== tab &&
+                twinDirty.current.size &&
+                !window.confirm(
+                  "Your instrument edits are not saved. Discard them and switch tabs?",
+                )
+              )
+                return;
+              setTab(t.id);
+              window.history.replaceState({}, "", `/#/instruments/${t.id}`);
+            }}
           >
             {t.label}
           </button>
@@ -242,17 +430,43 @@ export default function InstrumentStudio() {
         <section className={s.viewport} aria-label="Workcell preview">
           <div className={s.viewportBar}>
             <span>
-              {trace
-                ? `Step ${trace.step} · ${operationLabels[trace.operation]} · ${name(trace.device_id)}`
-                : `${catalog.twins.length} instrument${catalog.twins.length === 1 ? "" : "s"} · drag to orbit`}
+              {tab === "layout"
+                ? motionFrames
+                  ? `${showingBlocked ? "Blocked attempt" : "Planned path"} · Step ${(showingBlocked ? preview!.blocked! : preview!.motions[selectedMotion]).step} · drag to orbit`
+                  : `${draft.placements.length} on the bench · drag to orbit`
+                : trace
+                  ? `Last run · Step ${trace.step} · ${operationLabels[trace.operation]} · ${name(trace.device_id)}`
+                  : `${catalog.twins.length} instrument${catalog.twins.length === 1 ? "" : "s"} · drag to orbit`}
             </span>
             <span>SYNTHETIC TWIN</span>
           </div>
           <Suspense fallback={<div className={s.scene} />}>
             <TwinScene
-              twins={tab === "instruments" ? catalog.twins : confirmed}
+              twins={
+                tab === "instruments"
+                  ? catalog.twins
+                  : tab === "workflow"
+                    ? replayTwins
+                    : confirmed
+              }
               active={tab === "workflow" ? trace?.device_id : null}
               sample={tab === "workflow" ? trace?.location : null}
+              layout={
+                tab === "layout"
+                  ? draft
+                  : tab === "workflow"
+                    ? savedLayout(replayTwins)
+                    : tab === "connectors"
+                      ? savedLayout(confirmed)
+                      : null
+              }
+              arm={
+                motionFrames?.length
+                  ? motionFrames[Math.min(armFrame, motionFrames.length - 1)]
+                  : null
+              }
+              path={motionFrames?.map((f) => f[f.length - 1]) ?? null}
+              blocked={showingBlocked ? blockedTwin : null}
             />
           </Suspense>
           {tab === "workflow" && trace && (
@@ -295,6 +509,72 @@ export default function InstrumentStudio() {
           {tab === "instruments" && (
             <>
               <h2>Add an instrument</h2>
+              <section className={s.library} aria-label="Asset library">
+                <label className={s.search}>
+                  <Search size={16} aria-hidden />
+                  <input
+                    type="search"
+                    value={query}
+                    placeholder={`Search ${library?.size ?? ""} instruments`}
+                    aria-label="Search the asset library"
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+                <p className={s.libraryMeta}>
+                  {query.trim()
+                    ? `${library?.total ?? 0} match${library?.total === 1 ? "" : "es"}${
+                        (library?.total ?? 0) > (library?.results.length ?? 0)
+                          ? ` · showing ${library?.results.length}, refine to narrow`
+                          : ""
+                      }`
+                    : "Featured · or search for your model"}
+                </p>
+                <ul className={s.results}>
+                  {library?.results.map((entry) => (
+                    <li key={`${entry.collection}:${entry.id}`}>
+                      <button
+                        className={s.libraryItem}
+                        disabled={busy}
+                        title={entry.attribution}
+                        aria-label={`Add ${entry.name}`}
+                        onClick={() => addFromLibrary(entry)}
+                      >
+                        <span>
+                          <strong>{entry.name}</strong>
+                          <small>
+                            {entry.size_m.map((v) => v.toFixed(2)).join(" × ")}{" "}
+                            m · {entry.label}
+                          </small>
+                        </span>
+                        <span
+                          className={s.source}
+                          data-collection={entry.collection}
+                        >
+                          {entry.collection === "chemlab"
+                            ? "ChemLab · NC"
+                            : "SimReady"}
+                        </span>
+                        <Plus size={14} aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {query.trim() && library?.total === 0 && (
+                  <p className={s.muted}>
+                    Not in the library. Photograph it or start from a generic
+                    template below.
+                  </p>
+                )}
+                <p className={s.footnote}>
+                  Footprint only: operations, volume and limits are teaching
+                  defaults to correct before confirming. ChemLab-Assets entries
+                  are CC-BY-NC-4.0, non-commercial use only; SimReady entries
+                  are CC-BY-4.0.
+                </p>
+              </section>
+              <h3 className={s.fallbackTitle}>
+                Not sure of the model, or not listed?
+              </h3>
               <label
                 className={`${s.upload} ${!catalog.astra_available ? s.disabled : ""}`}
               >
@@ -303,7 +583,7 @@ export default function InstrumentStudio() {
                   <strong>Upload a photo</strong>
                   <small>
                     {catalog.astra_available
-                      ? "PNG, JPEG or WebP · GPT-6 Astra builds a draft twin"
+                      ? "PNG, JPEG or WebP · GPT-6 Astra matches it to the library and sketches a draft"
                       : "Astra is not configured on this server. Use a template."}
                   </small>
                 </span>
@@ -346,8 +626,8 @@ export default function InstrumentStudio() {
               </div>
               {catalog.twins.length === 0 && (
                 <p className={s.muted}>
-                  No instruments yet. Add a photo or a template to start your
-                  workcell.
+                  No instruments yet. Add one from the library, a photo or a
+                  template to start your workcell.
                 </p>
               )}
               {catalog.twins.map((twin) => (
@@ -355,6 +635,7 @@ export default function InstrumentStudio() {
                   key={twin.id}
                   twin={twin}
                   busy={busy}
+                  onDirtyChange={trackTwinDirty}
                   onConfirm={(spec) =>
                     mutate(`/twins/${twin.id}/confirm`, { spec }, "PUT")
                   }
@@ -362,15 +643,19 @@ export default function InstrumentStudio() {
                   onResidual={(input) =>
                     mutate(`/twins/${twin.id}/residuals`, input)
                   }
+                  onMatch={(m) =>
+                    mutate(
+                      `/twins/${twin.id}/match`,
+                      { collection: m.collection, asset_id: m.id },
+                      "PUT",
+                    )
+                  }
                   onDownload={async () => {
                     try {
-                      const response = await fetch(
-                        `/api/twins/${twin.id}/usd`,
-                        { credentials: "same-origin" },
+                      save(
+                        `${twin.spec!.name}.usda`,
+                        await apiText(`/twins/${twin.id}/usd`),
                       );
-                      if (!response.ok)
-                        throw new Error("Could not download the USD file.");
-                      save(`${twin.spec!.name}.usda`, await response.text());
                     } catch (e) {
                       setError((e as Error).message);
                     }
@@ -379,6 +664,56 @@ export default function InstrumentStudio() {
               ))}
             </>
           )}
+
+          {tab === "layout" &&
+            (confirmed.length === 0 ? (
+              <>
+                <h2>Lay out the bench</h2>
+                <p className={s.muted}>
+                  Confirm at least one instrument first.
+                </p>
+              </>
+            ) : (
+              <LayoutPanel
+                twins={confirmed}
+                layout={draft}
+                onChange={editLayout}
+                preview={preview}
+                checking={checking}
+                selectedMotion={selectedMotion}
+                onSelectMotion={(i) => setSelectedMotion(i)}
+                saveDisabled={
+                  busy || (!layoutDirty.current && !!catalog.layout)
+                }
+                onExport={
+                  catalog.layout &&
+                  !layoutDirty.current &&
+                  !localConflict &&
+                  preview &&
+                  !preview.error
+                    ? async (step, speed) => {
+                        try {
+                          const doc = await apiText(
+                            `/twins/layout/action-chain?step=${step}&speed=${speed}`,
+                          );
+                          saveBlob(
+                            `ur5e-action-chain-step-${step}.json`,
+                            new Blob([doc], { type: "application/json" }),
+                          );
+                        } catch (e) {
+                          setError((e as Error).message);
+                        }
+                      }
+                    : undefined
+                }
+                onSave={async () => {
+                  const submitted = layoutRevision.current;
+                  if (await mutate("/twins/layout", draft, "PUT"))
+                    if (layoutRevision.current === submitted)
+                      layoutDirty.current = false;
+                }}
+              />
+            ))}
 
           {tab === "workflow" && (
             <>
@@ -392,6 +727,8 @@ export default function InstrumentStudio() {
                   <p className={s.muted}>
                     One sample moves through your instruments. Load it once,
                     transfer it between stations, and act on it where it is.
+                    {catalog.layout &&
+                      " Transfers must also have a collision-free arm path on the saved bench layout."}
                   </p>
                   <ol className={s.steps}>
                     {steps.map((step, i) => {
@@ -558,11 +895,13 @@ export default function InstrumentStudio() {
                       className={s.secondary}
                       disabled={busy || !dirty.current}
                       onClick={async () => {
-                        dirty.current = false;
-                        if (
-                          !(await mutate("/twins/workflow", { steps }, "PUT"))
-                        )
-                          dirty.current = true;
+                        const submittedRevision = editRevision.current;
+                        if (await mutate("/twins/workflow", { steps }, "PUT")) {
+                          if (editRevision.current === submittedRevision) {
+                            dirty.current = false;
+                            setSteps([...steps]);
+                          }
+                        }
                       }}
                     >
                       Save workflow
@@ -591,11 +930,14 @@ export default function InstrumentStudio() {
                             {operationLabels[t.operation]}
                             {t.measurement &&
                               ` → ${t.measurement.volume_ul} µL, ${t.measurement.temperature_c} °C, ${t.measurement.mixed ? "mixed" : "not mixed"}`}
+                            {t.motion &&
+                              ` · ${t.motion.arm} path ${t.motion.length_m.toFixed(2)} m, ${(t.motion.clearance_m * 100).toFixed(1)} cm clearance`}
                           </li>
                         ))}
                       </ol>
                       <small>
-                        Synthetic · mock SiLA 2 connectors · teaching state only
+                        Synthetic · in-process mock contract · teaching state
+                        only
                       </small>
                     </div>
                   )}
@@ -636,7 +978,7 @@ export default function InstrumentStudio() {
                         readOnly
                       />
                       <span>
-                        <strong>Mock SiLA 2</strong>
+                        <strong>Mock command contract</strong>
                         <small>Active · runs workflows synthetically</small>
                       </span>
                     </label>
@@ -663,6 +1005,21 @@ export default function InstrumentStudio() {
                     </label>
                   </div>
                   <footer>
+                    <button
+                      className={s.secondary}
+                      onClick={async () => {
+                        try {
+                          saveBlob(
+                            `mock-workcell-${twin.id}.zip`,
+                            await apiBlob(`/twins/${twin.id}/sila.zip`),
+                          );
+                        } catch (e) {
+                          setError((e as Error).message);
+                        }
+                      }}
+                    >
+                      <Download size={15} /> Download runnable SiLA bundle
+                    </button>
                     <button
                       className={s.secondary}
                       onClick={async () => {

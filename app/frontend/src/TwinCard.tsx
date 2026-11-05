@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Download, Plus, Trash2, X } from "lucide-react";
 import {
   layerLabels,
@@ -7,6 +7,7 @@ import {
   operations,
   vessels,
   type Layer,
+  type LibraryMatch,
   type Twin,
   type TwinSpec,
 } from "./instrumentTypes";
@@ -158,6 +159,8 @@ export default function TwinCard({
   onRemove,
   onResidual,
   onDownload,
+  onDirtyChange,
+  onMatch,
 }: {
   twin: Twin;
   busy: boolean;
@@ -165,10 +168,32 @@ export default function TwinCard({
   onRemove: () => void;
   onResidual: (input: ResidualInput) => Promise<boolean>;
   onDownload: () => void;
+  onDirtyChange: (id: string, changed: boolean) => void;
+  onMatch: (match: LibraryMatch) => void;
 }) {
   const [draft, setDraft] = useState(twin.spec);
   const [reporting, setReporting] = useState(false);
-  useEffect(() => setDraft(twin.spec), [twin.spec]);
+  const baseline = useRef(JSON.stringify(twin.spec));
+  const [conflict, setConflict] = useState(false);
+  const serverSpec = JSON.stringify(twin.spec);
+  useEffect(() => {
+    if (serverSpec === baseline.current) return;
+    if (
+      JSON.stringify(draft) === baseline.current ||
+      JSON.stringify(draft) === serverSpec
+    ) {
+      setDraft(twin.spec);
+      baseline.current = serverSpec;
+      setConflict(false);
+    } else setConflict(true);
+  }, [serverSpec, draft, twin.spec]);
+  useEffect(() => {
+    onDirtyChange(
+      twin.id,
+      JSON.stringify(draft) !== baseline.current || reporting,
+    );
+    return () => onDirtyChange(twin.id, false);
+  }, [draft, reporting, twin.id, onDirtyChange]);
   const editable =
     !!draft && (twin.status === "draft" || twin.status === "ready");
   const changed = JSON.stringify(draft) !== JSON.stringify(twin.spec);
@@ -196,20 +221,104 @@ export default function TwinCard({
     });
   };
   return (
-    <article className={s.card} data-status={twin.status}>
+    <article className={s.card} data-status={twin.status} data-twin={twin.id}>
+      {conflict && (
+        <p role="alert">
+          This instrument changed in another request. Your edits are preserved.{" "}
+          <button
+            onClick={() => {
+              setDraft(twin.spec);
+              baseline.current = serverSpec;
+              setConflict(false);
+            }}
+          >
+            Discard edits and reload instrument
+          </button>
+        </p>
+      )}
       <header>
         <div>
           <strong>{twin.spec?.name ?? "New instrument"}</strong>
           <small>
             {twin.source === "astra_image"
               ? "From photo · GPT-6 Astra"
-              : "Academy USD template"}
+              : twin.source === "simready_asset"
+                ? `SimReady asset · ${twin.asset?.provider ?? "unknown"}`
+                : twin.source === "chemlab_asset"
+                  ? "ChemLab reference · CC-BY-NC-4.0"
+                  : "Academy USD template"}
             {twin.confirmed && ` · revision ${twin.revision}`}
           </small>
         </div>
         <span className={s.badge}>{statusLabels[twin.status]}</span>
       </header>
       {twin.message && <p className={s.message}>{twin.message}</p>}
+      {!twin.confirmed && !!twin.matches?.length && (
+        <section className={s.matches} aria-label="Library matches">
+          <strong>
+            {twin.identification?.model
+              ? `Astra read ${[twin.identification.maker, twin.identification.model].filter(Boolean).join(" ")}`
+              : "Astra found similar library instruments"}
+          </strong>
+          {twin.identification && (
+            <small>
+              {twin.identification.confidence} confidence
+              {twin.identification.evidence &&
+                ` · ${twin.identification.evidence}`}
+            </small>
+          )}
+          <ul>
+            {twin.matches.map((m) => {
+              const using =
+                twin.source === `${m.collection}_asset` &&
+                twin.asset?.id === m.id;
+              return (
+                <li key={`${m.collection}:${m.id}`}>
+                  <span>
+                    <strong>{m.name}</strong>
+                    <small>
+                      {m.size_m.map((v) => v.toFixed(2)).join(" × ")} m ·{" "}
+                      {m.label}
+                    </small>
+                    <span className={s.matchTags}>
+                      {m.verified && <em>Label confirmed</em>}
+                      {m.suggested_by === "label_text" && (
+                        <em>Found from label text</em>
+                      )}
+                      <em data-collection={m.collection}>
+                        {m.collection === "chemlab"
+                          ? "ChemLab · NC"
+                          : "SimReady"}
+                      </em>
+                    </span>
+                  </span>
+                  <button
+                    className={using ? s.ghost : s.secondary}
+                    disabled={busy || using}
+                    aria-label={`Use ${m.name} footprint`}
+                    onClick={() => onMatch(m)}
+                  >
+                    {using ? "In use" : "Use footprint"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <small>
+            A match replaces the photo sketch with the catalogued footprint and
+            its teaching defaults. Check it is your instrument before
+            confirming.
+          </small>
+        </section>
+      )}
+      {twin.asset && (
+        <p className={s.muted}>
+          Footprint from{" "}
+          <a href={twin.asset.url} target="_blank" rel="noreferrer">
+            {twin.asset.attribution}
+          </a>
+        </p>
+      )}
       {editable && draft && (
         <>
           <label className={s.field}>
@@ -476,7 +585,9 @@ export default function TwinCard({
         {editable && draft && (!twin.confirmed || changed) && (
           <button
             className={s.primary}
-            disabled={busy || !draft.name.trim() || !draft.operations.length}
+            disabled={
+              busy || conflict || !draft.name.trim() || !draft.operations.length
+            }
             onClick={() => onConfirm({ ...draft, name: draft.name.trim() })}
           >
             <Check size={15} />{" "}

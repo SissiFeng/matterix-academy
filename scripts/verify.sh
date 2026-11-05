@@ -10,7 +10,7 @@ uv run ruff format --check app/backend infra/cognito scripts/release.py scripts/
 uv run python scripts/matterix-sync.py check-policy
 uv run ruff check scripts/connector-release.py scripts/connector-qualify.py scripts/connector-resolve.py scripts/package-companion.py
 uv run ruff format --check scripts/connector-release.py scripts/connector-qualify.py scripts/connector-resolve.py scripts/package-companion.py
-uv run --extra native-worker --extra companion pytest -q
+uv run --extra native-worker --extra companion --extra sila-mock pytest -q
 npm --prefix app/frontend run build
 npm --prefix app/frontend run format:check
 node --check app/frontend/commissioning.mjs

@@ -32,7 +32,11 @@ type Catalog = {
   sessions: SimulationSession[];
 };
 
-export default function SimulationLab() {
+export default function SimulationLab({
+  onOpenInstruments,
+}: {
+  onOpenInstruments: () => void;
+}) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [session, setSession] = useState<SimulationSession | null>(null);
   const [run, setRun] = useState<SimulationRun | null>(null);
@@ -231,6 +235,9 @@ export default function SimulationLab() {
   const hasEnded = !!run && terminalRuns.has(run.status);
   return (
     <div className={s.page}>
+      <button className={s.secondary} onClick={onOpenInstruments}>
+        Design a multi-device workflow <ArrowRight size={16} />
+      </button>
       <header className={s.heading}>
         <div>
           <h1>Four sources. One mixture.</h1>

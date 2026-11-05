@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -17,6 +17,7 @@ from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
 from .gpu_lifecycle import configured as configured_gpu
 from .learning import present, readiness
+from .library import search
 from .media import MediaService, ViewerRequest
 from .mock_connector import router as mock_connector_router
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
@@ -29,7 +30,10 @@ from .simple_twins import (
     ConfirmTwin,
     ConnectorMode,
     CreateTwin,
+    LayoutDraft,
+    MatchTwin,
     RecordResidual,
+    SaveLayout,
     SavePlan,
     SimpleTwinService,
 )
@@ -253,6 +257,33 @@ def create_app(settings: Settings | None = None, store=None):
     def twins(owner: str = Depends(identify)):
         return app.state.twins.catalog(owner)
 
+    @app.get("/api/twins/library")
+    def instrument_library(
+        q: str = Query(default="", max_length=80), _owner: str = Depends(identify)
+    ):
+        return search(q)
+
+    @app.put("/api/twins/layout")
+    def save_instrument_layout(data: SaveLayout, owner: str = Depends(identify)):
+        return app.state.twins.save_layout(owner, data)
+
+    @app.get("/api/twins/layout/action-chain")
+    def instrument_action_chain(
+        step: int = Query(ge=1, le=48),
+        speed: float = Query(default=20, ge=1, le=40, allow_inf_nan=False),
+        owner: str = Depends(identify),
+    ):
+        return JSONResponse(
+            app.state.twins.action_chain(owner, step, speed),
+            headers={
+                "Content-Disposition": f'attachment; filename="ur5e-action-chain-step-{step}.json"'
+            },
+        )
+
+    @app.post("/api/twins/layout/preview")
+    def preview_instrument_layout(data: LayoutDraft, owner: str = Depends(identify)):
+        return app.state.twins.preview_layout(owner, data)
+
     @app.post("/api/twins")
     def create_instrument(data: CreateTwin, owner: str = Depends(identify)):
         return app.state.twins.create(owner, data)
@@ -264,6 +295,10 @@ def create_app(settings: Settings | None = None, store=None):
     @app.put("/api/twins/{twin_id}/confirm")
     def confirm_instrument(twin_id: UUID, data: ConfirmTwin, owner: str = Depends(identify)):
         return app.state.twins.confirm(owner, twin_id, data)
+
+    @app.put("/api/twins/{twin_id}/match")
+    def match_instrument(twin_id: UUID, data: MatchTwin, owner: str = Depends(identify)):
+        return app.state.twins.match(owner, twin_id, data)
 
     @app.put("/api/twins/{twin_id}/connector")
     def instrument_connector_mode(
@@ -292,6 +327,22 @@ def create_app(settings: Settings | None = None, store=None):
     @app.get("/api/twins/{twin_id}/sila")
     def instrument_sila(twin_id: UUID, owner: str = Depends(identify)):
         return app.state.twins.export(owner, twin_id, "sila")
+
+    @app.get("/api/twins/{twin_id}/sila.zip")
+    def instrument_sila_zip(twin_id: UUID, owner: str = Depends(identify)):
+        from io import BytesIO
+        from zipfile import ZIP_DEFLATED, ZipFile
+
+        package = app.state.twins.export(owner, twin_id, "sila")
+        buffer = BytesIO()
+        with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+            for name, content in package["files"].items():
+                archive.writestr(name, content)
+        return Response(
+            buffer.getvalue(),
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="mock-workcell-{twin_id}.zip"'},
+        )
 
     @app.put("/api/twins/workflow")
     def save_instrument_workflow(data: SavePlan, owner: str = Depends(identify)):

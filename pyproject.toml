@@ -9,6 +9,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+sila-mock = ["sila2==0.14.0"]
 native-worker = ["aiortc==1.14.0", "aioice==0.10.2", "websockets>=15,<17", "numpy>=2,<3"]
 companion = ["grpcio==1.81.1"]
 
