@@ -176,3 +176,28 @@
   color: var(--muted);
   font-size: 12px;
 }
+.kept polygon {
+  stroke-width: 2.5px;
+  stroke-dasharray: none;
+}
+.suggest {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.suggest ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+.selectedFields .keep {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}

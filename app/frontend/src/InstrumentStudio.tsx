@@ -26,6 +26,7 @@ import {
   type LibraryEntry,
   type LibraryResults,
   type LayoutPreview,
+  type LayoutSuggestions,
   type Operation,
   type Step,
   type Twin,
@@ -705,6 +706,12 @@ export default function InstrumentStudio({
                         }
                       }
                     : undefined
+                }
+                onSuggest={(fixed) =>
+                  api<LayoutSuggestions>(
+                    "/twins/layout/suggest",
+                    json({ bench: draft.bench, fixed }),
+                  )
                 }
                 onSave={async () => {
                   const submitted = layoutRevision.current;

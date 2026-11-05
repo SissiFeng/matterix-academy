@@ -510,3 +510,72 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   });
   expect(errors).toEqual([]);
 });
+
+test("suggested bench layouts keep pinned instruments and carry the workflow", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await enterInstruments(page);
+  for (const name of ["Plate reader", "Transfer robot"])
+    await page.getByRole("button", { name, exact: true }).click();
+  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  for (let i = 3; i > 0; i--) {
+    await confirm.first().click();
+    await expect(confirm).toHaveCount(i - 1);
+  }
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  const add = page.getByRole("button", { name: "Add step" });
+  await add.click();
+  await add.click();
+  await page
+    .getByLabel("Step 2 instrument")
+    .selectOption({ label: "Sample transfer robot" });
+  await page
+    .getByLabel("Step 2 from")
+    .selectOption({ label: "From Heating station" });
+  await page.getByLabel("Step 2 to").selectOption({ label: "To Plate reader" });
+  await page.getByLabel("Step 1 volume").fill("150");
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save workflow" }),
+  ).toBeDisabled();
+
+  await page.getByRole("tab", { name: "2 · Layout" }).click();
+  // Pin the heater somewhere the default layout does not put it.
+  await page.getByRole("button", { name: /^Heating station at x/ }).focus();
+  await page.getByLabel("Heating station x").fill("-0.6");
+  await page.getByLabel("Heating station z").fill("-0.3");
+  await page.getByLabel("Keep here when suggesting").check();
+  await page
+    .getByRole("button", { name: "Suggest layouts around 1 kept" })
+    .click();
+  const option = page.getByRole("button", { name: /^Option 1/ });
+  await expect(option).toContainText("cm min clearance");
+  await option.click();
+  await expect(option).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: /^Heating station at x/ }),
+  ).toHaveAttribute("aria-label", /x -0\.6 m, z -0\.3 m/);
+  const path = page.getByRole("button", {
+    name: /Step 2 · Heating station → Plate reader/,
+  });
+  await expect(path).toContainText("cm min clearance");
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: "/tmp/academy-instruments-layout-suggest.png",
+    fullPage: true,
+  });
+
+  // Too small a bench is explained instead of returning a broken layout.
+  await page.getByLabel("Bench width (m)").fill("0.8");
+  await page.getByLabel("Bench depth (m)").fill("0.6");
+  await page
+    .getByRole("button", { name: "Suggest layouts around 1 kept" })
+    .click();
+  await expect(page.getByText(/No feasible layout|bench edge/)).toBeVisible();
+  expect(errors).toEqual([]);
+});

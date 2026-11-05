@@ -184,6 +184,18 @@ export type LayoutPreview = {
   error: { message: string; layer: string } | null;
   blocked: BlockedMotion | null;
 };
+export type LayoutSuggestion = {
+  layout: Layout;
+  length_m: number;
+  clearance_m: number;
+  motions: MotionSummary[];
+};
+export type LayoutSuggestions = {
+  arm: string;
+  suggestions: LayoutSuggestion[];
+  checked: number;
+  error: { message: string; layer: string } | null;
+};
 export type TraceStep = {
   step: number;
   device_id: string;

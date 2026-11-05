@@ -23,6 +23,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 from pydantic import Field, ValidationError, model_validator
 
+from .layout_search import suggest_layouts
 from .mock_contract import PlanError, execute_mock
 from .models import StrictModel
 from .store import Conflict
@@ -397,6 +398,19 @@ class LayoutDraft(StrictModel):
 
 class SaveLayout(Revision, LayoutDraft):
     pass
+
+
+class SuggestLayout(StrictModel):
+    bench: Bench
+    # Instruments the user keeps where they are; the search places the rest.
+    fixed: list[Placement] = Field(default=[], max_length=12)
+    count: int = Field(default=3, ge=1, le=4)
+
+    @model_validator(mode="after")
+    def unique(self):
+        if len({p.twin_id for p in self.fixed}) != len(self.fixed):
+            raise ValueError("Keep each instrument once")
+        return self
 
 
 class BedrockTwins:
@@ -944,6 +958,28 @@ class SimpleTwinService:
         except PlanError as exc:
             result["error"] = {"message": str(exc), "layer": exc.layer}
         return result
+
+    def suggest_layout(self, owner, data):
+        """Read-only search for bench layouts that carry the saved workflow."""
+        record = self.get(owner)
+        twins = {t["id"]: t for t in record["twins"] if t["confirmed"] and t["spec"]}
+        used = {s[k] for s in record["steps"] for k in ("device_id", "source_id", "target_id")}
+        if not used.issubset({*twins, None}):
+            raise HTTPException(409, "Confirm every instrument in the workflow first")
+        for placement in data.fixed:
+            if str(placement.twin_id) not in twins:
+                raise HTTPException(409, "Only confirmed instruments can be kept in place")
+        try:
+            execute_mock(twins, record["steps"])
+            return suggest_layouts(
+                twins,
+                data.bench.model_dump(),
+                record["steps"],
+                [p.model_dump(mode="json") for p in data.fixed],
+                data.count,
+            )
+        except PlanError as exc:
+            raise HTTPException(422, {"message": str(exc), "layer": exc.layer}) from exc
 
     def create(self, owner, data):
         record = self.current(owner, data.expected_version)

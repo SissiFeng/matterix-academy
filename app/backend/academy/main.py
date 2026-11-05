@@ -36,6 +36,7 @@ from .simple_twins import (
     SaveLayout,
     SavePlan,
     SimpleTwinService,
+    SuggestLayout,
 )
 from .simple_twins import Revision as TwinRevision
 from .store import Conflict, DynamoStore, SQLiteStore
@@ -283,6 +284,10 @@ def create_app(settings: Settings | None = None, store=None):
     @app.post("/api/twins/layout/preview")
     def preview_instrument_layout(data: LayoutDraft, owner: str = Depends(identify)):
         return app.state.twins.preview_layout(owner, data)
+
+    @app.post("/api/twins/layout/suggest")
+    def suggest_instrument_layout(data: SuggestLayout, owner: str = Depends(identify)):
+        return app.state.twins.suggest_layout(owner, data)
 
     @app.post("/api/twins")
     def create_instrument(data: CreateTwin, owner: str = Depends(identify)):
