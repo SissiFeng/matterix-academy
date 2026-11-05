@@ -24,3 +24,5 @@ build/
 # Local agent planning notes and chat exports
 .planning/
 Claude outputs/
+
+/app/frontend/public/library-models/

@@ -615,6 +615,8 @@ def plan_transfer(twins, layout, step_no, step):
                 1,
             ),
             "frames": [_rounded(f) for f in _thin(frames_)],
+            # Joint angles (rad) of the same frames, to pose the drawn arm model.
+            "joints": [[round(v, 4) for v in q] for q in _thin(joints)],
             # Full-resolution joints for export; never stored or returned.
             "_chain": {
                 "planner": planner,
@@ -675,6 +677,7 @@ def plan_transfer(twins, layout, step_no, step):
             "blocked_by": hit[2] if hit else None,
             "link": hit[1] if hit else None,
             "frames": [_rounded(points(q, planner.base)) for q in _thin(attempt)],
+            "joints": [[round(v, 4) for v in q] for q in _thin(attempt)],
         },
     )
 
@@ -697,6 +700,7 @@ def plan_workflow(twins, layout, steps, keep_frames=False):
         planned.pop("_chain")
         if not keep_frames:
             planned.pop("frames")
+            planned.pop("joints")
         motions.append(planned)
     return motions
 

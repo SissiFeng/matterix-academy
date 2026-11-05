@@ -279,7 +279,7 @@ test("a ChemLab asset starts a non-commercial reference twin", async ({
     .getByRole("button", { name: "Add Analytical balance (XPR204E)" })
     .click();
   const card = page.locator("article", {
-    hasText: "ChemLab reference · CC-BY-NC-4.0",
+    hasText: "ChemLab model · CC-BY-NC-4.0",
   });
   await expect(
     card.getByRole("link", { name: /XPR204E .* © MBZUAI, CC-BY-NC-4.0/ }),
@@ -378,7 +378,7 @@ test("a photo match swaps the Astra sketch for the catalogued footprint", async 
     asset_id: "mt_xpr204e",
   });
   await expect(
-    page.getByText("ChemLab reference · CC-BY-NC-4.0", { exact: true }),
+    page.getByText("ChemLab model · CC-BY-NC-4.0", { exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });

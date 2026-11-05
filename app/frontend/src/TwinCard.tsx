@@ -245,8 +245,10 @@ export default function TwinCard({
               : twin.source === "simready_asset"
                 ? `SimReady asset · ${twin.asset?.provider ?? "unknown"}`
                 : twin.source === "chemlab_asset"
-                  ? "ChemLab reference · CC-BY-NC-4.0"
-                  : "Academy USD template"}
+                  ? "ChemLab model · CC-BY-NC-4.0"
+                  : twin.source === "workcell_asset"
+                    ? `Workcell model · ${twin.asset?.license ?? ""}`
+                    : "Academy USD template"}
             {twin.confirmed && ` · revision ${twin.revision}`}
           </small>
         </div>
@@ -288,7 +290,9 @@ export default function TwinCard({
                       <em data-collection={m.collection}>
                         {m.collection === "chemlab"
                           ? "ChemLab · NC"
-                          : "SimReady"}
+                          : m.collection === "workcell"
+                            ? "Workcell model"
+                            : "SimReady"}
                       </em>
                     </span>
                   </span>

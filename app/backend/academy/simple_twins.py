@@ -317,14 +317,21 @@ class CreateTwin(Revision):
     template_id: Literal["liquid-handler", "heater", "reader", "transfer-arm"] | None = None
     simready_id: str | None = Field(default=None, max_length=80)
     chemlab_id: str | None = Field(default=None, max_length=80)
+    workcell_id: str | None = Field(default=None, max_length=80)
     image: str | None = Field(default=None, max_length=1_400_000)
     mime: Literal["image/png", "image/jpeg", "image/webp"] = "image/png"
 
     @model_validator(mode="after")
     def one_source(self):
-        sources = (self.template_id, self.simready_id, self.chemlab_id, self.image)
+        sources = (
+            self.template_id,
+            self.simready_id,
+            self.chemlab_id,
+            self.workcell_id,
+            self.image,
+        )
         if sum(map(bool, sources)) != 1:
-            raise ValueError("Choose one template, one SimReady or ChemLab asset or one image")
+            raise ValueError("Choose one template, one library asset or one image")
         return self
 
 
@@ -333,7 +340,7 @@ class ConfirmTwin(Revision):
 
 
 class MatchTwin(Revision):
-    collection: Literal["simready", "chemlab"]
+    collection: Literal["workcell", "simready", "chemlab"]
     asset_id: str = Field(min_length=1, max_length=80)
 
 
@@ -1022,17 +1029,26 @@ class SimpleTwinService:
             raise HTTPException(409, "This device already exists. Reload the saved workspace.")
         if len(record["twins"]) >= 12:
             raise HTTPException(422, "A simple workcell supports at most 12 devices")
-        from . import chemlab, simready
+        from . import chemlab, simready, workcell_models
 
         if data.simready_id and data.simready_id not in simready.SIMREADY:
             raise HTTPException(422, "Unknown SimReady asset")
         if data.chemlab_id and data.chemlab_id not in chemlab.CHEMLAB:
             raise HTTPException(422, "Unknown ChemLab asset")
+        if data.workcell_id and data.workcell_id not in workcell_models.catalog():
+            raise HTTPException(422, "Unknown workcell model")
         source, assets, provenance, asset_id = (
             ("simready_asset", simready.SIMREADY, simready.provenance, data.simready_id)
             if data.simready_id
             else ("chemlab_asset", chemlab.CHEMLAB, chemlab.provenance, data.chemlab_id)
             if data.chemlab_id
+            else (
+                "workcell_asset",
+                workcell_models.catalog(),
+                workcell_models.provenance,
+                data.workcell_id,
+            )
+            if data.workcell_id
             else ("astra_image" if data.image else "academy_template", None, None, None)
         )
         raw = b""
@@ -1112,7 +1128,7 @@ class SimpleTwinService:
 
     def match(self, owner, twin_id, data):
         """Replace a photo sketch with a library footprint Astra offered for it."""
-        from . import chemlab, simready
+        from . import chemlab, simready, workcell_models
 
         record = self.current(owner, data.expected_version)
         twin = self.found(record, twin_id)
@@ -1121,14 +1137,17 @@ class SimpleTwinService:
         offered = {(m["collection"], m["id"]) for m in twin.get("matches", [])}
         if (data.collection, data.asset_id) not in offered:
             raise HTTPException(422, "Choose one of the library matches offered for this photo")
-        module = chemlab if data.collection == "chemlab" else simready
-        assets = module.CHEMLAB if data.collection == "chemlab" else module.SIMREADY
+        assets, provenance = {
+            "chemlab": (chemlab.CHEMLAB, chemlab.provenance),
+            "simready": (simready.SIMREADY, simready.provenance),
+            "workcell": (workcell_models.catalog(), workcell_models.provenance),
+        }[data.collection]
         twin.update(
             status="draft",
             message="",
             source=f"{data.collection}_asset",
             spec=deepcopy(assets[data.asset_id]["spec"]),
-            asset=module.provenance(data.asset_id),
+            asset=provenance(data.asset_id),
         )
         return self.save(owner, record, data.expected_version)
 

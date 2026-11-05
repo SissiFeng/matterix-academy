@@ -262,6 +262,10 @@
   border: var(--hairline) solid var(--line-strong);
   color: var(--ink-2);
 }
+.source[data-collection="workcell"] {
+  background: var(--brand-soft, var(--surface-2));
+  border-color: var(--brand);
+}
 .source[data-collection="chemlab"] {
   background: var(--warn-soft);
   border-color: var(--warn);

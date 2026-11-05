@@ -72,8 +72,17 @@ export type Residual = {
   resolved_in: number | null;
   evidence: "learner_observation";
 };
+/** The registered model drawn in place of the planning box. */
+export type Mesh = {
+  kind: "glb" | "ot2" | "balance" | "ur5e";
+  url?: string;
+  sha256?: string;
+  up?: "z";
+  asset?: string;
+};
 export type SimReadyProvenance = {
   id: string;
+  mesh?: Mesh | null;
   label: string;
   provider: string;
   license: string;
@@ -87,7 +96,7 @@ export type SimReadyAsset = Omit<SimReadyProvenance, "id"> & {
   spec: TwinSpec;
 };
 export type LibraryEntry = {
-  collection: "simready" | "chemlab";
+  collection: "workcell" | "simready" | "chemlab";
   id: string;
   name: string;
   label: string;
@@ -127,7 +136,11 @@ export type Twin = {
   confirmed: boolean;
   mode: "mock" | "real";
   source:
-    "astra_image" | "academy_template" | "simready_asset" | "chemlab_asset";
+    | "astra_image"
+    | "academy_template"
+    | "simready_asset"
+    | "chemlab_asset"
+    | "workcell_asset";
   asset?: SimReadyProvenance | null;
   identification?: Identification | null;
   matches?: LibraryMatch[];
@@ -170,7 +183,11 @@ export type MotionSummary = {
   /** Arm time at the connector's default speed; absent on older runs. */
   seconds?: number;
 };
-export type Motion = MotionSummary & { frames: ArmFrame[] };
+export type Motion = MotionSummary & {
+  frames: ArmFrame[];
+  /** Joint angles (rad) of the same frames. */
+  joints: number[][];
+};
 export type BlockedMotion = {
   step: number;
   actor_id: string;
@@ -180,6 +197,7 @@ export type BlockedMotion = {
   blocked_by: string | null;
   link: string | null;
   frames: ArmFrame[];
+  joints: number[][];
 };
 export type LayoutPreview = {
   arm: string;

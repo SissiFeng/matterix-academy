@@ -53,6 +53,11 @@ const templateLabels: Record<string, string> = {
   reader: "Plate reader",
   "transfer-arm": "Transfer robot",
 };
+const collectionLabels = {
+  workcell: "Workcell model",
+  chemlab: "ChemLab · NC",
+  simready: "SimReady",
+} as const;
 const units: Partial<Record<Operation, [string, string]>> = {
   load: ["volume", "µL"],
   heat: ["temperature", "°C"],
@@ -221,7 +226,7 @@ export default function InstrumentStudio({
   const addFromLibrary = async (entry: LibraryEntry) => {
     const id = crypto.randomUUID();
     const added = await addTwin(id, {
-      [entry.collection === "chemlab" ? "chemlab_id" : "simready_id"]: entry.id,
+      [`${entry.collection}_id`]: entry.id,
     });
     // The draft lands below the library; bring it into view for review.
     if (added)
@@ -328,13 +333,13 @@ export default function InstrumentStudio({
       window.clearTimeout(timer);
     };
   }, [draftKey, localConflict, catalog?.version]);
-  const motionFrames =
+  const selected =
     tab === "layout" && preview
-      ? ([
-          ...preview.motions.map((m) => m.frames),
-          ...(preview.blocked ? [preview.blocked.frames] : []),
-        ][selectedMotion] ?? null)
+      ? ([...preview.motions, ...(preview.blocked ? [preview.blocked] : [])][
+          selectedMotion
+        ] ?? null)
       : null;
+  const motionFrames = selected?.frames ?? null;
   useEffect(() => {
     setArmFrame(0);
     if (!motionFrames?.length) return;
@@ -359,7 +364,12 @@ export default function InstrumentStudio({
 
   const stations = confirmed.filter((t) => t.spec!.operations.includes("load"));
   const replayTwins = run?.twins.every((t) => t.spec)
-    ? run.twins.map((t) => ({ id: t.id, spec: t.spec!, confirmed: true }))
+    ? run.twins.map((t) => ({
+        id: t.id,
+        spec: t.spec!,
+        confirmed: true,
+        asset: catalog.twins.find((c) => c.id === t.id)?.asset,
+      }))
     : confirmed;
   const savedPlaced = new Set(catalog.layout?.placements.map((p) => p.twin_id));
   const savedLayout = (shown: { id: string }[]) =>
@@ -504,6 +514,14 @@ export default function InstrumentStudio({
                   ? motionFrames[Math.min(armFrame, motionFrames.length - 1)]
                   : null
               }
+              armJoints={
+                selected?.joints?.length
+                  ? selected.joints[
+                      Math.min(armFrame, selected.joints.length - 1)
+                    ]
+                  : null
+              }
+              armActor={selected?.actor_id ?? null}
               path={motionFrames?.map((f) => f[f.length - 1]) ?? null}
               blocked={showingBlocked ? blockedTwin : null}
             />
@@ -614,9 +632,7 @@ export default function InstrumentStudio({
                           className={s.source}
                           data-collection={entry.collection}
                         >
-                          {entry.collection === "chemlab"
-                            ? "ChemLab · NC"
-                            : "SimReady"}
+                          {collectionLabels[entry.collection]}
                         </span>
                         <Plus size={14} aria-hidden />
                       </button>
@@ -630,10 +646,11 @@ export default function InstrumentStudio({
                   </p>
                 )}
                 <p className={s.footnote}>
-                  Footprint only: operations, volume and limits are teaching
-                  defaults to correct before confirming. ChemLab-Assets entries
-                  are CC-BY-NC-4.0, non-commercial use only; SimReady entries
-                  are CC-BY-4.0.
+                  Workcell and ChemLab entries are drawn with their 3D model;
+                  SimReady entries show their footprint. Operations, volume and
+                  limits are teaching defaults to correct before confirming.
+                  ChemLab-Assets entries are CC-BY-NC-4.0, non-commercial use
+                  only.
                 </p>
               </section>
               <h3 className={s.fallbackTitle}>
