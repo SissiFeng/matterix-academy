@@ -30,6 +30,7 @@ import {
   Compass,
   Store,
   GitBranch,
+  LayoutDashboard,
 } from "lucide-react";
 import { api, ApiError, configureAuth, json, signIn, signOut } from "./api";
 import type { Config, Course, Experiment, Profile, Session } from "./types";
@@ -541,6 +542,16 @@ function Dashboard({
   );
 }
 
+/** The studio moved from the instruments page; keep its old tab links working. */
+function movePlanLink() {
+  const tab = window.location.hash.match(
+    /^#\/instruments\/(describe|instruments|workflow|layout|connectors)$/,
+  )?.[1];
+  if (!tab) return false;
+  window.location.replace(`/#/plan/${tab}`);
+  return true;
+}
+
 export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -569,8 +580,9 @@ export default function App() {
   }, []);
   useEffect(() => {
     const routeChanged = (event: HashChangeEvent) => {
+      if (movePlanLink()) return;
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -586,6 +598,7 @@ export default function App() {
     return () => window.removeEventListener("hashchange", routeChanged);
   }, []);
   const refresh = useCallback(async () => {
+    movePlanLink();
     const [p, c, r] = await Promise.all([
       api<Profile>("/me"),
       api<Course[]>("/courses"),
@@ -600,7 +613,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -815,6 +828,13 @@ export default function App() {
                   </button>
                 );
               })}
+              <button
+                className={view === "plan" ? s.activeNav : ""}
+                aria-current={view === "plan" ? "page" : undefined}
+                onClick={() => nav("plan")}
+              >
+                <LayoutDashboard size={18} /> Plan workcell
+              </button>
             </nav>
             <div className={s.sidebarLabel}>LEARN & EXPLORE</div>
             <nav aria-label="Learning navigation">
@@ -923,21 +943,23 @@ export default function App() {
                   : (workspaceLabels[view] ??
                     (view === "instruments"
                       ? "Meet the instruments"
-                      : view === "lab"
-                        ? session?.experiment.course_id === "workflow-sandbox"
-                          ? "Workflow studio"
-                          : "Flex foundations"
-                        : view === "history"
-                          ? "My experiments"
-                          : view === "discovery"
-                            ? "Discovery studio"
-                            : view === "marketplace"
-                              ? "Workflow marketplace"
-                              : view === "connector"
-                                ? "Connector explorer"
-                                : view === "sim"
-                                  ? "Simulation lab"
-                                  : "Learning lab"))}
+                      : view === "plan"
+                        ? "Plan your workcell"
+                        : view === "lab"
+                          ? session?.experiment.course_id === "workflow-sandbox"
+                            ? "Workflow studio"
+                            : "Flex foundations"
+                          : view === "history"
+                            ? "My experiments"
+                            : view === "discovery"
+                              ? "Discovery studio"
+                              : view === "marketplace"
+                                ? "Workflow marketplace"
+                                : view === "connector"
+                                  ? "Connector explorer"
+                                  : view === "sim"
+                                    ? "Simulation lab"
+                                    : "Learning lab"))}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -990,14 +1012,23 @@ export default function App() {
               ) : view === "instruments" ? (
                 <div className={s.instrumentPage}>
                   <InstrumentStories onDesign={createStudio} busy={busy} />
-                  <Suspense fallback={null}>
-                    <InstrumentStudio registerLeaveGuard={registerLeaveGuard} />
-                  </Suspense>
+                  <button className={s.planLink} onClick={() => nav("plan")}>
+                    <span>
+                      <strong>Bring your own instruments</strong>
+                      <small>
+                        Describe a workflow, choose the instruments and find a
+                        bench layout.
+                      </small>
+                    </span>
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
+              ) : view === "plan" ? (
+                <div className={s.instrumentPage}>
+                  <InstrumentStudio registerLeaveGuard={registerLeaveGuard} />
                 </div>
               ) : view === "sim" ? (
-                <SimulationLab
-                  onOpenInstruments={() => nav("instruments/workflow")}
-                />
+                <SimulationLab onOpenInstruments={() => nav("plan/workflow")} />
               ) : view === "marketplace" ? (
                 <WorkflowMarketplace
                   onAdapt={(item) => {
@@ -1031,7 +1062,7 @@ export default function App() {
                 />
               ) : view === "connector" ? (
                 <ConnectorExplorer
-                  onOpenInstruments={() => nav("instruments/connectors")}
+                  onOpenInstruments={() => nav("plan/connectors")}
                 />
               ) : view === "connect" ? (
                 <ConnectorSetup

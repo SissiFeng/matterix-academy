@@ -1,0 +1,130 @@
+.describe textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 112px;
+  padding: 10px 12px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--surface-1);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.problem {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.draft {
+  display: grid;
+  gap: 14px;
+}
+.draft h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.roles,
+.bindings ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.roles li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  padding: 8px 12px;
+  border: var(--hairline) solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-1);
+  font-size: 13px;
+}
+.roles small,
+.bindings small {
+  grid-column: 1;
+  color: var(--muted);
+  font-size: 12px;
+}
+.roles li > span {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 12px;
+}
+.bound {
+  color: var(--ink);
+  font-weight: 600;
+}
+.unbound {
+  color: var(--muted);
+}
+.draftSteps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.details {
+  font-size: 13px;
+  color: var(--muted);
+}
+.details summary {
+  cursor: pointer;
+}
+.details p,
+.details ul {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+.bindings {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.bindings h2 {
+  margin: 0;
+}
+.bindings li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: var(--hairline) solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-1);
+}
+.bindings li > span {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+.bindings select {
+  min-width: 0;
+}
+.finding {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 1px var(--brand);
+}
+@media (max-width: 520px) {
+  .bindings li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .bindings li > span {
+    grid-column: 1 / -1;
+  }
+}

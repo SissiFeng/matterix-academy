@@ -180,19 +180,62 @@
   stroke-width: 2.5px;
   stroke-dasharray: none;
 }
-.suggest {
+.options {
   display: grid;
   gap: 8px;
-  justify-items: start;
 }
-.suggest ol {
+.optionBar,
+.optionControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.scope {
+  display: flex;
+  gap: 12px;
+}
+.scope label,
+.inlineCheck {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.optionControls > label:first-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.optionList {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
-  width: 100%;
+}
+.optionList small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+.more {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.sorted {
+  color: var(--ink);
+  font-weight: 600;
 }
 .selectedFields .keep {
   grid-column: 1 / -1;

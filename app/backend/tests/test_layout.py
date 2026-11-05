@@ -299,55 +299,78 @@ def test_action_chain_export_rejects_bad_requests(client):
     assert "the connector allows 120 s per action" in slow.json()["detail"]["message"]
 
 
-def suggest(client, bench=BENCH, fixed=(), count=3):
-    response = client.post(
-        "/api/twins/layout/suggest", json={"bench": bench, "fixed": list(fixed), "count": count}
-    )
+def search(client, bench=BENCH, fixed=(), start=0, avoid=()):
+    body = {"bench": bench, "fixed": list(fixed), "start": start, "avoid": list(avoid)}
+    response = client.post("/api/twins/layout/search", json=body)
     assert response.status_code == 200, response.text
     return response.json()
 
 
-def test_suggested_layouts_carry_the_workflow_and_can_be_saved(client):
+METRICS = {"run_s", "arm_s", "path_m", "clearance_m", "reach_margin_m", "area_m2"}
+
+
+def test_layout_search_returns_measured_layouts_that_carry_the_workflow(client, monkeypatch):
+    from academy import layout_search
+
+    monkeypatch.setattr(layout_search, "CHUNK_PLANS", 6)
     reader, heater, arm, (shelf,), catalog = placed_cell(client, [("Shelf", [0.3, 0.4, 0.3])])
-    found = suggest(client)
-    assert found["error"] is None and found["arm"] == "UR5e"
-    assert 1 <= len(found["suggestions"]) <= 3
-    lengths = [s["length_m"] for s in found["suggestions"]]
-    assert lengths == sorted(lengths)
-    # The same inputs always give the same layouts.
-    assert suggest(client) == found
-    for option in found["suggestions"]:
+    found = search(client)
+    assert found["arm"] == "UR5e" and found["total"] > found["next"] > 0
+    assert found["candidates"] and found["checked"] <= 6
+    # The same chunk always gives the same layouts.
+    assert search(client) == found
+    for option in found["candidates"]:
+        assert METRICS <= option.keys()
+        assert option["clearance_m"] >= wl.SAFETY and option["reach_margin_m"] >= 0
+        assert option["run_s"] > option["arm_s"] > 0
         rows = option["layout"]["placements"]
         assert {p["twin_id"] for p in rows} == {reader, heater, arm, shelf}
         checked = preview(client, rows)
         assert checked["error"] is None
         [motion] = checked["motions"]
+        assert motion["seconds"] == option["arm_s"]
         assert_clear(catalog, rows, motion)
-    saved = save_layout(client, catalog["version"], found["suggestions"][0]["layout"]["placements"])
+    saved = save_layout(client, catalog["version"], found["candidates"][0]["layout"]["placements"])
     assert saved.status_code == 200, saved.text
 
+    # Resuming skips what was already returned and moves on through the list.
+    shown = [c["layout"]["placements"] for c in found["candidates"]]
+    more = search(client, start=found["next"], avoid=shown)
+    assert more["next"] is None or more["next"] > found["next"]
+    search_state = layout_search.Search(
+        {t["id"]: t for t in client.get("/api/twins").json()["twins"]},
+        BENCH,
+        client.get("/api/twins").json()["steps"],
+        (),
+    )
+    for option in more["candidates"]:
+        rows = option["layout"]["placements"]
+        assert all(search_state.distinct(rows, old) for old in shown)
 
-def test_kept_instruments_stay_where_the_user_put_them(client):
+
+def test_kept_instruments_stay_where_the_user_put_them(client, monkeypatch):
+    from academy import layout_search
+
+    monkeypatch.setattr(layout_search, "CHUNK_PLANS", 4)
     reader, heater, arm, _, _ = placed_cell(client)
-    kept = {"twin_id": heater, "x": -0.7, "z": 0.3, "yaw": 0, "access": "top"}
-    found = suggest(client, fixed=[kept], count=2)
-    assert found["suggestions"]
-    for option in found["suggestions"]:
+    kept = {"twin_id": heater, "x": -0.7, "z": 0.3, "yaw": 0, "access": "top", "kept": True}
+    found = search(client, fixed=[kept])
+    assert found["candidates"]
+    for option in found["candidates"]:
         assert kept in option["layout"]["placements"]
         assert preview(client, option["layout"]["placements"])["error"] is None
 
 
 def test_layout_search_explains_why_nothing_fits(client):
     reader, heater, arm, _, catalog = placed_cell(client)
-    tiny = suggest(client, bench={"width": 0.8, "depth": 0.6})
-    assert tiny["suggestions"] == []
-    assert "No feasible layout" in tiny["error"]["message"]
-    assert "fits on the bench" in tiny["error"]["message"]
+    tiny = search(client, bench={"width": 0.8, "depth": 0.6})
+    assert tiny["candidates"] == [] and tiny["next"] is None
+    assert "fits on the bench" in tiny["failure"]
     overlap = [
         {"twin_id": heater, "x": 0, "z": 0, "yaw": 0, "access": "top"},
         {"twin_id": reader, "x": 0.1, "z": 0, "yaw": 0, "access": "top"},
     ]
-    response = client.post("/api/twins/layout/suggest", json={"bench": BENCH, "fixed": overlap})
+    response = client.post("/api/twins/layout/search", json={"bench": BENCH, "fixed": overlap})
     assert response.status_code == 422 and "overlaps" in response.json()["detail"]["message"]
     client.put(
         "/api/twins/workflow",
@@ -356,5 +379,5 @@ def test_layout_search_explains_why_nothing_fits(client):
             "steps": [{"device_id": heater, "operation": "load"}],
         },
     )
-    response = client.post("/api/twins/layout/suggest", json={"bench": BENCH})
+    response = client.post("/api/twins/layout/search", json={"bench": BENCH})
     assert response.status_code == 422 and "transfer step" in response.json()["detail"]["message"]

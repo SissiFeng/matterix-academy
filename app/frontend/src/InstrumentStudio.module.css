@@ -704,3 +704,14 @@
   display: grid;
   gap: 8px;
 }
+.fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+.fill small {
+  color: var(--muted);
+  font-size: 12px;
+}

@@ -151,6 +151,8 @@ export type Placement = {
   z: number;
   yaw: number;
   access: Access;
+  /** Stays put when layouts are searched. */
+  kept?: boolean;
 };
 export type Bench = { width: number; depth: number };
 export type Layout = { bench: Bench; placements: Placement[] };
@@ -165,6 +167,8 @@ export type MotionSummary = {
   planner: "swing" | "joint" | "rrt_connect";
   length_m: number;
   clearance_m: number;
+  /** Arm time at the connector's default speed; absent on older runs. */
+  seconds?: number;
 };
 export type Motion = MotionSummary & { frames: ArmFrame[] };
 export type BlockedMotion = {
@@ -184,17 +188,51 @@ export type LayoutPreview = {
   error: { message: string; layer: string } | null;
   blocked: BlockedMotion | null;
 };
-export type LayoutSuggestion = {
-  layout: Layout;
-  length_m: number;
+export type LayoutMetrics = {
+  run_s: number;
+  arm_s: number;
+  path_m: number;
   clearance_m: number;
+  reach_margin_m: number;
+  area_m2: number;
+};
+export type LayoutCandidate = LayoutMetrics & {
+  layout: Layout;
   motions: MotionSummary[];
 };
-export type LayoutSuggestions = {
+export type LayoutSearchChunk = {
   arm: string;
-  suggestions: LayoutSuggestion[];
+  total: number;
+  next: number | null;
+  candidates: LayoutCandidate[];
   checked: number;
-  error: { message: string; layer: string } | null;
+  failure: string | null;
+};
+export type BriefRole = {
+  key: string;
+  name: string;
+  operations: Operation[];
+  vessel: Vessel;
+  query: string;
+};
+export type BriefStep = {
+  role: string;
+  operation: Operation;
+  source_role: string;
+  target_role: string;
+  value: number;
+};
+export type Brief = {
+  id: string;
+  text: string;
+  status: "starting" | "generating" | "draft" | "failed" | "submission_unknown";
+  message: string;
+  draft: {
+    roles: BriefRole[];
+    steps: BriefStep[];
+    assumptions: string[];
+  } | null;
+  bindings: Record<string, string>;
 };
 export type TraceStep = {
   step: number;
@@ -231,6 +269,7 @@ export type InstrumentCatalog = {
   steps: Step[];
   runs: InstrumentRun[];
   layout: Layout | null;
+  brief: Brief | null;
   templates: Record<string, TwinSpec>;
   simready: Record<string, SimReadyAsset>;
   astra_available: boolean;
