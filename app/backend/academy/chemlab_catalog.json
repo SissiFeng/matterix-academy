@@ -1,0 +1,2848 @@
+{
+ "source": "https://github.com/mbzuai-nlp/ChemLab-Assets/blob/abee1cc5c38ed856979e13736417e3bfbd124d17/catalog/catalog.json",
+ "version": "1.5.0",
+ "instruments": [
+  {
+   "slug": "mt_xpr204e",
+   "chem_id": "CHEM-001",
+   "name": "Analytical balance",
+   "maker": "METTLER TOLEDO",
+   "model": "XPR204E",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/basic40_batch02/t4_measure/mt_xpr204e",
+   "size_m": [
+    0.209,
+    0.4604,
+    0.339
+   ]
+  },
+  {
+   "slug": "mt_hx204",
+   "chem_id": "CHEM-002",
+   "name": "Halogen moisture analyzer",
+   "maker": "METTLER TOLEDO",
+   "model": "HX204",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch04/t4_measure/mt_hx204",
+   "size_m": [
+    0.2309,
+    0.597,
+    0.1437
+   ]
+  },
+  {
+   "slug": "antonpaar_dma5002",
+   "chem_id": "CHEM-003",
+   "name": "Oscillating U-tube density meter",
+   "maker": "Anton Paar",
+   "model": "DMA 5002",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_dma5002",
+   "size_m": [
+    0.3607,
+    0.5298,
+    0.252
+   ]
+  },
+  {
+   "slug": "antonpaar_abbematadvanced",
+   "chem_id": "CHEM-004",
+   "name": "Digital refractometer",
+   "maker": "Anton Paar",
+   "model": "Abbemat Advanced 5201",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_abbematadvanced",
+   "size_m": [
+    0.2261,
+    0.3338,
+    0.1242
+   ]
+  },
+  {
+   "slug": "metrohm_914",
+   "chem_id": "CHEM-005",
+   "name": "pH / DO / conductivity meter",
+   "maker": "Metrohm",
+   "model": "914 pH/DO/Conductometer",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/basic40_batch02/t4_measure/metrohm_914",
+   "size_m": [
+    0.2062,
+    0.208,
+    0.0551
+   ]
+  },
+  {
+   "slug": "mt_mp70",
+   "chem_id": "CHEM-006",
+   "name": "Automatic melting-point system",
+   "maker": "METTLER TOLEDO",
+   "model": "MP70",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch03/t4_measure/mt_mp70",
+   "size_m": [
+    0.1806,
+    0.3519,
+    0.19
+   ]
+  },
+  {
+   "slug": "aqualab_4te",
+   "chem_id": "CHEM-007",
+   "name": "Water-activity meter",
+   "maker": "AQUALAB",
+   "model": "4TE",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch04/t4_measure/aqualab_4te",
+   "size_m": [
+    0.267,
+    0.184,
+    0.129
+   ]
+  },
+  {
+   "slug": "ika_plate_rctdigital",
+   "chem_id": "CHEM-008",
+   "name": "Magnetic hotplate stirrer",
+   "maker": "IKA",
+   "model": "Plate RCT digital",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch05/t4_measure/ika_plate_rctdigital",
+   "size_m": [
+    0.16,
+    0.27,
+    0.0849
+   ]
+  },
+  {
+   "slug": "ika_ks4000",
+   "chem_id": "CHEM-009",
+   "name": "Incubated orbital shaker",
+   "maker": "IKA",
+   "model": "KS 4000 i control",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch03/t4_measure/ika_ks4000",
+   "size_m": [
+    0.58,
+    0.75,
+    0.52
+   ]
+  },
+  {
+   "slug": "eppendorf_5910ri",
+   "chem_id": "CHEM-010",
+   "name": "Refrigerated multipurpose centrifuge",
+   "maker": "Eppendorf",
+   "model": "5910 Ri",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/basic40_batch02/t3_analytical/eppendorf_5910ri",
+   "size_m": [
+    0.72,
+    0.68,
+    0.37
+   ]
+  },
+  {
+   "slug": "binder_fd056",
+   "chem_id": "CHEM-011",
+   "name": "Forced-convection drying oven",
+   "maker": "BINDER",
+   "model": "FD 56",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch05/t4_measure/binder_fd056",
+   "size_m": [
+    0.564,
+    0.6425,
+    0.625
+   ]
+  },
+  {
+   "slug": "binder_vd56",
+   "chem_id": "CHEM-012",
+   "name": "Vacuum drying oven",
+   "maker": "BINDER",
+   "model": "VD 56",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/basic40_batch02/t1_thermal/binder_vd56",
+   "size_m": [
+    0.638,
+    0.538,
+    0.815
+   ]
+  },
+  {
+   "slug": "elma_elmasonics60h",
+   "chem_id": "CHEM-013",
+   "name": "Ultrasonic cleaning bath",
+   "maker": "Elma",
+   "model": "Elmasonic S60H",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch03/t4_measure/elma_elmasonics60h",
+   "size_m": [
+    0.365,
+    0.2104,
+    0.2727
+   ]
+  },
+  {
+   "slug": "hach_tl2300epa",
+   "chem_id": "CHEM-014",
+   "name": "Benchtop turbidimeter",
+   "maker": "Hach",
+   "model": "TL2300 EPA",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/expansion_batch03/t4_measure/hach_tl2300epa",
+   "size_m": [
+    0.3956,
+    0.309,
+    0.1534
+   ]
+  },
+  {
+   "slug": "antonpaar_monowave400",
+   "chem_id": "CHEM-015",
+   "name": "Microwave synthesis reactor",
+   "maker": "Anton Paar",
+   "model": "Monowave 400",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/expansion_batch03/t5_automation/antonpaar_monowave400",
+   "size_m": [
+    0.4204,
+    0.5594,
+    0.3102
+   ]
+  },
+  {
+   "slug": "ika_electrasyn2",
+   "chem_id": "CHEM-016",
+   "name": "Electro-organic synthesis system",
+   "maker": "IKA",
+   "model": "ElectraSyn 2.0",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/expansion_batch03/t5_automation/ika_electrasyn2",
+   "size_m": [
+    0.13,
+    0.2509,
+    0.15
+   ]
+  },
+  {
+   "slug": "hepatochem_photoredoxbox",
+   "chem_id": "CHEM-017",
+   "name": "Photochemical reactor",
+   "maker": "HepatoChem",
+   "model": "PhotoRedOx Box UV-Vis",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/expansion_batch03/t5_automation/hepatochem_photoredoxbox",
+   "size_m": [
+    0.3556,
+    0.3556,
+    0.3048
+   ]
+  },
+  {
+   "slug": "parr_4591",
+   "chem_id": "CHEM-018",
+   "name": "Micro high-pressure stirred reactor",
+   "maker": "Parr Instrument",
+   "model": "4591",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/basic40_batch02/t1_thermal/parr_4591",
+   "size_m": [
+    0.639,
+    0.4572,
+    0.6858
+   ]
+  },
+  {
+   "slug": "syrris_asiadiscovery",
+   "chem_id": "CHEM-019",
+   "name": "Continuous-flow chemistry system",
+   "maker": "Syrris",
+   "model": "Asia Discovery",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/expansion_batch03/t5_automation/syrris_asiadiscovery",
+   "size_m": [
+    1.23,
+    0.309,
+    0.5124
+   ]
+  },
+  {
+   "slug": "thalesnano_hcube",
+   "chem_id": "CHEM-020",
+   "name": "Continuous-flow hydrogenation reactor",
+   "maker": "ThalesNano",
+   "model": "H-Cube Pro",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/expansion_batch03/t5_automation/thalesnano_hcube",
+   "size_m": [
+    0.4962,
+    0.5095,
+    0.2745
+   ]
+  },
+  {
+   "slug": "radleys_mya4",
+   "chem_id": "CHEM-021",
+   "name": "Parallel reaction station (4 independent zones)",
+   "maker": "Radleys",
+   "model": "Mya 4",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/basic40_batch02/t1_thermal/radleys_mya4",
+   "size_m": [
+    0.6,
+    0.611,
+    0.4992
+   ]
+  },
+  {
+   "slug": "cem_libertyblue",
+   "chem_id": "CHEM-022",
+   "name": "Automated microwave peptide synthesizer",
+   "maker": "CEM",
+   "model": "Liberty Blue 2.0",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/expansion_batch03/t5_automation/cem_libertyblue",
+   "size_m": [
+    1.149,
+    0.5,
+    0.75
+   ]
+  },
+  {
+   "slug": "cytiva_ktaoligosynt",
+   "chem_id": "CHEM-023",
+   "name": "Oligonucleotide synthesizer",
+   "maker": "Cytiva",
+   "model": "ÄKTA oligosynt",
+   "domain_name": "Reaction & Molecular Synthesis",
+   "path": "assets/expansion_batch03/t5_automation/cytiva_ktaoligosynt",
+   "size_m": [
+    0.7018,
+    0.5075,
+    0.63
+   ]
+  },
+  {
+   "slug": "ika_rv10_digital_v",
+   "chem_id": "CHEM-024",
+   "name": "Rotary evaporator",
+   "maker": "IKA",
+   "model": "RV 10 digital V",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/basic40_batch02/t2_vacuum/ika_rv10",
+   "size_m": [
+    0.5,
+    0.44,
+    0.6822
+   ]
+  },
+  {
+   "slug": "buchi_lyovapor_l250_pro",
+   "chem_id": "CHEM-025",
+   "name": "Freeze dryer",
+   "maker": "BUCHI",
+   "model": "Lyovapor L-250 Pro",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/basic40_batch02/t2_vacuum/buchi_lyovapor_l250",
+   "size_m": [
+    0.503,
+    0.645,
+    0.9275
+   ]
+  },
+  {
+   "slug": "buchi_minispray",
+   "chem_id": "CHEM-026",
+   "name": "Lab spray dryer",
+   "maker": "BUCHI",
+   "model": "Mini Spray Dryer S-300",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/buchi_minispray",
+   "size_m": [
+    0.62,
+    0.64,
+    1.052
+   ]
+  },
+  {
+   "slug": "tousimis_autosamdri815",
+   "chem_id": "CHEM-027",
+   "name": "Critical point dryer",
+   "maker": "Tousimis",
+   "model": "Autosamdri-815 Series B",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/tousimis_autosamdri815",
+   "size_m": [
+    0.622,
+    0.548,
+    0.324
+   ]
+  },
+  {
+   "slug": "buchi_speedextractore",
+   "chem_id": "CHEM-028",
+   "name": "Pressurized solvent extractor",
+   "maker": "BUCHI",
+   "model": "SpeedExtractor E-916",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/buchi_speedextractore",
+   "size_m": [
+    0.6698,
+    0.5,
+    0.725
+   ]
+  },
+  {
+   "slug": "gilson_cpc250",
+   "chem_id": "CHEM-029",
+   "name": "Centrifugal partition chromatograph",
+   "maker": "Gilson",
+   "model": "CPC 250",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/gilson_cpc250",
+   "size_m": [
+    1.39,
+    0.5935,
+    0.66
+   ]
+  },
+  {
+   "slug": "sartorius_vivaflow200",
+   "chem_id": "CHEM-030",
+   "name": "Tangential-flow ultrafiltration module",
+   "maker": "Sartorius",
+   "model": "Vivaflow 200",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/sartorius_vivaflow200",
+   "size_m": [
+    0.1808,
+    0.038,
+    0.2025
+   ]
+  },
+  {
+   "slug": "biotage_extrahera_classic",
+   "chem_id": "CHEM-031",
+   "name": "Automated solid-phase extraction workstation",
+   "maker": "Biotage",
+   "model": "Extrahera Classic",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/basic40_batch02/t2_vacuum/biotage_extrahera",
+   "size_m": [
+    0.86,
+    0.57,
+    0.73
+   ]
+  },
+  {
+   "slug": "sft_sft110",
+   "chem_id": "CHEM-032",
+   "name": "Supercritical fluid extractor",
+   "maker": "Supercritical Fluid Technologies",
+   "model": "SFT-110",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/sft_sft110",
+   "size_m": [
+    0.29,
+    0.57,
+    0.76
+   ]
+  },
+  {
+   "slug": "syrris_asiafllex",
+   "chem_id": "CHEM-033",
+   "name": "Flow liquid–liquid extraction module",
+   "maker": "Syrris",
+   "model": "Asia FLLEX",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/syrris_asiafllex",
+   "size_m": [
+    0.16,
+    0.3032,
+    0.13
+   ]
+  },
+  {
+   "slug": "biotage_selekt",
+   "chem_id": "CHEM-034",
+   "name": "Automated flash chromatography system",
+   "maker": "Biotage",
+   "model": "Selekt (UV, single bed)",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/biotage_selekt",
+   "size_m": [
+    0.335,
+    0.393,
+    0.545
+   ]
+  },
+  {
+   "slug": "pccell_ed64002",
+   "chem_id": "CHEM-035",
+   "name": "Lab electrodialysis stack",
+   "maker": "PCCell",
+   "model": "ED 64002 + BED1-2 Basic",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/pccell_ed64002",
+   "size_m": [
+    0.64,
+    0.364,
+    0.5783
+   ]
+  },
+  {
+   "slug": "genevac_mivac2",
+   "chem_id": "CHEM-036",
+   "name": "Centrifugal vacuum concentrator",
+   "maker": "Genevac / SP Industries",
+   "model": "miVac 2 Duo",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/genevac_mivac2",
+   "size_m": [
+    0.3605,
+    0.4567,
+    0.3002
+   ]
+  },
+  {
+   "slug": "pilodist_pilodist104",
+   "chem_id": "CHEM-037",
+   "name": "High-efficiency lab fractional distillation unit",
+   "maker": "PILODIST",
+   "model": "PILODIST 104",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/pilodist_pilodist104",
+   "size_m": [
+    1.6,
+    0.5,
+    2.7
+   ]
+  },
+  {
+   "slug": "uic_kdl1basic",
+   "chem_id": "CHEM-038",
+   "name": "Short-path wiped-film molecular still",
+   "maker": "UIC",
+   "model": "KDL1 Basic",
+   "domain_name": "Extraction, Purification & Drying",
+   "path": "assets/expansion_batch03/t2_vacuum/uic_kdl1basic",
+   "size_m": [
+    0.9,
+    0.42,
+    1.2
+   ]
+  },
+  {
+   "slug": "scp_digiprepms",
+   "chem_id": "CHEM-039",
+   "name": "Graphite block digestion system",
+   "maker": "SCP SCIENCE",
+   "model": "DigiPREP MS",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/scp_digiprepms",
+   "size_m": [
+    0.49,
+    0.4006,
+    0.18
+   ]
+  },
+  {
+   "slug": "retsch_pm100",
+   "chem_id": "CHEM-040",
+   "name": "Planetary ball mill",
+   "maker": "RETSCH",
+   "model": "PM 100",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/retsch_pm100",
+   "size_m": [
+    0.64,
+    0.432,
+    0.48
+   ]
+  },
+  {
+   "slug": "retsch_as200",
+   "chem_id": "CHEM-041",
+   "name": "Vibratory sieve shaker",
+   "maker": "RETSCH",
+   "model": "AS 200 control",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/retsch_as200",
+   "size_m": [
+    0.417,
+    0.4031,
+    0.842
+   ]
+  },
+  {
+   "slug": "retsch_pt100",
+   "chem_id": "CHEM-042",
+   "name": "Rotary sample divider",
+   "maker": "RETSCH",
+   "model": "PT 100",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/retsch_pt100",
+   "size_m": [
+    0.5868,
+    0.4226,
+    0.905
+   ]
+  },
+  {
+   "slug": "ika_t25",
+   "chem_id": "CHEM-043",
+   "name": "Rotor–stator disperser",
+   "maker": "IKA",
+   "model": "T 25 digital ULTRA-TURRAX",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/ika_t25",
+   "size_m": [
+    0.32,
+    0.3,
+    0.628
+   ]
+  },
+  {
+   "slug": "sonics_vcx750",
+   "chem_id": "CHEM-044",
+   "name": "Probe ultrasonic processor",
+   "maker": "Sonics",
+   "model": "VCX 750",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/sonics_vcx750",
+   "size_m": [
+    0.52,
+    0.4079,
+    0.49
+   ]
+  },
+  {
+   "slug": "thinky_are310s",
+   "chem_id": "CHEM-045",
+   "name": "Planetary centrifugal mixer",
+   "maker": "THINKY",
+   "model": "ARE-310",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/thinky_are310s",
+   "size_m": [
+    0.4279,
+    0.336,
+    0.3808
+   ]
+  },
+  {
+   "slug": "metrohm_909uv",
+   "chem_id": "CHEM-046",
+   "name": "UV digester",
+   "maker": "Metrohm",
+   "model": "909 UV Digester",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/metrohm_909uv",
+   "size_m": [
+    0.33,
+    0.3164,
+    0.5
+   ]
+  },
+  {
+   "slug": "multiwave_7101",
+   "chem_id": "CHEM-047",
+   "name": "Microwave acid digestion system",
+   "maker": "Anton Paar",
+   "model": "Multiwave 7101",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/basic40_batch02/t1_thermal/multiwave_7101",
+   "size_m": [
+    0.497,
+    0.742,
+    0.47
+   ]
+  },
+  {
+   "slug": "velp_udk159",
+   "chem_id": "CHEM-048",
+   "name": "Automatic Kjeldahl distillation & titration unit",
+   "maker": "VELP",
+   "model": "UDK 159",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/velp_udk159",
+   "size_m": [
+    0.3893,
+    0.4175,
+    0.78
+   ]
+  },
+  {
+   "slug": "buchi_hydrolexh",
+   "chem_id": "CHEM-049",
+   "name": "Acid hydrolysis unit",
+   "maker": "BUCHI",
+   "model": "HydrolEx H-506",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/buchi_hydrolexh",
+   "size_m": [
+    0.312,
+    0.6153,
+    0.4684
+   ]
+  },
+  {
+   "slug": "malvern_leneo",
+   "chem_id": "CHEM-050",
+   "name": "Automated fusion bead maker",
+   "maker": "Malvern Panalytical / Claisse",
+   "model": "LeNeo",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/malvern_leneo",
+   "size_m": [
+    0.5563,
+    0.5737,
+    0.52
+   ]
+  },
+  {
+   "slug": "specac_atlasmanual",
+   "chem_id": "CHEM-051",
+   "name": "Hydraulic pellet press",
+   "maker": "Specac",
+   "model": "Atlas Manual 15T",
+   "domain_name": "Digestion & Solid Sample Prep",
+   "path": "assets/expansion_batch03/t1_thermal/specac_atlasmanual",
+   "size_m": [
+    0.31,
+    0.19,
+    0.61
+   ]
+  },
+  {
+   "slug": "buchi_encapsulatorb",
+   "chem_id": "CHEM-052",
+   "name": "Vibrating-nozzle encapsulator",
+   "maker": "BUCHI",
+   "model": "Encapsulator B-390",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/buchi_encapsulatorb",
+   "size_m": [
+    0.4351,
+    0.4133,
+    0.29
+   ]
+  },
+  {
+   "slug": "ossila_spincoater",
+   "chem_id": "CHEM-053",
+   "name": "Spin coater",
+   "maker": "Ossila",
+   "model": "Spin Coater V3",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/ossila_spincoater",
+   "size_m": [
+    0.171,
+    0.234,
+    0.1399
+   ]
+  },
+  {
+   "slug": "ossila_dipcoater",
+   "chem_id": "CHEM-054",
+   "name": "Dip coater",
+   "maker": "Ossila",
+   "model": "Dip Coater V2",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/ossila_dipcoater",
+   "size_m": [
+    0.2004,
+    0.3002,
+    0.35
+   ]
+  },
+  {
+   "slug": "ossila_doctorblade",
+   "chem_id": "CHEM-055",
+   "name": "Automated doctor-blade coater",
+   "maker": "Ossila",
+   "model": "Doctor Blade Coater",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/ossila_doctorblade",
+   "size_m": [
+    0.2804,
+    0.3858,
+    0.19
+   ]
+  },
+  {
+   "slug": "ossila_slotdie",
+   "chem_id": "CHEM-056",
+   "name": "Slot-die coater",
+   "maker": "Ossila",
+   "model": "Slot-Die Coater V2",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/ossila_slotdie",
+   "size_m": [
+    0.28,
+    0.3654,
+    0.223
+   ]
+  },
+  {
+   "slug": "thermo_process11",
+   "chem_id": "CHEM-057",
+   "name": "Lab twin-screw extruder",
+   "maker": "Thermo Fisher Scientific",
+   "model": "Process 11",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/thermo_process11",
+   "size_m": [
+    0.829,
+    0.4792,
+    0.5367
+   ]
+  },
+  {
+   "slug": "fujifilm_dmp2850",
+   "chem_id": "CHEM-058",
+   "name": "Materials inkjet printer",
+   "maker": "FUJIFILM Dimatix",
+   "model": "DMP-2850",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/fujifilm_dmp2850",
+   "size_m": [
+    0.673,
+    0.5917,
+    0.419
+   ]
+  },
+  {
+   "slug": "linari_rtadvanced",
+   "chem_id": "CHEM-059",
+   "name": "Electrospinning system",
+   "maker": "Linari Nanotech",
+   "model": "RT Advanced",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/linari_rtadvanced",
+   "size_m": [
+    1.05,
+    1.035,
+    2.2
+   ]
+  },
+  {
+   "slug": "cytiva_nanoassemblrignite",
+   "chem_id": "CHEM-060",
+   "name": "Microfluidic nanoparticle formulation system",
+   "maker": "Cytiva / Precision NanoSystems",
+   "model": "NanoAssemblr Ignite",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/cytiva_nanoassemblrignite",
+   "size_m": [
+    0.381,
+    0.3527,
+    0.38
+   ]
+  },
+  {
+   "slug": "glatt_miniglatt",
+   "chem_id": "CHEM-061",
+   "name": "Fluid-bed granulator / coater",
+   "maker": "Glatt",
+   "model": "Mini-Glatt",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/glatt_miniglatt",
+   "size_m": [
+    0.7057,
+    0.7587,
+    0.84
+   ]
+  },
+  {
+   "slug": "quorum_q150tes",
+   "chem_id": "CHEM-062",
+   "name": "Sputter & carbon coater",
+   "maker": "Quorum Technologies",
+   "model": "Q150T ES Plus",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/quorum_q150tes",
+   "size_m": [
+    0.585,
+    0.5546,
+    0.41
+   ]
+  },
+  {
+   "slug": "laboao_cvdltf12p50",
+   "chem_id": "CHEM-063",
+   "name": "Chemical vapour deposition system",
+   "maker": "LABOAO",
+   "model": "CVD-LTF12P50",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/laboao_cvdltf12p50",
+   "size_m": [
+    1.9073,
+    0.62,
+    1.378
+   ]
+  },
+  {
+   "slug": "arradiance_gemstarxt",
+   "chem_id": "CHEM-064",
+   "name": "Atomic layer deposition system",
+   "maker": "Arradiance",
+   "model": "GEMStar XT-SP (PEALD / thermal ALD)",
+   "domain_name": "Thin-Film & Functional Materials",
+   "path": "assets/expansion_batch04/t5_automation/arradiance_gemstarxt",
+   "size_m": [
+    1.1726,
+    0.6406,
+    0.637
+   ]
+  },
+  {
+   "slug": "jasco_j1500",
+   "chem_id": "CHEM-065",
+   "name": "Circular dichroism spectrometer",
+   "maker": "JASCO",
+   "model": "J-1500",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/jasco_j1500",
+   "size_m": [
+    1.055,
+    0.6655,
+    0.39
+   ]
+  },
+  {
+   "slug": "bruker_minispecmq20",
+   "chem_id": "CHEM-066",
+   "name": "Time-domain NMR relaxometer",
+   "maker": "Bruker",
+   "model": "minispec mq20",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/bruker_minispecmq20",
+   "size_m": [
+    0.7492,
+    0.787,
+    0.356
+   ]
+  },
+  {
+   "slug": "jasco_fp8350",
+   "chem_id": "CHEM-067",
+   "name": "Spectrofluorometer",
+   "maker": "JASCO",
+   "model": "FP-8350",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch03/t3_analytical/jasco_fp8350",
+   "size_m": [
+    0.84,
+    0.5663,
+    0.27
+   ]
+  },
+  {
+   "slug": "magritek_spinsolve80",
+   "chem_id": "CHEM-068",
+   "name": "Benchtop NMR spectrometer",
+   "maker": "Magritek",
+   "model": "Spinsolve 80 Carbon",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/basic40_batch02/t4_measure/magritek_spinsolve80",
+   "size_m": [
+    0.5814,
+    0.4005,
+    0.675
+   ]
+  },
+  {
+   "slug": "bruker_magnettechesr5000",
+   "chem_id": "CHEM-069",
+   "name": "Benchtop EPR spectrometer",
+   "maker": "Bruker",
+   "model": "Magnettech ESR5000",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/bruker_magnettechesr5000",
+   "size_m": [
+    0.397,
+    0.426,
+    0.2032
+   ]
+  },
+  {
+   "slug": "jasco_p4200",
+   "chem_id": "CHEM-070",
+   "name": "Digital polarimeter",
+   "maker": "JASCO",
+   "model": "P-4200",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch03/t3_analytical/jasco_p4200",
+   "size_m": [
+    0.55,
+    0.3582,
+    0.21
+   ]
+  },
+  {
+   "slug": "hach_dr6000",
+   "chem_id": "CHEM-071",
+   "name": "UV-Vis spectrophotometer",
+   "maker": "Hach",
+   "model": "DR6000",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/basic40_batch02/t3_analytical/hach_dr6000",
+   "size_m": [
+    0.5,
+    0.46,
+    0.215
+   ]
+  },
+  {
+   "slug": "jasco_ftir4700",
+   "chem_id": "CHEM-072",
+   "name": "FT-IR spectrometer",
+   "maker": "JASCO",
+   "model": "FT/IR-4700",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/basic40_batch02/t3_analytical/jasco_ftir4700",
+   "size_m": [
+    0.46,
+    0.645,
+    0.29
+   ]
+  },
+  {
+   "slug": "jasco_nrs5500",
+   "chem_id": "CHEM-073",
+   "name": "Raman microscope",
+   "maker": "JASCO",
+   "model": "NRS-5500",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/jasco_nrs5500",
+   "size_m": [
+    1.15,
+    0.89,
+    0.67
+   ]
+  },
+  {
+   "slug": "applied_sx20",
+   "chem_id": "CHEM-074",
+   "name": "Stopped-flow kinetics spectrometer",
+   "maker": "Applied Photophysics",
+   "model": "SX20",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/applied_sx20",
+   "size_m": [
+    1.56,
+    0.5502,
+    0.632
+   ]
+  },
+  {
+   "slug": "edinburgh_fls1000tcspc",
+   "chem_id": "CHEM-075",
+   "name": "Time-resolved fluorescence (TCSPC) spectrometer",
+   "maker": "Edinburgh Instruments",
+   "model": "FLS1000",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/edinburgh_fls1000tcspc",
+   "size_m": [
+    1.5257,
+    0.7857,
+    0.5475
+   ]
+  },
+  {
+   "slug": "ultrafast_helios",
+   "chem_id": "CHEM-076",
+   "name": "Femtosecond transient absorption spectrometer",
+   "maker": "Ultrafast Systems",
+   "model": "HELIOS",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/ultrafast_helios",
+   "size_m": [
+    1.5,
+    0.85,
+    0.66
+   ]
+  },
+  {
+   "slug": "jasco_fvs6000",
+   "chem_id": "CHEM-077",
+   "name": "Vibrational circular dichroism spectrometer",
+   "maker": "JASCO",
+   "model": "FVS-6000",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/jasco_fvs6000",
+   "size_m": [
+    0.945,
+    0.6907,
+    0.425
+   ]
+  },
+  {
+   "slug": "jasco_cpl300",
+   "chem_id": "CHEM-078",
+   "name": "Circularly polarized luminescence spectrometer",
+   "maker": "JASCO",
+   "model": "CPL-300",
+   "domain_name": "Molecular Spectroscopy & Structure",
+   "path": "assets/expansion_batch04/t3_analytical/jasco_cpl300",
+   "size_m": [
+    2.4,
+    0.7,
+    1.0
+   ]
+  },
+  {
+   "slug": "elementar_varioel",
+   "chem_id": "CHEM-079",
+   "name": "Organic elemental (CHNS) analyzer",
+   "maker": "Elementar",
+   "model": "vario EL cube",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/elementar_varioel",
+   "size_m": [
+    0.815,
+    0.562,
+    0.57
+   ]
+  },
+  {
+   "slug": "shimadzu_tocl",
+   "chem_id": "CHEM-080",
+   "name": "Total organic carbon analyzer",
+   "maker": "Shimadzu",
+   "model": "TOC-L CSH",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch03/t3_analytical/shimadzu_tocl",
+   "size_m": [
+    0.3534,
+    0.6747,
+    0.48
+   ]
+  },
+  {
+   "slug": "jena_contraa800",
+   "chem_id": "CHEM-081",
+   "name": "Atomic absorption spectrometer",
+   "maker": "Analytik Jena",
+   "model": "contrAA 800 D",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch03/t3_analytical/jena_contraa800",
+   "size_m": [
+    1.1158,
+    0.9825,
+    0.625
+   ]
+  },
+  {
+   "slug": "shimadzu_icpe9800",
+   "chem_id": "CHEM-082",
+   "name": "ICP optical emission spectrometer",
+   "maker": "Shimadzu",
+   "model": "ICPE-9800",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/shimadzu_icpe9800",
+   "size_m": [
+    1.3,
+    0.72,
+    0.91
+   ]
+  },
+  {
+   "slug": "shimadzu_icpms2030",
+   "chem_id": "CHEM-083",
+   "name": "ICP mass spectrometer",
+   "maker": "Shimadzu",
+   "model": "ICPMS-2030",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/shimadzu_icpms2030",
+   "size_m": [
+    1.0133,
+    0.6457,
+    0.857
+   ]
+  },
+  {
+   "slug": "shimadzu_edx7200",
+   "chem_id": "CHEM-084",
+   "name": "Energy-dispersive XRF spectrometer",
+   "maker": "Shimadzu",
+   "model": "EDX-7200",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/shimadzu_edx7200",
+   "size_m": [
+    0.785,
+    0.59,
+    0.36
+   ]
+  },
+  {
+   "slug": "jena_multix",
+   "chem_id": "CHEM-085",
+   "name": "Total organic halogen (AOX/TOX) analyzer",
+   "maker": "Analytik Jena",
+   "model": "multi X 2500",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/jena_multix",
+   "size_m": [
+    1.4,
+    0.55,
+    0.671
+   ]
+  },
+  {
+   "slug": "milestone_dma80",
+   "chem_id": "CHEM-086",
+   "name": "Direct mercury analyzer",
+   "maker": "Milestone",
+   "model": "DMA-80 evo",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/milestone_dma80",
+   "size_m": [
+    1.1,
+    0.42,
+    0.3
+   ]
+  },
+  {
+   "slug": "stanford_rga100",
+   "chem_id": "CHEM-087",
+   "name": "Residual gas analyzer",
+   "maker": "Stanford Research Systems",
+   "model": "RGA100",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/stanford_rga100",
+   "size_m": [
+    0.215,
+    0.5812,
+    0.264
+   ]
+  },
+  {
+   "slug": "thermo_orbitrapexploris",
+   "chem_id": "CHEM-088",
+   "name": "High-resolution Orbitrap mass spectrometer",
+   "maker": "Thermo Fisher Scientific",
+   "model": "Orbitrap Exploris 120",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/thermo_orbitrapexploris",
+   "size_m": [
+    0.534,
+    0.9391,
+    0.703
+   ]
+  },
+  {
+   "slug": "leco_onh836",
+   "chem_id": "CHEM-089",
+   "name": "Inert-gas fusion O/N/H analyzer",
+   "maker": "LECO",
+   "model": "ONH836",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/leco_onh836",
+   "size_m": [
+    0.71,
+    0.7601,
+    0.915
+   ]
+  },
+  {
+   "slug": "elementar_isoprimeprecision",
+   "chem_id": "CHEM-090",
+   "name": "Stable isotope-ratio mass spectrometer",
+   "maker": "Elementar",
+   "model": "isoprime precisION",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/elementar_isoprimeprecision",
+   "size_m": [
+    0.595,
+    0.4607,
+    0.65
+   ]
+  },
+  {
+   "slug": "eco_ncld822",
+   "chem_id": "CHEM-091",
+   "name": "Chemiluminescence NO/NOx analyzer",
+   "maker": "ECO PHYSICS",
+   "model": "nCLD 822 M",
+   "domain_name": "Elemental & Mass Spectrometry",
+   "path": "assets/expansion_batch04/t3_analytical/eco_ncld822",
+   "size_m": [
+    0.495,
+    0.564,
+    0.133
+   ]
+  },
+  {
+   "slug": "camag_tlcscanner",
+   "chem_id": "CHEM-092",
+   "name": "TLC scanner (densitometer)",
+   "maker": "CAMAG",
+   "model": "TLC Scanner 4",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/expansion_batch03/t3_analytical/camag_tlcscanner",
+   "size_m": [
+    0.59,
+    0.65,
+    0.367
+   ]
+  },
+  {
+   "slug": "sciex_pa800",
+   "chem_id": "CHEM-093",
+   "name": "Capillary electrophoresis system",
+   "maker": "SCIEX",
+   "model": "PA 800 Plus",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/expansion_batch04/t3_analytical/sciex_pa800",
+   "size_m": [
+    0.6353,
+    0.7232,
+    0.742
+   ]
+  },
+  {
+   "slug": "agilent_1260infinity",
+   "chem_id": "CHEM-094",
+   "name": "Supercritical fluid chromatograph (SFC)",
+   "maker": "Agilent",
+   "model": "1260 Infinity III SFC",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/expansion_batch04/t3_analytical/agilent_1260infinity",
+   "size_m": [
+    0.6945,
+    0.494,
+    1.061
+   ]
+  },
+  {
+   "slug": "wyatt_eclipseaf4",
+   "chem_id": "CHEM-095",
+   "name": "Asymmetric-flow field-flow fractionation (AF4) system",
+   "maker": "Wyatt Technology",
+   "model": "Eclipse AF4",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/expansion_batch04/t3_analytical/wyatt_eclipseaf4",
+   "size_m": [
+    0.496,
+    0.6403,
+    0.25
+   ]
+  },
+  {
+   "slug": "agilent_gc8890b",
+   "chem_id": "CHEM-096",
+   "name": "Gas chromatograph",
+   "maker": "Agilent",
+   "model": "8890B GC",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/basic40_batch02/t3_analytical/agilent_gc8890b",
+   "size_m": [
+    0.5803,
+    0.55,
+    0.49
+   ]
+  },
+  {
+   "slug": "agilent_hplc1260",
+   "chem_id": "CHEM-097",
+   "name": "HPLC system",
+   "maker": "Agilent",
+   "model": "1260 Infinity III LC",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/basic40_batch02/t3_analytical/agilent_hplc1260",
+   "size_m": [
+    0.396,
+    0.468,
+    0.66
+   ]
+  },
+  {
+   "slug": "thermo_dionexintegrion",
+   "chem_id": "CHEM-098",
+   "name": "Ion chromatograph",
+   "maker": "Thermo Fisher Scientific",
+   "model": "Dionex Integrion HPIC",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/expansion_batch03/t3_analytical/thermo_dionexintegrion",
+   "size_m": [
+    0.3,
+    0.577,
+    0.625
+   ]
+  },
+  {
+   "slug": "agilent_1290infinity",
+   "chem_id": "CHEM-099",
+   "name": "GPC/SEC system",
+   "maker": "Agilent",
+   "model": "1290 Infinity II GPC/SEC",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/expansion_batch04/t3_analytical/agilent_1290infinity",
+   "size_m": [
+    0.4365,
+    0.481,
+    0.9
+   ]
+  },
+  {
+   "slug": "gas_flavourspec25gc",
+   "chem_id": "CHEM-100",
+   "name": "GC–ion mobility spectrometer",
+   "maker": "G.A.S.",
+   "model": "FlavourSpec25 GC-IMS",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/expansion_batch04/t3_analytical/gas_flavourspec25gc",
+   "size_m": [
+    1.01,
+    0.8,
+    0.79
+   ]
+  },
+  {
+   "slug": "metrohm_omnis",
+   "chem_id": "CHEM-101",
+   "name": "Automatic potentiometric titrator",
+   "maker": "Metrohm",
+   "model": "OMNIS Professional Titrator",
+   "domain_name": "Electrochemistry & Titration",
+   "path": "assets/basic40_batch02/t4_measure/metrohm_omnis",
+   "size_m": [
+    0.142,
+    0.3996,
+    0.358
+   ]
+  },
+  {
+   "slug": "metrohm_899",
+   "chem_id": "CHEM-102",
+   "name": "Karl Fischer coulometer",
+   "maker": "Metrohm",
+   "model": "899 Coulometer",
+   "domain_name": "Electrochemistry & Titration",
+   "path": "assets/basic40_batch02/t4_measure/metrohm_899",
+   "size_m": [
+    0.1436,
+    0.2889,
+    0.3373
+   ]
+  },
+  {
+   "slug": "gamry_reference620",
+   "chem_id": "CHEM-103",
+   "name": "Potentiostat / electrochemical workstation",
+   "maker": "Gamry",
+   "model": "Reference 620",
+   "domain_name": "Electrochemistry & Titration",
+   "path": "assets/basic40_batch02/t4_measure/gamry_ref620",
+   "size_m": [
+    0.09,
+    0.2744,
+    0.19
+   ]
+  },
+  {
+   "slug": "ch_chi920d",
+   "chem_id": "CHEM-104",
+   "name": "Scanning electrochemical microscope",
+   "maker": "CH Instruments",
+   "model": "CHI920D",
+   "domain_name": "Electrochemistry & Titration",
+   "path": "assets/expansion_batch04/t4_measure/ch_chi920d",
+   "size_m": [
+    0.76,
+    0.36,
+    0.45
+   ]
+  },
+  {
+   "slug": "ch_chi440c",
+   "chem_id": "CHEM-105",
+   "name": "Electrochemical quartz crystal microbalance",
+   "maker": "CH Instruments",
+   "model": "CHI440C",
+   "domain_name": "Electrochemistry & Titration",
+   "path": "assets/expansion_batch04/t4_measure/ch_chi440c",
+   "size_m": [
+    0.6,
+    0.31,
+    0.1247
+   ]
+  },
+  {
+   "slug": "knauer_k7400s",
+   "chem_id": "CHEM-106",
+   "name": "Freezing-point osmometer",
+   "maker": "KNAUER",
+   "model": "K-7400S",
+   "domain_name": "Electrochemistry & Titration",
+   "path": "assets/expansion_batch04/t4_measure/knauer_k7400s",
+   "size_m": [
+    0.1606,
+    0.3434,
+    0.228
+   ]
+  },
+  {
+   "slug": "pine_wavevortex10",
+   "chem_id": "CHEM-107",
+   "name": "Rotating ring-disk electrode rotator",
+   "maker": "Pine Research",
+   "model": "WaveVortex 10",
+   "domain_name": "Electrochemistry & Titration",
+   "path": "assets/expansion_batch04/t4_measure/pine_wavevortex10",
+   "size_m": [
+    0.38,
+    0.28,
+    0.38
+   ]
+  },
+  {
+   "slug": "agilent_hs8697",
+   "chem_id": "CHEM-108",
+   "name": "Headspace autosampler (48-vial tray)",
+   "maker": "Agilent",
+   "model": "8697",
+   "domain_name": "Analytical Sampling & Interfaces",
+   "path": "assets/basic40_batch02/t3_analytical/agilent_hs8697",
+   "size_m": [
+    0.599,
+    0.7305,
+    0.8
+   ]
+  },
+  {
+   "slug": "teledyne_atomxxyz",
+   "chem_id": "CHEM-109",
+   "name": "Purge-and-trap autosampler",
+   "maker": "Teledyne Tekmar",
+   "model": "Atomx XYZ",
+   "domain_name": "Analytical Sampling & Interfaces",
+   "path": "assets/expansion_batch03/t3_analytical/teledyne_atomxxyz",
+   "size_m": [
+    0.701,
+    0.5842,
+    0.495
+   ]
+  },
+  {
+   "slug": "teledyne_analyteexcite",
+   "chem_id": "CHEM-110",
+   "name": "Laser ablation sampling system",
+   "maker": "Teledyne CETAC",
+   "model": "Analyte Excite+",
+   "domain_name": "Analytical Sampling & Interfaces",
+   "path": "assets/expansion_batch03/t3_analytical/teledyne_analyteexcite",
+   "size_m": [
+    0.76,
+    0.87,
+    1.5
+   ]
+  },
+  {
+   "slug": "frontier_egapy",
+   "chem_id": "CHEM-111",
+   "name": "Multi-shot pyrolyzer (GC inlet)",
+   "maker": "Frontier Laboratories",
+   "model": "EGA/PY-3030D",
+   "domain_name": "Analytical Sampling & Interfaces",
+   "path": "assets/expansion_batch03/t3_analytical/frontier_egapy",
+   "size_m": [
+    0.3355,
+    0.346,
+    0.3935
+   ]
+  },
+  {
+   "slug": "markes_unityxr",
+   "chem_id": "CHEM-112",
+   "name": "Thermal desorber",
+   "maker": "Markes International",
+   "model": "UNITY-xr",
+   "domain_name": "Analytical Sampling & Interfaces",
+   "path": "assets/expansion_batch03/t3_analytical/markes_unityxr",
+   "size_m": [
+    0.16,
+    0.54,
+    0.46
+   ]
+  },
+  {
+   "slug": "antonpaar_surpass3",
+   "chem_id": "CHEM-113",
+   "name": "Solid-surface streaming-potential analyzer",
+   "maker": "Anton Paar",
+   "model": "SurPASS 3",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_surpass3",
+   "size_m": [
+    0.5365,
+    0.605,
+    0.3508
+   ]
+  },
+  {
+   "slug": "antonpaar_ultrapyc5000",
+   "chem_id": "CHEM-114",
+   "name": "Gas pycnometer (true density)",
+   "maker": "Anton Paar",
+   "model": "Ultrapyc 5000",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_ultrapyc5000",
+   "size_m": [
+    0.3988,
+    0.4895,
+    0.25
+   ]
+  },
+  {
+   "slug": "antonpaar_autosorb6100",
+   "chem_id": "CHEM-115",
+   "name": "Gas physisorption surface-area & pore analyzer",
+   "maker": "Anton Paar",
+   "model": "Autosorb 6100",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_autosorb6100",
+   "size_m": [
+    0.8056,
+    0.712,
+    1.079
+   ]
+  },
+  {
+   "slug": "antonpaar_poremaster60",
+   "chem_id": "CHEM-116",
+   "name": "Mercury intrusion porosimeter",
+   "maker": "Anton Paar",
+   "model": "PoreMaster 60",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_poremaster60",
+   "size_m": [
+    0.5272,
+    0.6665,
+    0.7865
+   ]
+  },
+  {
+   "slug": "antonpaar_litesizerdls",
+   "chem_id": "CHEM-117",
+   "name": "DLS & zeta-potential analyzer",
+   "maker": "Anton Paar",
+   "model": "Litesizer DLS 701",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_litesizerdls",
+   "size_m": [
+    0.452,
+    0.5115,
+    0.135
+   ]
+  },
+  {
+   "slug": "antonpaar_psa1190",
+   "chem_id": "CHEM-118",
+   "name": "Laser-diffraction particle sizer",
+   "maker": "Anton Paar",
+   "model": "PSA 1190",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_psa1190",
+   "size_m": [
+    0.895,
+    0.547,
+    0.4304
+   ]
+  },
+  {
+   "slug": "antonpaar_litesizerdia",
+   "chem_id": "CHEM-119",
+   "name": "Dynamic image analyzer (particle shape)",
+   "maker": "Anton Paar",
+   "model": "Litesizer DIA 700",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/antonpaar_litesizerdia",
+   "size_m": [
+    0.79,
+    0.311,
+    0.4
+   ]
+  },
+  {
+   "slug": "biolin_sigma700",
+   "chem_id": "CHEM-120",
+   "name": "Force tensiometer",
+   "maker": "Biolin Scientific",
+   "model": "Sigma 700",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/biolin_sigma700",
+   "size_m": [
+    0.244,
+    0.333,
+    0.62
+   ]
+  },
+  {
+   "slug": "biolin_thetaflex",
+   "chem_id": "CHEM-121",
+   "name": "Optical contact-angle meter",
+   "maker": "Biolin Scientific",
+   "model": "Theta Flex",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/biolin_thetaflex",
+   "size_m": [
+    0.7665,
+    0.2515,
+    0.559
+   ]
+  },
+  {
+   "slug": "micromeritics_autochemiii",
+   "chem_id": "CHEM-122",
+   "name": "Temperature-programmed chemisorption analyzer",
+   "maker": "Micromeritics",
+   "model": "AutoChem III",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/micromeritics_autochemiii",
+   "size_m": [
+    0.61,
+    0.64,
+    0.64
+   ]
+  },
+  {
+   "slug": "surface_dvsresolution",
+   "chem_id": "CHEM-123",
+   "name": "Dynamic vapour sorption analyzer",
+   "maker": "Surface Measurement Systems",
+   "model": "DVS Resolution",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/surface_dvsresolution",
+   "size_m": [
+    0.52,
+    0.61,
+    0.98
+   ]
+  },
+  {
+   "slug": "freeman_ft4powder",
+   "chem_id": "CHEM-124",
+   "name": "Powder rheometer",
+   "maker": "Freeman Technology / Micromeritics",
+   "model": "FT4 Powder Rheometer",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/freeman_ft4powder",
+   "size_m": [
+    0.48,
+    0.306,
+    0.76
+   ]
+  },
+  {
+   "slug": "porometer_poroluxrevo",
+   "chem_id": "CHEM-125",
+   "name": "Capillary flow porometer",
+   "maker": "POROMETER",
+   "model": "POROLUX Revo",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/porometer_poroluxrevo",
+   "size_m": [
+    0.53,
+    0.53,
+    0.755
+   ]
+  },
+  {
+   "slug": "microtrac_turbiscanlab",
+   "chem_id": "CHEM-126",
+   "name": "Dispersion stability analyzer",
+   "maker": "Microtrac",
+   "model": "TURBISCAN LAB",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/microtrac_turbiscanlab",
+   "size_m": [
+    0.26,
+    0.28,
+    0.25
+   ]
+  },
+  {
+   "slug": "biolin_mediuml",
+   "chem_id": "CHEM-127",
+   "name": "Langmuir / Langmuir–Blodgett trough",
+   "maker": "Biolin Scientific KSV NIMA",
+   "model": "Medium L&LB Trough",
+   "domain_name": "Particles, Pores & Interfaces",
+   "path": "assets/expansion_batch03/t4_measure/biolin_mediuml",
+   "size_m": [
+    0.662,
+    0.308,
+    0.455
+   ]
+  },
+  {
+   "slug": "antonpaar_trb",
+   "chem_id": "CHEM-128",
+   "name": "Pin-on-disk tribometer",
+   "maker": "Anton Paar",
+   "model": "TRB³",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/antonpaar_trb",
+   "size_m": [
+    0.532,
+    0.443,
+    0.501
+   ]
+  },
+  {
+   "slug": "antonpaar_rst300",
+   "chem_id": "CHEM-129",
+   "name": "Coating scratch tester",
+   "maker": "Anton Paar",
+   "model": "RST 300",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/antonpaar_rst300",
+   "size_m": [
+    0.364,
+    0.369,
+    0.5425
+   ]
+  },
+  {
+   "slug": "antonpaar_hit300",
+   "chem_id": "CHEM-130",
+   "name": "Nanoindentation tester",
+   "maker": "Anton Paar",
+   "model": "HIT 300",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/antonpaar_hit300",
+   "size_m": [
+    0.269,
+    0.259,
+    0.42
+   ]
+  },
+  {
+   "slug": "ta_dsc2500",
+   "chem_id": "CHEM-131",
+   "name": "Differential scanning calorimeter",
+   "maker": "TA Instruments",
+   "model": "DSC 2500",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch03/t1_thermal/ta_dsc2500",
+   "size_m": [
+    0.53,
+    0.51,
+    0.61
+   ]
+  },
+  {
+   "slug": "ta_tga5500",
+   "chem_id": "CHEM-132",
+   "name": "Thermogravimetric analyzer",
+   "maker": "TA Instruments",
+   "model": "TGA 5500",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch03/t1_thermal/ta_tga5500",
+   "size_m": [
+    0.56,
+    0.56,
+    0.61
+   ]
+  },
+  {
+   "slug": "ta_dma850",
+   "chem_id": "CHEM-133",
+   "name": "Dynamic mechanical analyzer",
+   "maker": "TA Instruments",
+   "model": "DMA 850",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/ta_dma850",
+   "size_m": [
+    0.64,
+    0.47,
+    0.535
+   ]
+  },
+  {
+   "slug": "ta_tma450",
+   "chem_id": "CHEM-134",
+   "name": "Thermomechanical analyzer",
+   "maker": "TA Instruments",
+   "model": "TMA 450",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/ta_tma450",
+   "size_m": [
+    0.56,
+    0.56,
+    0.63
+   ]
+  },
+  {
+   "slug": "netzsch_lfa467",
+   "chem_id": "CHEM-135",
+   "name": "Laser/light flash thermal diffusivity analyzer",
+   "maker": "NETZSCH",
+   "model": "LFA 467 HyperFlash",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/netzsch_lfa467",
+   "size_m": [
+    0.54,
+    0.52,
+    0.61
+   ]
+  },
+  {
+   "slug": "hot_tps2500",
+   "chem_id": "CHEM-136",
+   "name": "Transient plane source thermal-conductivity analyzer",
+   "maker": "Hot Disk",
+   "model": "TPS 2500 S",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/hot_tps2500",
+   "size_m": [
+    0.6975,
+    0.5663,
+    0.325
+   ]
+  },
+  {
+   "slug": "antonpaar_mcr503",
+   "chem_id": "CHEM-137",
+   "name": "Rotational & oscillatory rheometer",
+   "maker": "Anton Paar",
+   "model": "MCR 503",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/antonpaar_mcr503",
+   "size_m": [
+    0.453,
+    0.673,
+    0.775
+   ]
+  },
+  {
+   "slug": "ta_tamiv",
+   "chem_id": "CHEM-138",
+   "name": "Isothermal microcalorimeter",
+   "maker": "TA Instruments",
+   "model": "TAM IV",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/ta_tamiv",
+   "size_m": [
+    0.58,
+    0.76,
+    1.0
+   ]
+  },
+  {
+   "slug": "linseis_lsr3",
+   "chem_id": "CHEM-139",
+   "name": "Thermoelectric (Seebeck) tester",
+   "maker": "Linseis",
+   "model": "LSR-3",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/linseis_lsr3",
+   "size_m": [
+    0.7204,
+    0.4278,
+    0.53
+   ]
+  },
+  {
+   "slug": "novocontrol_alphat",
+   "chem_id": "CHEM-140",
+   "name": "Broadband dielectric spectrometer",
+   "maker": "Novocontrol Technologies",
+   "model": "Alpha-T",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/novocontrol_alphat",
+   "size_m": [
+    0.6815,
+    0.364,
+    0.205
+   ]
+  },
+  {
+   "slug": "lakeshore_measurereadym91",
+   "chem_id": "CHEM-141",
+   "name": "Hall-effect measurement system",
+   "maker": "Lake Shore Cryotronics",
+   "model": "MeasureReady M91 FastHall",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/lakeshore_measurereadym91",
+   "size_m": [
+    0.343,
+    0.369,
+    0.087
+   ]
+  },
+  {
+   "slug": "signatone_quadpro2",
+   "chem_id": "CHEM-142",
+   "name": "Automated four-point-probe sheet-resistance mapper",
+   "maker": "Signatone",
+   "model": "QuadPro2",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/signatone_quadpro2",
+   "size_m": [
+    0.572,
+    0.978,
+    1.676
+   ]
+  },
+  {
+   "slug": "lakeshore_8604vsm",
+   "chem_id": "CHEM-143",
+   "name": "Vibrating sample magnetometer",
+   "maker": "Lake Shore Cryotronics",
+   "model": "8604 VSM",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/lakeshore_8604vsm",
+   "size_m": [
+    2.175,
+    1.04,
+    1.6
+   ]
+  },
+  {
+   "slug": "shimadzu_ags10knxd",
+   "chem_id": "CHEM-144",
+   "name": "Universal testing machine",
+   "maker": "Shimadzu",
+   "model": "AGS-10kNXD",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/shimadzu_ags10knxd",
+   "size_m": [
+    0.653,
+    0.52,
+    1.603
+   ]
+  },
+  {
+   "slug": "zwick_hit5p",
+   "chem_id": "CHEM-145",
+   "name": "Pendulum impact tester",
+   "maker": "ZwickRoell",
+   "model": "HIT5P",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/zwick_hit5p",
+   "size_m": [
+    0.68,
+    0.429,
+    0.684
+   ]
+  },
+  {
+   "slug": "zwick_mflow",
+   "chem_id": "CHEM-146",
+   "name": "Melt flow indexer",
+   "maker": "ZwickRoell",
+   "model": "Mflow",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/zwick_mflow",
+   "size_m": [
+    0.479,
+    0.524,
+    0.548
+   ]
+  },
+  {
+   "slug": "ametek_oxtran",
+   "chem_id": "CHEM-147",
+   "name": "Oxygen transmission-rate analyzer",
+   "maker": "AMETEK MOCON",
+   "model": "OX-TRAN 2/22 L",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/ametek_oxtran",
+   "size_m": [
+    0.3046,
+    0.6149,
+    0.5008
+   ]
+  },
+  {
+   "slug": "netzsch_mmc315",
+   "chem_id": "CHEM-148",
+   "name": "Adiabatic (ARC) reaction calorimeter",
+   "maker": "NETZSCH",
+   "model": "MMC 315 Nexus",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/netzsch_mmc315",
+   "size_m": [
+    0.62,
+    0.594,
+    0.55
+   ]
+  },
+  {
+   "slug": "mt_rc1mxhfcal",
+   "chem_id": "CHEM-149",
+   "name": "Heat-flow reaction calorimeter",
+   "maker": "METTLER TOLEDO",
+   "model": "RC1mx + HFCal",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch04/t1_thermal/mt_rc1mxhfcal",
+   "size_m": [
+    0.951,
+    0.705,
+    1.1805
+   ]
+  },
+  {
+   "slug": "ika_c6000",
+   "chem_id": "CHEM-150",
+   "name": "Oxygen bomb calorimeter",
+   "maker": "IKA",
+   "model": "C 6000 isoperibol",
+   "domain_name": "Thermal, Mechanical & Transport",
+   "path": "assets/expansion_batch03/t1_thermal/ika_c6000",
+   "size_m": [
+    0.5053,
+    0.4768,
+    0.4253
+   ]
+  },
+  {
+   "slug": "jeol_jsmit200",
+   "chem_id": "CHEM-151",
+   "name": "Scanning electron microscope",
+   "maker": "JEOL",
+   "model": "JSM-IT200 LA",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/jeol_jsmit200",
+   "size_m": [
+    1.537,
+    1.1635,
+    1.48
+   ]
+  },
+  {
+   "slug": "jeol_jem1400flash",
+   "chem_id": "CHEM-152",
+   "name": "Transmission electron microscope",
+   "maker": "JEOL",
+   "model": "JEM-1400Flash",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/jeol_jem1400flash",
+   "size_m": [
+    2.625,
+    2.2643,
+    2.4921
+   ]
+  },
+  {
+   "slug": "antonpaar_saxspace",
+   "chem_id": "CHEM-153",
+   "name": "Small-angle X-ray scattering system",
+   "maker": "Anton Paar",
+   "model": "SAXSpace",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/antonpaar_saxspace",
+   "size_m": [
+    1.8,
+    0.922,
+    1.685
+   ]
+  },
+  {
+   "slug": "kratos_axissupra",
+   "chem_id": "CHEM-154",
+   "name": "X-ray photoelectron spectrometer",
+   "maker": "Kratos / Shimadzu",
+   "model": "AXIS Supra+",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/kratos_axissupra",
+   "size_m": [
+    2.77,
+    2.064,
+    1.97
+   ]
+  },
+  {
+   "slug": "keyence_vkx3000",
+   "chem_id": "CHEM-155",
+   "name": "3D laser-scanning profilometer microscope",
+   "maker": "KEYENCE",
+   "model": "VK-X3000 / VK-X3100",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/keyence_vkx3000",
+   "size_m": [
+    1.386,
+    0.5385,
+    0.471
+   ]
+  },
+  {
+   "slug": "bruker_x4poseidon",
+   "chem_id": "CHEM-156",
+   "name": "Micro X-ray computed tomography",
+   "maker": "Bruker",
+   "model": "X4 POSEIDON",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/bruker_x4poseidon",
+   "size_m": [
+    1.8855,
+    0.622,
+    0.722
+   ]
+  },
+  {
+   "slug": "ja_alphase",
+   "chem_id": "CHEM-157",
+   "name": "Spectroscopic ellipsometer",
+   "maker": "J.A. Woollam",
+   "model": "alpha-SE",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/ja_alphase",
+   "size_m": [
+    1.23,
+    0.485,
+    0.434
+   ]
+  },
+  {
+   "slug": "park_nx10",
+   "chem_id": "CHEM-158",
+   "name": "Atomic force microscope",
+   "maker": "Park Systems",
+   "model": "NX10",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/park_nx10",
+   "size_m": [
+    0.776,
+    0.5107,
+    0.443
+   ]
+  },
+  {
+   "slug": "nanosurf_naiostm",
+   "chem_id": "CHEM-159",
+   "name": "Scanning tunneling microscope",
+   "maker": "Nanosurf",
+   "model": "NaioSTM",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/nanosurf_naiostm",
+   "size_m": [
+    0.204,
+    0.204,
+    0.104
+   ]
+  },
+  {
+   "slug": "rigaku_miniflex600_external_cooling",
+   "chem_id": "CHEM-160",
+   "name": "Powder X-ray diffractometer",
+   "maker": "Rigaku",
+   "model": "MiniFlex600",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/basic40_batch02/t4_measure/rigaku_miniflex600",
+   "size_m": [
+    0.6205,
+    0.456,
+    0.722
+   ]
+  },
+  {
+   "slug": "rigaku_xtalabsynergy",
+   "chem_id": "CHEM-161",
+   "name": "Single-crystal X-ray diffractometer",
+   "maker": "Rigaku Oxford Diffraction",
+   "model": "XtaLAB Synergy-R",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/rigaku_xtalabsynergy",
+   "size_m": [
+    1.3012,
+    0.914,
+    1.875
+   ]
+  },
+  {
+   "slug": "evident_bx53p",
+   "chem_id": "CHEM-162",
+   "name": "Polarizing microscope",
+   "maker": "Evident / Olympus",
+   "model": "BX53-P",
+   "domain_name": "Microscopy, Imaging & Diffraction",
+   "path": "assets/expansion_batch04/t3_analytical/evident_bx53p",
+   "size_m": [
+    0.282,
+    0.5124,
+    0.534
+   ]
+  },
+  {
+   "slug": "biotek_405ts",
+   "chem_id": "CHEM-163",
+   "name": "Microplate washer",
+   "maker": "Agilent BioTek",
+   "model": "405 TS (96-tube manifold)",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/biotek_405ts",
+   "size_m": [
+    0.3556,
+    0.4318,
+    0.254
+   ]
+  },
+  {
+   "slug": "biorad_miniprotean",
+   "chem_id": "CHEM-164",
+   "name": "Gel electrophoresis system",
+   "maker": "Bio-Rad",
+   "model": "Mini-PROTEAN Tetra + power supply",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch03/t4_measure/biorad_miniprotean",
+   "size_m": [
+    0.41,
+    0.289,
+    0.1993
+   ]
+  },
+  {
+   "slug": "thermo_ibrightfl1500",
+   "chem_id": "CHEM-165",
+   "name": "Gel & blot imager",
+   "maker": "Thermo Fisher Scientific",
+   "model": "iBright FL1500",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch03/t4_measure/thermo_ibrightfl1500",
+   "size_m": [
+    0.38,
+    0.68,
+    0.6
+   ]
+  },
+  {
+   "slug": "eppendorf_cellxpertc170i",
+   "chem_id": "CHEM-166",
+   "name": "CO₂ cell-culture incubator",
+   "maker": "Eppendorf",
+   "model": "CellXpert C170i",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/eppendorf_cellxpertc170i",
+   "size_m": [
+    0.72,
+    0.7153,
+    0.9
+   ]
+  },
+  {
+   "slug": "biorad_cfxopus",
+   "chem_id": "CHEM-167",
+   "name": "Real-time qPCR system",
+   "maker": "Bio-Rad",
+   "model": "CFX Opus 96",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/biorad_cfxopus",
+   "size_m": [
+    0.33,
+    0.5608,
+    0.36
+   ]
+  },
+  {
+   "slug": "bd_facsariaiii",
+   "chem_id": "CHEM-168",
+   "name": "Flow cytometer & cell sorter",
+   "maker": "BD Biosciences",
+   "model": "FACSAria III",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/bd_facsariaiii",
+   "size_m": [
+    2.135,
+    0.7286,
+    0.71
+   ]
+  },
+  {
+   "slug": "malvern_microcalpeaq",
+   "chem_id": "CHEM-169",
+   "name": "Isothermal titration calorimeter",
+   "maker": "Malvern Panalytical",
+   "model": "MicroCal PEAQ-ITC",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/malvern_microcalpeaq",
+   "size_m": [
+    0.43,
+    0.377,
+    0.3688
+   ]
+  },
+  {
+   "slug": "cytiva_biacoret200",
+   "chem_id": "CHEM-170",
+   "name": "Surface plasmon resonance system",
+   "maker": "Cytiva",
+   "model": "Biacore T200",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/cytiva_biacoret200",
+   "size_m": [
+    0.6,
+    0.615,
+    0.69
+   ]
+  },
+  {
+   "slug": "wtw_oxitopi",
+   "chem_id": "CHEM-171",
+   "name": "Respirometric BOD system",
+   "maker": "WTW (Xylem)",
+   "model": "OxiTop-i",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/wtw_oxitopi",
+   "size_m": [
+    0.265,
+    0.1966,
+    0.2556
+   ]
+  },
+  {
+   "slug": "seal_aa500",
+   "chem_id": "CHEM-172",
+   "name": "Segmented continuous-flow analyzer",
+   "maker": "SEAL Analytical",
+   "model": "AA500",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/seal_aa500",
+   "size_m": [
+    1.405,
+    0.479,
+    0.409
+   ]
+  },
+  {
+   "slug": "bmg_clariostarplus",
+   "chem_id": "CHEM-173",
+   "name": "Multi-mode microplate reader",
+   "maker": "BMG LABTECH",
+   "model": "CLARIOstar Plus",
+   "domain_name": "Biochemical & Wet-Chemistry Assays",
+   "path": "assets/expansion_batch04/t4_measure/bmg_clariostarplus",
+   "size_m": [
+    0.4512,
+    0.5168,
+    0.401
+   ]
+  },
+  {
+   "slug": "mt_quantos_q2_xpe206dr",
+   "chem_id": "CHEM-174",
+   "name": "Automated powder dosing system",
+   "maker": "METTLER TOLEDO",
+   "model": "Quantos Q2 + XPE206DR",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/mt_quantos_q2",
+   "size_m": [
+    0.263,
+    0.542,
+    0.495
+   ]
+  },
+  {
+   "slug": "opentrons_flex_single_5_1000ul",
+   "chem_id": "CHEM-175",
+   "name": "Automated liquid-handling robot",
+   "maker": "Opentrons",
+   "model": "Flex (1-channel 5–1000 µL)",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/opentrons_flex",
+   "size_m": [
+    0.87,
+    0.6909,
+    0.84
+   ]
+  },
+  {
+   "slug": "azenta_automated_roll_heat_sealer_a4s",
+   "chem_id": "CHEM-176",
+   "name": "Automated microplate heat sealer",
+   "maker": "Azenta Life Sciences",
+   "model": "Automated Roll Heat Sealer (a4S)",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/azenta_heat_sealer",
+   "size_m": [
+    0.2312,
+    0.5075,
+    0.403
+   ]
+  },
+  {
+   "slug": "azenta_intellixcap_s1_46_0001",
+   "chem_id": "CHEM-177",
+   "name": "Automated tube decapper/recapper",
+   "maker": "Azenta Life Sciences",
+   "model": "IntelliXcap S1 46-0001",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/azenta_intellixcap_s1",
+   "size_m": [
+    0.17,
+    0.24,
+    0.3
+   ]
+  },
+  {
+   "slug": "brooks_preciseflex_400",
+   "chem_id": "CHEM-178",
+   "name": "Lab sample-transfer robot arm",
+   "maker": "Brooks Automation",
+   "model": "PreciseFlex 400",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/preciseflex_400",
+   "size_m": [
+    0.715,
+    0.2111,
+    0.682
+   ]
+  },
+  {
+   "slug": "ziath_dp5_mirage_2023",
+   "chem_id": "CHEM-179",
+   "name": "2D-barcode rack reader",
+   "maker": "Azenta Ziath",
+   "model": "DP5 Mirage",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/ziath_dp5",
+   "size_m": [
+    0.208,
+    0.135,
+    0.1214
+   ]
+  },
+  {
+   "slug": "alicat_mc_1slpm_rev6",
+   "chem_id": "CHEM-180",
+   "name": "Gas mass-flow controller",
+   "maker": "Alicat Scientific",
+   "model": "MC, 1 SLPM full scale, Rev6",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/alicat_mc",
+   "size_m": [
+    0.0911,
+    0.0267,
+    0.1033
+   ]
+  },
+  {
+   "slug": "bronkhorst_p702cv_5bar_gauge_n2",
+   "chem_id": "CHEM-181",
+   "name": "Electronic back-pressure controller",
+   "maker": "Bronkhorst",
+   "model": "EL-PRESS P-702CV",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/bronkhorst_p702cv",
+   "size_m": [
+    0.127,
+    0.025,
+    0.123
+   ]
+  },
+  {
+   "slug": "vici_euta_2sd6mwe",
+   "chem_id": "CHEM-182",
+   "name": "Multi-position gas stream-selection valve",
+   "maker": "VICI Valco",
+   "model": "EUTA-2SD6MWE",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/basic40_batch02/t5_automation/vici_euta",
+   "size_m": [
+    0.2338,
+    0.1755,
+    0.105
+   ]
+  },
+  {
+   "slug": "bronkhorst_cemw",
+   "chem_id": "CHEM-183",
+   "name": "Controlled evaporator & mixer",
+   "maker": "Bronkhorst",
+   "model": "CEM W-202A",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/expansion_batch03/t5_automation/bronkhorst_cemw",
+   "size_m": [
+    0.12,
+    0.11,
+    0.3819
+   ]
+  },
+  {
+   "slug": "newera_ne1000",
+   "chem_id": "CHEM-184",
+   "name": "Programmable syringe pump",
+   "maker": "New Era Pump Systems",
+   "model": "NE-1000 Multi-Phaser",
+   "domain_name": "Automation & Gas/Liquid Supply",
+   "path": "assets/expansion_batch05/t5_automation/newera_ne1000",
+   "size_m": [
+    0.2965,
+    0.1527,
+    0.1151
+   ]
+  },
+  {
+   "slug": "nabertherm_l9",
+   "chem_id": "CHEM-185",
+   "name": "Muffle furnace",
+   "maker": "Nabertherm",
+   "model": "L 9/11/SKM",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/basic40_batch02/t1_thermal/nabertherm_l9",
+   "size_m": [
+    0.49,
+    0.505,
+    0.58
+   ]
+  },
+  {
+   "slug": "carbolite_tf1_12_60_300",
+   "chem_id": "CHEM-186",
+   "name": "Tube furnace (controlled atmosphere)",
+   "maker": "Carbolite Gero",
+   "model": "TF1 12/60/300",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/basic40_batch02/t1_thermal/carbolite_tf1",
+   "size_m": [
+    0.876,
+    0.48,
+    0.575
+   ]
+  },
+  {
+   "slug": "julabo_corio_cd200f",
+   "chem_id": "CHEM-187",
+   "name": "Heating/refrigerated circulator",
+   "maker": "JULABO",
+   "model": "CORIO CD-200F",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/basic40_batch02/t1_thermal/julabo_corio_cd200f",
+   "size_m": [
+    0.23,
+    0.3898,
+    0.65
+   ]
+  },
+  {
+   "slug": "vacuubrand_pc3001_vario_select",
+   "chem_id": "CHEM-188",
+   "name": "Chemistry vacuum pumping unit",
+   "maker": "VACUUBRAND",
+   "model": "PC 3001 VARIO select",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/basic40_batch02/t2_vacuum/vacuubrand_pc3001",
+   "size_m": [
+    0.306,
+    0.303,
+    0.4
+   ]
+  },
+  {
+   "slug": "inert_purelab_he_2gb",
+   "chem_id": "CHEM-189",
+   "name": "Inert-atmosphere glovebox",
+   "maker": "Inert",
+   "model": "PureLab HE 2GB",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/basic40_batch02/t2_vacuum/inert_purelab_he",
+   "size_m": [
+    2.0,
+    1.067,
+    1.921
+   ]
+  },
+  {
+   "slug": "elga_purelab_flex3",
+   "chem_id": "CHEM-190",
+   "name": "Lab ultrapure water system",
+   "maker": "ELGA LabWater",
+   "model": "PURELAB flex 3",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/basic40_batch02/t2_vacuum/elga_purelab_flex3",
+   "size_m": [
+    0.236,
+    0.47,
+    0.9
+   ]
+  },
+  {
+   "slug": "miele_plw6111",
+   "chem_id": "CHEM-191",
+   "name": "Laboratory glassware washer",
+   "maker": "Miele",
+   "model": "PLW 6111",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/basic40_batch02/t1_thermal/miele_plw6111",
+   "size_m": [
+    0.65,
+    0.744,
+    1.87
+   ]
+  },
+  {
+   "slug": "tuttnauer_3870elvd",
+   "chem_id": "CHEM-192",
+   "name": "Steam autoclave",
+   "maker": "Tuttnauer",
+   "model": "3870ELV-D",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch03/t2_vacuum/tuttnauer_3870elvd",
+   "size_m": [
+    0.731,
+    0.555,
+    1.0
+   ]
+  },
+  {
+   "slug": "esco_ac24s8",
+   "chem_id": "CHEM-193",
+   "name": "Biological safety cabinet",
+   "maker": "Esco Lifesciences",
+   "model": "AC2-4S8-TU",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch04/t2_vacuum/esco_ac24s8",
+   "size_m": [
+    1.34,
+    0.823,
+    1.4
+   ]
+  },
+  {
+   "slug": "inficon_ul1000fab",
+   "chem_id": "CHEM-194",
+   "name": "Helium leak detector",
+   "maker": "INFICON",
+   "model": "UL1000 Fab",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch04/t2_vacuum/inficon_ul1000fab",
+   "size_m": [
+    1.068,
+    0.525,
+    0.85
+   ]
+  },
+  {
+   "slug": "vaisala_dmt152",
+   "chem_id": "CHEM-195",
+   "name": "Trace-moisture dew-point transmitter",
+   "maker": "Vaisala",
+   "model": "DMT152",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch04/t2_vacuum/vaisala_dmt152",
+   "size_m": [
+    0.1275,
+    0.033,
+    0.03
+   ]
+  },
+  {
+   "slug": "peak_precisionhydrogen",
+   "chem_id": "CHEM-196",
+   "name": "Laboratory hydrogen generator",
+   "maker": "PEAK Scientific",
+   "model": "Precision Hydrogen Trace 500",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch04/t2_vacuum/peak_precisionhydrogen",
+   "size_m": [
+    0.3814,
+    0.5656,
+    0.4067
+   ]
+  },
+  {
+   "slug": "eppendorf_cryocubef570n",
+   "chem_id": "CHEM-197",
+   "name": "Ultra-low temperature freezer",
+   "maker": "Eppendorf",
+   "model": "CryoCube F570n",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch04/t2_vacuum/eppendorf_cryocubef570n",
+   "size_m": [
+    1.1415,
+    1.009,
+    1.95
+   ]
+  },
+  {
+   "slug": "binder_kbf115",
+   "chem_id": "CHEM-198",
+   "name": "Constant climate (T/RH) chamber",
+   "maker": "BINDER",
+   "model": "KBF 115",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch04/t2_vacuum/binder_kbf115",
+   "size_m": [
+    0.9055,
+    0.7971,
+    1.05
+   ]
+  },
+  {
+   "slug": "esco_efa5uduvw",
+   "chem_id": "CHEM-199",
+   "name": "Chemical fume hood",
+   "maker": "Esco Lifesciences",
+   "model": "Frontier Acela EFA-5UDUVW-9",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch05/t2_vacuum/esco_efa5uduvw",
+   "size_m": [
+    1.602,
+    0.9097,
+    1.521
+   ]
+  },
+  {
+   "slug": "inert_puresolvmd",
+   "chem_id": "CHEM-200",
+   "name": "Solvent purification system",
+   "maker": "Inert",
+   "model": "PureSolv MD 7",
+   "domain_name": "Lab Environment & Utilities",
+   "path": "assets/expansion_batch04/t2_vacuum/inert_puresolvmd",
+   "size_m": [
+    1.6104,
+    0.8356,
+    1.9459
+   ]
+  },
+  {
+   "slug": "agilent_7890b_ssl_fid",
+   "chem_id": null,
+   "name": "Gas chromatograph (S/SL inlet + FID)",
+   "maker": "Agilent",
+   "model": "7890B",
+   "domain_name": "Chromatography & Electrophoresis",
+   "path": "assets/GC7890B",
+   "size_m": [
+    0.5803,
+    0.545,
+    0.4905
+   ]
+  },
+  {
+   "slug": "ohaus_px224e",
+   "chem_id": null,
+   "name": "Analytical balance",
+   "maker": "OHAUS",
+   "model": "Pioneer PX224/E",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/PX224E",
+   "size_m": [
+    0.209,
+    0.3285,
+    0.309
+   ]
+  },
+  {
+   "slug": "ohaus_spx2201",
+   "chem_id": null,
+   "name": "Portable precision balance",
+   "maker": "OHAUS",
+   "model": "Scout SPX2201",
+   "domain_name": "Basic Metrology & Sample Handling",
+   "path": "assets/SPX2201",
+   "size_m": [
+    0.202,
+    0.2255,
+    0.054
+   ]
+  }
+ ]
+}

@@ -991,11 +991,13 @@ export default function App() {
                 <div className={s.instrumentPage}>
                   <InstrumentStories onDesign={createStudio} busy={busy} />
                   <Suspense fallback={null}>
-                    <InstrumentStudio />
+                    <InstrumentStudio registerLeaveGuard={registerLeaveGuard} />
                   </Suspense>
                 </div>
               ) : view === "sim" ? (
-                <SimulationLab />
+                <SimulationLab
+                  onOpenInstruments={() => nav("instruments/workflow")}
+                />
               ) : view === "marketplace" ? (
                 <WorkflowMarketplace
                   onAdapt={(item) => {
@@ -1028,7 +1030,9 @@ export default function App() {
                   registerLeaveGuard={registerLeaveGuard}
                 />
               ) : view === "connector" ? (
-                <ConnectorExplorer />
+                <ConnectorExplorer
+                  onOpenInstruments={() => nav("instruments/connectors")}
+                />
               ) : view === "connect" ? (
                 <ConnectorSetup
                   key={workspaceRouteRevision}

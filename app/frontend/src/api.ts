@@ -47,7 +47,10 @@ export class ApiError extends Error {
     super(message);
   }
 }
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function apiResponse(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
   const user = await manager?.getUser();
   const headers = new Headers(init.headers);
   if (init.body) headers.set("Content-Type", "application/json");
@@ -79,7 +82,22 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
             : "The request could not be completed.";
     throw new ApiError(response.status, detail);
   }
-  return response.json();
+  return response;
+}
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return (await apiResponse(path, init)).json();
+}
+export async function apiText(
+  path: string,
+  init: RequestInit = {},
+): Promise<string> {
+  return (await apiResponse(path, init)).text();
+}
+export async function apiBlob(
+  path: string,
+  init: RequestInit = {},
+): Promise<Blob> {
+  return (await apiResponse(path, init)).blob();
 }
 export const json = (body: unknown, method = "POST") => ({
   method,

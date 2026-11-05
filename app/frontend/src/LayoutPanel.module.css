@@ -1,0 +1,178 @@
+.bench {
+  width: 100%;
+  height: auto;
+  max-height: 340px;
+  background: var(--surface-2);
+  border-radius: 7px;
+  box-shadow: var(--ring);
+  touch-action: none;
+  user-select: none;
+}
+.surface {
+  fill: var(--surface-1);
+  stroke: var(--line-strong);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.grid {
+  stroke: var(--line);
+  stroke-width: 0.5px;
+  vector-effect: non-scaling-stroke;
+}
+.reach {
+  fill: color-mix(in srgb, var(--info) 8%, transparent);
+  stroke: var(--info);
+  stroke-dasharray: 4 4;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.footprint {
+  cursor: grab;
+  outline: none;
+}
+.footprint polygon {
+  fill-opacity: 0.85;
+  stroke: var(--ink);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.arm polygon {
+  fill-opacity: 1;
+}
+.selected polygon,
+.footprint:focus-visible polygon {
+  stroke: var(--focus);
+  stroke-width: 2.5px;
+}
+.conflict polygon {
+  stroke: var(--danger);
+  stroke-width: 2.5px;
+  stroke-dasharray: 5 3;
+}
+.access {
+  fill: var(--on-brand);
+  stroke: var(--ink);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.label {
+  font-size: 0.06px;
+  font-weight: 600;
+  fill: var(--ink);
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--surface-1);
+  stroke-width: 0.016px;
+  pointer-events: none;
+}
+.benchSize,
+.selectedFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.benchSize label,
+.selectedFields label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.selectedFields {
+  border: var(--hairline) solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+  margin: 0;
+}
+.selectedFields legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+.fieldTools {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.unplaced {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.motions {
+  display: grid;
+  gap: 8px;
+}
+.motions > strong small {
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.motions ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.motion {
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  padding: 10px 12px;
+  border: var(--hairline) solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-1);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.motion small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.motionActive {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand);
+}
+.motionBlocked {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.motionBlocked small,
+.problem {
+  color: var(--danger);
+}
+.problem {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.motionRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+.motionRow > button:last-child:not(:first-child) {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.export {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.export label {
+  display: grid;
+  gap: 4px;
+  max-width: 160px;
+}
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+}

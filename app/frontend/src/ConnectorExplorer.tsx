@@ -422,7 +422,11 @@ function SourceMap() {
   );
 }
 
-export default function ConnectorExplorer() {
+export default function ConnectorExplorer({
+  onOpenInstruments,
+}: {
+  onOpenInstruments: () => void;
+}) {
   type View = "course" | "map" | "mapping" | "development";
   const [view, setCurrentView] = useState<View>(() => {
     const part = window.location.hash.split("/")[2];
@@ -464,6 +468,9 @@ export default function ConnectorExplorer() {
           </strong>
         </div>
       </header>
+      <button onClick={onOpenInstruments}>
+        Open instrument mock connectors <ArrowRight size={16} />
+      </button>
       <div className={styles.courseBar}>
         <div
           className={styles.tabs}

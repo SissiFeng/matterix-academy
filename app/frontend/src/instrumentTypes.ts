@@ -72,6 +72,49 @@ export type Residual = {
   resolved_in: number | null;
   evidence: "learner_observation";
 };
+export type SimReadyProvenance = {
+  id: string;
+  label: string;
+  provider: string;
+  license: string;
+  attribution: string;
+  repo: string;
+  revision: string;
+  path: string;
+  url: string;
+};
+export type SimReadyAsset = Omit<SimReadyProvenance, "id"> & {
+  spec: TwinSpec;
+};
+export type LibraryEntry = {
+  collection: "simready" | "chemlab";
+  id: string;
+  name: string;
+  label: string;
+  provider: string;
+  domain: string;
+  license: string;
+  attribution: string;
+  size_m: [number, number, number];
+  operations: Operation[];
+};
+export type LibraryResults = {
+  size: number;
+  total: number;
+  results: LibraryEntry[];
+};
+export type LibraryMatch = LibraryEntry & {
+  suggested_by: "astra" | "label_text";
+  verified: boolean;
+};
+export type Identification = {
+  library_id: string;
+  alternatives: string[];
+  maker: string;
+  model: string;
+  confidence: "high" | "medium" | "low";
+  evidence: string;
+};
 export type Twin = {
   id: string;
   status:
@@ -83,7 +126,11 @@ export type Twin = {
     | "submission_unknown";
   confirmed: boolean;
   mode: "mock" | "real";
-  source: "astra_image" | "academy_template";
+  source:
+    "astra_image" | "academy_template" | "simready_asset" | "chemlab_asset";
+  asset?: SimReadyProvenance | null;
+  identification?: Identification | null;
+  matches?: LibraryMatch[];
   spec: TwinSpec | null;
   message: string;
   evidence: "synthetic";
@@ -96,6 +143,46 @@ export type Step = {
   source_id: string | null;
   target_id: string | null;
   value: number;
+};
+export type Access = "top" | "front";
+export type Placement = {
+  twin_id: string;
+  x: number;
+  z: number;
+  yaw: number;
+  access: Access;
+};
+export type Bench = { width: number; depth: number };
+export type Layout = { bench: Bench; placements: Placement[] };
+/** World points (y-up, metres) of the arm base, six joints and the grasp point. */
+export type ArmFrame = Vec[];
+export type MotionSummary = {
+  step: number;
+  actor_id: string;
+  source_id: string;
+  target_id: string;
+  arm: string;
+  planner: "swing" | "joint" | "rrt_connect";
+  length_m: number;
+  clearance_m: number;
+};
+export type Motion = MotionSummary & { frames: ArmFrame[] };
+export type BlockedMotion = {
+  step: number;
+  actor_id: string;
+  source_id: string;
+  target_id: string;
+  arm: string;
+  blocked_by: string | null;
+  link: string | null;
+  frames: ArmFrame[];
+};
+export type LayoutPreview = {
+  arm: string;
+  reach_m: number;
+  motions: Motion[];
+  error: { message: string; layer: string } | null;
+  blocked: BlockedMotion | null;
 };
 export type TraceStep = {
   step: number;
@@ -114,14 +201,15 @@ export type TraceStep = {
     volume_ul: number;
     mixed: boolean;
   } | null;
+  motion?: MotionSummary;
 };
 export type InstrumentRun = {
   id: string;
   created_at: string;
   evidence: "synthetic";
-  connector: "mock_sila2";
+  connector: "in_process_mock" | "mock_sila2";
   steps: Step[];
-  twins: { id: string; name: string; revision: number }[];
+  twins: { id: string; name: string; revision: number; spec?: TwinSpec }[];
   trace: TraceStep[];
   status: "completed";
 };
@@ -130,7 +218,9 @@ export type InstrumentCatalog = {
   twins: Twin[];
   steps: Step[];
   runs: InstrumentRun[];
+  layout: Layout | null;
   templates: Record<string, TwinSpec>;
+  simready: Record<string, SimReadyAsset>;
   astra_available: boolean;
   real_available: boolean;
   real_reason: string;
