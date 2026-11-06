@@ -524,6 +524,8 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
 test("layout search keeps pinned instruments and compares measured options", async ({
   page,
 }) => {
+  // Each search chunk runs up to 6 s of planning; CI runners are slower than laptops.
+  test.setTimeout(120_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await enterInstruments(page);
@@ -562,7 +564,7 @@ test("layout search keeps pinned instruments and compares measured options", asy
   ).toBeChecked();
   await page.getByRole("button", { name: "Search layouts" }).click();
   const first = page.getByRole("button", { name: /^Layout \d+/ }).first();
-  await expect(first).toContainText("s run");
+  await expect(first).toContainText("s run", { timeout: 60_000 });
   await expect(first).toContainText("cm reach margin");
   await page.getByRole("button", { name: "Stop" }).click();
   await expect(
@@ -599,7 +601,9 @@ test("layout search keeps pinned instruments and compares measured options", asy
   await page.getByLabel("Bench width (m)").fill("0.8");
   await page.getByLabel("Bench depth (m)").fill("0.6");
   await page.getByRole("button", { name: "Search layouts" }).click();
-  await expect(page.getByText(/No feasible layout/)).toBeVisible();
+  await expect(page.getByText(/No feasible layout/)).toBeVisible({
+    timeout: 60_000,
+  });
   expect(errors).toEqual([]);
 });
 
