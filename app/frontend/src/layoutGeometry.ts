@@ -20,6 +20,41 @@ export function footprint(spec: TwinSpec) {
   return { x0: lo(0), x1: hi(0), z0: lo(2), z1: hi(2) };
 }
 
+export function top(spec: TwinSpec) {
+  return Math.max(...spec.parts.map((p) => p.position[1] + p.size[1] / 2));
+}
+
+/** Mirrors workcell_layout.mount: the arm base frame (Z up) on top of its pedestal, as a Y-up world matrix. */
+export function mountMatrix(
+  spec: TwinSpec,
+  p: Pick<Placement, "x" | "z" | "yaw">,
+) {
+  const { x0, x1, z0, z1 } = footprint(spec);
+  const [rx, rz] = rotate(p.yaw, (x0 + x1) / 2, (z0 + z1) / 2);
+  const r = (p.yaw * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  // Row-major, as Matrix4.set takes it.
+  return [
+    c,
+    -s,
+    0,
+    p.x + rx,
+    0,
+    0,
+    1,
+    top(spec),
+    -s,
+    -c,
+    0,
+    p.z + rz,
+    0,
+    0,
+    0,
+    1,
+  ];
+}
+
 export function corners(spec: TwinSpec, p: Placement): Point[] {
   const { x0, x1, z0, z1 } = footprint(spec);
   return (

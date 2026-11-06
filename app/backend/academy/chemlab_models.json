@@ -1,0 +1,1205 @@
+{
+ "revision": "3b67020dcccb22e60be3235f32b39d03da5959ab",
+ "models": {
+  "agilent_1260infinity": {
+   "file": "library-models/chemlab/agilent_1260infinity.glb",
+   "source": "assets/expansion_batch04/t3_analytical/agilent_1260infinity/model.glb",
+   "sha256": "5cedb0acbd3d2981abe3f5dd7baaf1029e4f729ff6c6e178e0d6afe4779e793f",
+   "bytes": 1232344
+  },
+  "agilent_1290infinity": {
+   "file": "library-models/chemlab/agilent_1290infinity.glb",
+   "source": "assets/expansion_batch04/t3_analytical/agilent_1290infinity/model.glb",
+   "sha256": "6e50416396aed0c382dadd768730c1c9a51651a857df6382e298b0f9da18da5a",
+   "bytes": 226044
+  },
+  "agilent_gc8890b": {
+   "file": "library-models/chemlab/agilent_gc8890b.glb",
+   "source": "assets/basic40_batch02/t3_analytical/agilent_gc8890b/model.glb",
+   "sha256": "abd24cfd94b4281fe1439b85333c7c55d679313ad63446ad56ebc7248e3f5962",
+   "bytes": 4902540
+  },
+  "agilent_hplc1260": {
+   "file": "library-models/chemlab/agilent_hplc1260.glb",
+   "source": "assets/basic40_batch02/t3_analytical/agilent_hplc1260/model.glb",
+   "sha256": "f7e46d383e82093a138753205ac8fef33dc32e0e8d626d8c894d3050f5107242",
+   "bytes": 1975504
+  },
+  "agilent_hs8697": {
+   "file": "library-models/chemlab/agilent_hs8697.glb",
+   "source": "assets/basic40_batch02/t3_analytical/agilent_hs8697/model.glb",
+   "sha256": "78ac4067ec0d3c2888dd7b9f8dc4333eb07a656d9446ffe892c6cf82d0211f93",
+   "bytes": 7645312
+  },
+  "alicat_mc_1slpm_rev6": {
+   "file": "library-models/chemlab/alicat_mc_1slpm_rev6.glb",
+   "source": "assets/basic40_batch02/t5_automation/alicat_mc/model.glb",
+   "sha256": "28eb7577cb2abe3e42515b1cd062c72f803ad52d29e92babb7c27d7735f878de",
+   "bytes": 515748
+  },
+  "ametek_oxtran": {
+   "file": "library-models/chemlab/ametek_oxtran.glb",
+   "source": "assets/expansion_batch04/t1_thermal/ametek_oxtran/model.glb",
+   "sha256": "cbd89ccbddc828622560f423793d567ac73a7c14e596533420cc88e9f633f064",
+   "bytes": 588036
+  },
+  "antonpaar_abbematadvanced": {
+   "file": "library-models/chemlab/antonpaar_abbematadvanced.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_abbematadvanced/model.glb",
+   "sha256": "1c162051e51ed13490ce48546ddfd0ea70c7c1d1a9c9f674830e244cd1ce38b4",
+   "bytes": 533332
+  },
+  "antonpaar_autosorb6100": {
+   "file": "library-models/chemlab/antonpaar_autosorb6100.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_autosorb6100/model.glb",
+   "sha256": "3d5073796638ca69e2f4e0e4d06e671b70af5136fed948612d66c9690b2df2c9",
+   "bytes": 383144
+  },
+  "antonpaar_dma5002": {
+   "file": "library-models/chemlab/antonpaar_dma5002.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_dma5002/model.glb",
+   "sha256": "3cadd8d17caf59cec7f70c55e307268c4018c75f9e2d3412f0f64e7e798b9e37",
+   "bytes": 938672
+  },
+  "antonpaar_hit300": {
+   "file": "library-models/chemlab/antonpaar_hit300.glb",
+   "source": "assets/expansion_batch04/t1_thermal/antonpaar_hit300/model.glb",
+   "sha256": "73c0471c4d18e02ca647ba878df6cd920fd682da37f6d48789117cca8c0d5198",
+   "bytes": 301168
+  },
+  "antonpaar_litesizerdia": {
+   "file": "library-models/chemlab/antonpaar_litesizerdia.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_litesizerdia/model.glb",
+   "sha256": "fe47213790e64b91b2d82a1e241dda4d0b597f16367087175eabc913f7ff0dcc",
+   "bytes": 145864
+  },
+  "antonpaar_litesizerdls": {
+   "file": "library-models/chemlab/antonpaar_litesizerdls.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_litesizerdls/model.glb",
+   "sha256": "2f6dac9ecbb5b1c5ee98f48edef86944427d817a9a79a97c8e63de10d69d78fd",
+   "bytes": 152424
+  },
+  "antonpaar_mcr503": {
+   "file": "library-models/chemlab/antonpaar_mcr503.glb",
+   "source": "assets/expansion_batch04/t1_thermal/antonpaar_mcr503/model.glb",
+   "sha256": "bbdb62920dc653487a5a5db6a65872e60231a945ef7f23fe507beb61a740b6ab",
+   "bytes": 113716
+  },
+  "antonpaar_monowave400": {
+   "file": "library-models/chemlab/antonpaar_monowave400.glb",
+   "source": "assets/expansion_batch03/t5_automation/antonpaar_monowave400/model.glb",
+   "sha256": "bc834e5bba0c99bb27fadf013602bca2a50c57c74f59b2c8706280b5dea06870",
+   "bytes": 660828
+  },
+  "antonpaar_poremaster60": {
+   "file": "library-models/chemlab/antonpaar_poremaster60.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_poremaster60/model.glb",
+   "sha256": "b7055f4865a587915fc485b1a42738afed841de6fd91b33b1927361340b47b39",
+   "bytes": 300860
+  },
+  "antonpaar_psa1190": {
+   "file": "library-models/chemlab/antonpaar_psa1190.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_psa1190/model.glb",
+   "sha256": "4210798b338450e0f6788962216e746e1c1b925cb048d80077743d0eb7682c2c",
+   "bytes": 359064
+  },
+  "antonpaar_rst300": {
+   "file": "library-models/chemlab/antonpaar_rst300.glb",
+   "source": "assets/expansion_batch04/t1_thermal/antonpaar_rst300/model.glb",
+   "sha256": "35fc618dc145bafeee7000d61f3291c251c74e1b60889d2366b9ec355f524b0c",
+   "bytes": 346804
+  },
+  "antonpaar_saxspace": {
+   "file": "library-models/chemlab/antonpaar_saxspace.glb",
+   "source": "assets/expansion_batch04/t3_analytical/antonpaar_saxspace/model.glb",
+   "sha256": "97a52459f8ef69c6c5201bcf25263194c491d79de021afddd875886ecf43da6a",
+   "bytes": 590476
+  },
+  "antonpaar_surpass3": {
+   "file": "library-models/chemlab/antonpaar_surpass3.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_surpass3/model.glb",
+   "sha256": "75c10f2789f13d482812a3b590149edd0fd7890a5290415c1505190e71e0d076",
+   "bytes": 362400
+  },
+  "antonpaar_trb": {
+   "file": "library-models/chemlab/antonpaar_trb.glb",
+   "source": "assets/expansion_batch04/t1_thermal/antonpaar_trb/model.glb",
+   "sha256": "3aa802f7c0390a82625ecd396a574807caaaf560c92123d0eaa0b36d4dbecb9d",
+   "bytes": 331532
+  },
+  "antonpaar_ultrapyc5000": {
+   "file": "library-models/chemlab/antonpaar_ultrapyc5000.glb",
+   "source": "assets/expansion_batch03/t4_measure/antonpaar_ultrapyc5000/model.glb",
+   "sha256": "8e52d04191618bd68a8b33d4a1ce6d2549b5d068211d162c33058350720fdf5e",
+   "bytes": 249044
+  },
+  "applied_sx20": {
+   "file": "library-models/chemlab/applied_sx20.glb",
+   "source": "assets/expansion_batch04/t3_analytical/applied_sx20/model.glb",
+   "sha256": "66e7fd21736da9755bb4b1a5c148e5a5cec9164b9cf7fad5e775b0147be50c7d",
+   "bytes": 1723296
+  },
+  "aqualab_4te": {
+   "file": "library-models/chemlab/aqualab_4te.glb",
+   "source": "assets/expansion_batch04/t4_measure/aqualab_4te/model.glb",
+   "sha256": "2be4743e690beac7ea17a1a21f1d514b119ac821e64811b6219f59a0e9188bea",
+   "bytes": 310856
+  },
+  "arradiance_gemstarxt": {
+   "file": "library-models/chemlab/arradiance_gemstarxt.glb",
+   "source": "assets/expansion_batch04/t5_automation/arradiance_gemstarxt/model.glb",
+   "sha256": "1cc7c64866f99d790034e4d37f4a8ddfadb5b7cd01d498488aa6fb976d8dbb30",
+   "bytes": 522688
+  },
+  "azenta_automated_roll_heat_sealer_a4s": {
+   "file": "library-models/chemlab/azenta_automated_roll_heat_sealer_a4s.glb",
+   "source": "assets/basic40_batch02/t5_automation/azenta_heat_sealer/model.glb",
+   "sha256": "35d39bd6893dbd2807e9b3070545a000a904b27c8cc4a3ab811adac37aa98407",
+   "bytes": 2061532
+  },
+  "azenta_intellixcap_s1_46_0001": {
+   "file": "library-models/chemlab/azenta_intellixcap_s1_46_0001.glb",
+   "source": "assets/basic40_batch02/t5_automation/azenta_intellixcap_s1/model.glb",
+   "sha256": "de8a55373a3611b0e28ef96724cff69d340dd577687a0d2a8fd0503e76824735",
+   "bytes": 1603280
+  },
+  "bd_facsariaiii": {
+   "file": "library-models/chemlab/bd_facsariaiii.glb",
+   "source": "assets/expansion_batch04/t4_measure/bd_facsariaiii/model.glb",
+   "sha256": "aa83d2c722fa9bf9452fea74151b5a5675742028dcef065f47a4c21e42c229fb",
+   "bytes": 384672
+  },
+  "binder_fd056": {
+   "file": "library-models/chemlab/binder_fd056.glb",
+   "source": "assets/expansion_batch05/t4_measure/binder_fd056/model.glb",
+   "sha256": "b72b6a9a1c6195114337ea6b30e71967b1ee1e5c87b37f7d64db87e537e5e883",
+   "bytes": 2039740
+  },
+  "binder_kbf115": {
+   "file": "library-models/chemlab/binder_kbf115.glb",
+   "source": "assets/expansion_batch04/t2_vacuum/binder_kbf115/model.glb",
+   "sha256": "28f32fa4fc3e2912d8aa449a244d50c147a8705925aa758e98739740b984cf77",
+   "bytes": 3358604
+  },
+  "binder_vd56": {
+   "file": "library-models/chemlab/binder_vd56.glb",
+   "source": "assets/basic40_batch02/t1_thermal/binder_vd56/model.glb",
+   "sha256": "8d307b7ae3544572214cceca53693a2010be12b823a5640c84cc3b942dd9eeb1",
+   "bytes": 1365444
+  },
+  "biolin_mediuml": {
+   "file": "library-models/chemlab/biolin_mediuml.glb",
+   "source": "assets/expansion_batch03/t4_measure/biolin_mediuml/model.glb",
+   "sha256": "7b07491964fdc0e8f3db89de965b3a35b8248f2329c02c2ad692c4d23d8d0b4b",
+   "bytes": 298020
+  },
+  "biolin_sigma700": {
+   "file": "library-models/chemlab/biolin_sigma700.glb",
+   "source": "assets/expansion_batch03/t4_measure/biolin_sigma700/model.glb",
+   "sha256": "6aff070b383a803bbc1a864e56e3d606f4597bda6f1241e30e0dd211c1609a15",
+   "bytes": 277672
+  },
+  "biolin_thetaflex": {
+   "file": "library-models/chemlab/biolin_thetaflex.glb",
+   "source": "assets/expansion_batch03/t4_measure/biolin_thetaflex/model.glb",
+   "sha256": "8dd9c89e5f17225dafe45e11587da52e0242bc47a8768b24368391e5bf3218ca",
+   "bytes": 229936
+  },
+  "biorad_cfxopus": {
+   "file": "library-models/chemlab/biorad_cfxopus.glb",
+   "source": "assets/expansion_batch04/t4_measure/biorad_cfxopus/model.glb",
+   "sha256": "f3f039a855893a08aa491b067cf881c559fac2e512ea056eee5accc4adeb6361",
+   "bytes": 218788
+  },
+  "biorad_miniprotean": {
+   "file": "library-models/chemlab/biorad_miniprotean.glb",
+   "source": "assets/expansion_batch03/t4_measure/biorad_miniprotean/model.glb",
+   "sha256": "b5a4f151e4289d61dad16567089d0f06f632ad61b3db4c8c9819f26297a8748a",
+   "bytes": 316652
+  },
+  "biotage_extrahera_classic": {
+   "file": "library-models/chemlab/biotage_extrahera_classic.glb",
+   "source": "assets/basic40_batch02/t2_vacuum/biotage_extrahera/model.glb",
+   "sha256": "d7e89c31470f5c1f84738399c9bdf464d198badf16e09460097cfea3f1eba22d",
+   "bytes": 10335272
+  },
+  "biotage_selekt": {
+   "file": "library-models/chemlab/biotage_selekt.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/biotage_selekt/model.glb",
+   "sha256": "350e4cd19f2324288d4a822e02626b37a2a2b41e1302043dde6ae015b71258f2",
+   "bytes": 1248876
+  },
+  "biotek_405ts": {
+   "file": "library-models/chemlab/biotek_405ts.glb",
+   "source": "assets/expansion_batch04/t4_measure/biotek_405ts/model.glb",
+   "sha256": "95156e5aefe65c90418e0ce53632d3c968ec300c45fa7bf3e05ae10a159308ed",
+   "bytes": 413660
+  },
+  "bmg_clariostarplus": {
+   "file": "library-models/chemlab/bmg_clariostarplus.glb",
+   "source": "assets/expansion_batch04/t4_measure/bmg_clariostarplus/model.glb",
+   "sha256": "c5f2c3efa587e95341cfb467ab68e8a1088e3a51eea49f24ea35397ba7473092",
+   "bytes": 500140
+  },
+  "bronkhorst_cemw": {
+   "file": "library-models/chemlab/bronkhorst_cemw.glb",
+   "source": "assets/expansion_batch03/t5_automation/bronkhorst_cemw/model.glb",
+   "sha256": "38a55a4233838b3cb023761a41b8681e8cc83f9ba4103e916e961276b9db8bc9",
+   "bytes": 806648
+  },
+  "bronkhorst_p702cv_5bar_gauge_n2": {
+   "file": "library-models/chemlab/bronkhorst_p702cv_5bar_gauge_n2.glb",
+   "source": "assets/basic40_batch02/t5_automation/bronkhorst_p702cv/model.glb",
+   "sha256": "8a276438a8c91bee690a6c2e5385ce16395ce6474676c09a27891cc31833f8d3",
+   "bytes": 855416
+  },
+  "brooks_preciseflex_400": {
+   "file": "library-models/chemlab/brooks_preciseflex_400.glb",
+   "source": "assets/basic40_batch02/t5_automation/preciseflex_400/model.glb",
+   "sha256": "f1380668df6d5a1e52fe16241ecb0936192885f8b850307ca0f01521ad2d973c",
+   "bytes": 1490228
+  },
+  "bruker_magnettechesr5000": {
+   "file": "library-models/chemlab/bruker_magnettechesr5000.glb",
+   "source": "assets/expansion_batch04/t3_analytical/bruker_magnettechesr5000/model.glb",
+   "sha256": "a789e405fcf8383a6cba9541581a6f660d9b63061de0bb258c58bde2a422300b",
+   "bytes": 301804
+  },
+  "bruker_minispecmq20": {
+   "file": "library-models/chemlab/bruker_minispecmq20.glb",
+   "source": "assets/expansion_batch04/t3_analytical/bruker_minispecmq20/model.glb",
+   "sha256": "447f88e7c640ff4646599077492d1249f2d2a61f6c761e22eb95a2a8f19a63e4",
+   "bytes": 678124
+  },
+  "bruker_x4poseidon": {
+   "file": "library-models/chemlab/bruker_x4poseidon.glb",
+   "source": "assets/expansion_batch04/t3_analytical/bruker_x4poseidon/model.glb",
+   "sha256": "fd3d8e3cbb4dfe17dcd6214221dd5d3a719696ab28912d2568bd4cece292951c",
+   "bytes": 497780
+  },
+  "buchi_encapsulatorb": {
+   "file": "library-models/chemlab/buchi_encapsulatorb.glb",
+   "source": "assets/expansion_batch04/t5_automation/buchi_encapsulatorb/model.glb",
+   "sha256": "925f68a5e5c92428ffc0eb89bddf1136dfb76701fe7ffed81210a2a534743481",
+   "bytes": 1149132
+  },
+  "buchi_hydrolexh": {
+   "file": "library-models/chemlab/buchi_hydrolexh.glb",
+   "source": "assets/expansion_batch03/t1_thermal/buchi_hydrolexh/model.glb",
+   "sha256": "34071348a238e7743ff9ed82d49d6af9de496902f6091fc74c8742aa3da92028",
+   "bytes": 1053564
+  },
+  "buchi_lyovapor_l250_pro": {
+   "file": "library-models/chemlab/buchi_lyovapor_l250_pro.glb",
+   "source": "assets/basic40_batch02/t2_vacuum/buchi_lyovapor_l250/model.glb",
+   "sha256": "0f96b9e5516623c3a4063d31ff99ed5f13806b0e513cf4a7cd28b4c5b09504ff",
+   "bytes": 1216880
+  },
+  "buchi_minispray": {
+   "file": "library-models/chemlab/buchi_minispray.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/buchi_minispray/model.glb",
+   "sha256": "8b6d9c78117e12312da4151c568962d92d6259ce45778c19bc7c19de201ea540",
+   "bytes": 1408148
+  },
+  "buchi_speedextractore": {
+   "file": "library-models/chemlab/buchi_speedextractore.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/buchi_speedextractore/model.glb",
+   "sha256": "017d4f9a2b24e95fc6df44bc5b57b5dfa5a359a63634cfda1a676208c493ab8e",
+   "bytes": 1369388
+  },
+  "camag_tlcscanner": {
+   "file": "library-models/chemlab/camag_tlcscanner.glb",
+   "source": "assets/expansion_batch03/t3_analytical/camag_tlcscanner/model.glb",
+   "sha256": "69bcac5c27b00c41b002793624e00c7e452c42614e9157ba8c8754992960ce72",
+   "bytes": 1532040
+  },
+  "carbolite_tf1_12_60_300": {
+   "file": "library-models/chemlab/carbolite_tf1_12_60_300.glb",
+   "source": "assets/basic40_batch02/t1_thermal/carbolite_tf1/model.glb",
+   "sha256": "6f92e50f9b409ba0ad9489b601fa6e3bdbca57f51cc5cab4c644158b25a2e4ff",
+   "bytes": 1573616
+  },
+  "cem_libertyblue": {
+   "file": "library-models/chemlab/cem_libertyblue.glb",
+   "source": "assets/expansion_batch03/t5_automation/cem_libertyblue/model.glb",
+   "sha256": "1f46a0935734ed0071be6b36abc5ccf2eb1fac5bca825d1fc0ad1f008a11290b",
+   "bytes": 1072964
+  },
+  "ch_chi440c": {
+   "file": "library-models/chemlab/ch_chi440c.glb",
+   "source": "assets/expansion_batch04/t4_measure/ch_chi440c/model.glb",
+   "sha256": "9e85981302a34231abfe4911b25b4ffec14c7675ba72b911dc3b6c63b19388f4",
+   "bytes": 133736
+  },
+  "ch_chi920d": {
+   "file": "library-models/chemlab/ch_chi920d.glb",
+   "source": "assets/expansion_batch04/t4_measure/ch_chi920d/model.glb",
+   "sha256": "08d9921294cf2317bf893188ab6db804ec35d3ab2b34ebf0fb8a5b86b773a520",
+   "bytes": 177452
+  },
+  "cytiva_biacoret200": {
+   "file": "library-models/chemlab/cytiva_biacoret200.glb",
+   "source": "assets/expansion_batch04/t4_measure/cytiva_biacoret200/model.glb",
+   "sha256": "d96ed6d0ab028ae4600aa0eb417e3e0c74ed506fcdbc209c0daf082162c02537",
+   "bytes": 436852
+  },
+  "cytiva_ktaoligosynt": {
+   "file": "library-models/chemlab/cytiva_ktaoligosynt.glb",
+   "source": "assets/expansion_batch03/t5_automation/cytiva_ktaoligosynt/model.glb",
+   "sha256": "0ac1e3f49d739e4e8eb1b9aadcd495f386a7eb5726f5e169bd15f1fd3b184c00",
+   "bytes": 861580
+  },
+  "cytiva_nanoassemblrignite": {
+   "file": "library-models/chemlab/cytiva_nanoassemblrignite.glb",
+   "source": "assets/expansion_batch04/t5_automation/cytiva_nanoassemblrignite/model.glb",
+   "sha256": "43463261c8eb6185c2dabd5664634480c5f9ecc3358f06505aef45e0b1e05042",
+   "bytes": 315540
+  },
+  "eco_ncld822": {
+   "file": "library-models/chemlab/eco_ncld822.glb",
+   "source": "assets/expansion_batch04/t3_analytical/eco_ncld822/model.glb",
+   "sha256": "7ec45491f6cd1368c2b6892b5435c5b8252c3be3fc7d98baed0d24125dc14faf",
+   "bytes": 950624
+  },
+  "edinburgh_fls1000tcspc": {
+   "file": "library-models/chemlab/edinburgh_fls1000tcspc.glb",
+   "source": "assets/expansion_batch04/t3_analytical/edinburgh_fls1000tcspc/model.glb",
+   "sha256": "eccc90391c6759fbabd96d4926c357507d7fb8d41a07ff76843a36b141331d3e",
+   "bytes": 937636
+  },
+  "elementar_isoprimeprecision": {
+   "file": "library-models/chemlab/elementar_isoprimeprecision.glb",
+   "source": "assets/expansion_batch04/t3_analytical/elementar_isoprimeprecision/model.glb",
+   "sha256": "271eaae37e51cdcbed6437a3cd2c35b1c4a7f23ea06a413a309e991ba56a65cc",
+   "bytes": 748828
+  },
+  "elementar_varioel": {
+   "file": "library-models/chemlab/elementar_varioel.glb",
+   "source": "assets/expansion_batch04/t3_analytical/elementar_varioel/model.glb",
+   "sha256": "eb19b12f196b0a2447034981c196151869c730c86ef2a0ca40ced38a7daa0141",
+   "bytes": 4569856
+  },
+  "elga_purelab_flex3": {
+   "file": "library-models/chemlab/elga_purelab_flex3.glb",
+   "source": "assets/basic40_batch02/t2_vacuum/elga_purelab_flex3/model.glb",
+   "sha256": "15990333b5f8ebd9d7ff9d34ae0f7c1d8ef1e26c812b73a0f881825773f658ca",
+   "bytes": 1361288
+  },
+  "elma_elmasonics60h": {
+   "file": "library-models/chemlab/elma_elmasonics60h.glb",
+   "source": "assets/expansion_batch03/t4_measure/elma_elmasonics60h/model.glb",
+   "sha256": "9a2219b468558ec4ea1984a5a384d1e46089b7ecf4a4df39122a8de0643fbb79",
+   "bytes": 577404
+  },
+  "eppendorf_5910ri": {
+   "file": "library-models/chemlab/eppendorf_5910ri.glb",
+   "source": "assets/basic40_batch02/t3_analytical/eppendorf_5910ri/model.glb",
+   "sha256": "c9eb97954522be291b32a02574341972ecc1c7487a2dba89375d6f441bed7124",
+   "bytes": 807452
+  },
+  "eppendorf_cellxpertc170i": {
+   "file": "library-models/chemlab/eppendorf_cellxpertc170i.glb",
+   "source": "assets/expansion_batch04/t4_measure/eppendorf_cellxpertc170i/model.glb",
+   "sha256": "a6e2094ea53ce2b0318b2a03fcab41f58f8fc3a47995fc39f7b4df15b9b1f36f",
+   "bytes": 247476
+  },
+  "eppendorf_cryocubef570n": {
+   "file": "library-models/chemlab/eppendorf_cryocubef570n.glb",
+   "source": "assets/expansion_batch04/t2_vacuum/eppendorf_cryocubef570n/model.glb",
+   "sha256": "7d4dc1cb4fc260d60f0ee3f5275314f6be0035d86fc7e15e3530e473a0d4dc6a",
+   "bytes": 1654592
+  },
+  "esco_ac24s8": {
+   "file": "library-models/chemlab/esco_ac24s8.glb",
+   "source": "assets/expansion_batch04/t2_vacuum/esco_ac24s8/model.glb",
+   "sha256": "4caba1555671c67cfd5022fa2f386701e4555a5a3981e85959bdde686a4ebf0f",
+   "bytes": 587580
+  },
+  "esco_efa5uduvw": {
+   "file": "library-models/chemlab/esco_efa5uduvw.glb",
+   "source": "assets/expansion_batch05/t2_vacuum/esco_efa5uduvw/model.glb",
+   "sha256": "92c857197f4956916eb6a03065472205a0c420c459c565a6d2079cc162506b4b",
+   "bytes": 624332
+  },
+  "evident_bx53p": {
+   "file": "library-models/chemlab/evident_bx53p.glb",
+   "source": "assets/expansion_batch04/t3_analytical/evident_bx53p/model.glb",
+   "sha256": "43a944c7a55b81838149d94871c9f98287de7901f253ed8c151bee150e72e6c6",
+   "bytes": 911424
+  },
+  "freeman_ft4powder": {
+   "file": "library-models/chemlab/freeman_ft4powder.glb",
+   "source": "assets/expansion_batch03/t4_measure/freeman_ft4powder/model.glb",
+   "sha256": "2a08e8e1f3db09ef2005e7f3721a74746a5d645858cbe934f95227e50295c6ce",
+   "bytes": 384316
+  },
+  "frontier_egapy": {
+   "file": "library-models/chemlab/frontier_egapy.glb",
+   "source": "assets/expansion_batch03/t3_analytical/frontier_egapy/model.glb",
+   "sha256": "19a1b2614f7efcc7bd5d61f7b779c5753a87a84d4deabb0146d86e654417d4a1",
+   "bytes": 2990676
+  },
+  "fujifilm_dmp2850": {
+   "file": "library-models/chemlab/fujifilm_dmp2850.glb",
+   "source": "assets/expansion_batch04/t5_automation/fujifilm_dmp2850/model.glb",
+   "sha256": "dd39005fef748c40eccdbfd052ffb13a1ca5c67135ac9f61a098980ae0b7e4f1",
+   "bytes": 402372
+  },
+  "gamry_reference620": {
+   "file": "library-models/chemlab/gamry_reference620.glb",
+   "source": "assets/basic40_batch02/t4_measure/gamry_ref620/model.glb",
+   "sha256": "3d2eee15a10de93d5d44e31bc27d3e1aaa3e9e74ab5f988fe43105917646022f",
+   "bytes": 1135060
+  },
+  "gas_flavourspec25gc": {
+   "file": "library-models/chemlab/gas_flavourspec25gc.glb",
+   "source": "assets/expansion_batch04/t3_analytical/gas_flavourspec25gc/model.glb",
+   "sha256": "1336a2a6a3435ef13262d0a4d69a76e95aac4c7d7e15b051d67886f4e3389fa5",
+   "bytes": 334188
+  },
+  "genevac_mivac2": {
+   "file": "library-models/chemlab/genevac_mivac2.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/genevac_mivac2/model.glb",
+   "sha256": "2f769d367e926cef22f0c1e48bafd0fc952e09f009619f09b39cddfc27d84550",
+   "bytes": 1936524
+  },
+  "gilson_cpc250": {
+   "file": "library-models/chemlab/gilson_cpc250.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/gilson_cpc250/model.glb",
+   "sha256": "7dd21b09429762d328c9ec251fc92fd62689a5656bf5e847913a89be88133a47",
+   "bytes": 1715060
+  },
+  "glatt_miniglatt": {
+   "file": "library-models/chemlab/glatt_miniglatt.glb",
+   "source": "assets/expansion_batch04/t5_automation/glatt_miniglatt/model.glb",
+   "sha256": "90720b65a3c2f565da067da893daa796549d510c5b5409156c84fae2973c64b1",
+   "bytes": 1540168
+  },
+  "hach_dr6000": {
+   "file": "library-models/chemlab/hach_dr6000.glb",
+   "source": "assets/basic40_batch02/t3_analytical/hach_dr6000/model.glb",
+   "sha256": "94a48f81ff465995d194f94faa0b42db3ee376276519ea871e42c8797d6888e3",
+   "bytes": 829328
+  },
+  "hach_tl2300epa": {
+   "file": "library-models/chemlab/hach_tl2300epa.glb",
+   "source": "assets/expansion_batch03/t4_measure/hach_tl2300epa/model.glb",
+   "sha256": "fef641a28d18959040f29d6c610c5758a50da439c363977be62f24ce68cd771c",
+   "bytes": 495256
+  },
+  "hepatochem_photoredoxbox": {
+   "file": "library-models/chemlab/hepatochem_photoredoxbox.glb",
+   "source": "assets/expansion_batch03/t5_automation/hepatochem_photoredoxbox/model.glb",
+   "sha256": "68aaa725552349519985f620c16fd5d87ff95c8068cd786ec4fef7e3fb796c52",
+   "bytes": 1160428
+  },
+  "hot_tps2500": {
+   "file": "library-models/chemlab/hot_tps2500.glb",
+   "source": "assets/expansion_batch04/t1_thermal/hot_tps2500/model.glb",
+   "sha256": "a8aa3c7b31efaed1296da5447f23ccd866980b89bd5e3997619104a6cf87b886",
+   "bytes": 602400
+  },
+  "ika_c6000": {
+   "file": "library-models/chemlab/ika_c6000.glb",
+   "source": "assets/expansion_batch03/t1_thermal/ika_c6000/model.glb",
+   "sha256": "115c4a355f35e36b50bb2464cd7bc1792d5e13a9e274fd3a3117d8537b77572e",
+   "bytes": 580172
+  },
+  "ika_electrasyn2": {
+   "file": "library-models/chemlab/ika_electrasyn2.glb",
+   "source": "assets/expansion_batch03/t5_automation/ika_electrasyn2/model.glb",
+   "sha256": "586ce722148d88a7c97c4dc7d74d7f4eb6457b3b6c2c49ed33e1a14a9b33bdb9",
+   "bytes": 485148
+  },
+  "ika_ks4000": {
+   "file": "library-models/chemlab/ika_ks4000.glb",
+   "source": "assets/expansion_batch03/t4_measure/ika_ks4000/model.glb",
+   "sha256": "b6524c0d20f1190e5c0b29f3a9ca7dd8fcb2903f642df2e09ed24098d23b9ac8",
+   "bytes": 1684640
+  },
+  "ika_plate_rctdigital": {
+   "file": "library-models/chemlab/ika_plate_rctdigital.glb",
+   "source": "assets/expansion_batch05/t4_measure/ika_plate_rctdigital/model.glb",
+   "sha256": "1424d89d59f0b37788f75f262a87130dfdfdd245bd227dad25789ccf03bbda04",
+   "bytes": 1602716
+  },
+  "ika_rv10_digital_v": {
+   "file": "library-models/chemlab/ika_rv10_digital_v.glb",
+   "source": "assets/basic40_batch02/t2_vacuum/ika_rv10/model.glb",
+   "sha256": "ac77fc2b4f2fe77b92419fa3b7eb05d44728c3716734b98dd266aa86b721ca4b",
+   "bytes": 1720236
+  },
+  "ika_t25": {
+   "file": "library-models/chemlab/ika_t25.glb",
+   "source": "assets/expansion_batch03/t1_thermal/ika_t25/model.glb",
+   "sha256": "990c39908a43c33149a8133592520f390d3eb07faeef3990304e5365ed448c75",
+   "bytes": 453904
+  },
+  "inert_purelab_he_2gb": {
+   "file": "library-models/chemlab/inert_purelab_he_2gb.glb",
+   "source": "assets/basic40_batch02/t2_vacuum/inert_purelab_he/model.glb",
+   "sha256": "e37c8aedc8033582cc6e9730fa7f9781bd7686ff72546df1b62174ddb46baa92",
+   "bytes": 1538720
+  },
+  "inert_puresolvmd": {
+   "file": "library-models/chemlab/inert_puresolvmd.glb",
+   "source": "assets/expansion_batch04/t2_vacuum/inert_puresolvmd/model.glb",
+   "sha256": "249f1f51f0ecf530abf9e68bffcdc49b71e1404120b35efc0e1cb06a054a3a32",
+   "bytes": 685372
+  },
+  "inficon_ul1000fab": {
+   "file": "library-models/chemlab/inficon_ul1000fab.glb",
+   "source": "assets/expansion_batch04/t2_vacuum/inficon_ul1000fab/model.glb",
+   "sha256": "fde2cc684e87ddfe732fc27ed900def48830f257a96c429a4a3d8db057758001",
+   "bytes": 410356
+  },
+  "ja_alphase": {
+   "file": "library-models/chemlab/ja_alphase.glb",
+   "source": "assets/expansion_batch04/t3_analytical/ja_alphase/model.glb",
+   "sha256": "0bc3497eb0c6ee6755378227ba90f63c41d8fea7e48e1a7ba16d5303e3c0dd37",
+   "bytes": 383340
+  },
+  "jasco_cpl300": {
+   "file": "library-models/chemlab/jasco_cpl300.glb",
+   "source": "assets/expansion_batch04/t3_analytical/jasco_cpl300/model.glb",
+   "sha256": "079e82586c225e1b462803c6941824339bc8cd4dc395c22aad49b46234e98135",
+   "bytes": 978916
+  },
+  "jasco_fp8350": {
+   "file": "library-models/chemlab/jasco_fp8350.glb",
+   "source": "assets/expansion_batch03/t3_analytical/jasco_fp8350/model.glb",
+   "sha256": "70e4fa47617a2cd16287e017b7d7738cd5c1d60a210b91fdcd3aa8f70cd6b4d7",
+   "bytes": 325976
+  },
+  "jasco_ftir4700": {
+   "file": "library-models/chemlab/jasco_ftir4700.glb",
+   "source": "assets/basic40_batch02/t3_analytical/jasco_ftir4700/model.glb",
+   "sha256": "4be6a4eb0deaafbc38b7631498e1ea5360da3cf4ab17e3c8ffaaa866c8925f81",
+   "bytes": 996068
+  },
+  "jasco_fvs6000": {
+   "file": "library-models/chemlab/jasco_fvs6000.glb",
+   "source": "assets/expansion_batch04/t3_analytical/jasco_fvs6000/model.glb",
+   "sha256": "daa85b9e71aa9107b7d618ba14da8f40cc644e0e0b3a32492b56b2937fafc2aa",
+   "bytes": 664544
+  },
+  "jasco_j1500": {
+   "file": "library-models/chemlab/jasco_j1500.glb",
+   "source": "assets/expansion_batch04/t3_analytical/jasco_j1500/model.glb",
+   "sha256": "b5392d3cfbf475ca57674a4a13a5012202b6bbccb914ad087e813678a0400de2",
+   "bytes": 791304
+  },
+  "jasco_nrs5500": {
+   "file": "library-models/chemlab/jasco_nrs5500.glb",
+   "source": "assets/expansion_batch04/t3_analytical/jasco_nrs5500/model.glb",
+   "sha256": "403c7bdcb3fee351f5cff40c9555849e1cb591f91bf8f5de7491ad8123bcea86",
+   "bytes": 877868
+  },
+  "jasco_p4200": {
+   "file": "library-models/chemlab/jasco_p4200.glb",
+   "source": "assets/expansion_batch03/t3_analytical/jasco_p4200/model.glb",
+   "sha256": "18e84c9e3f3424847603d862d9bced1feb9d7821c70ba2d639a99bf64b335a45",
+   "bytes": 353092
+  },
+  "jena_contraa800": {
+   "file": "library-models/chemlab/jena_contraa800.glb",
+   "source": "assets/expansion_batch03/t3_analytical/jena_contraa800/model.glb",
+   "sha256": "23cab5ee09e05cddd1cbc6a0497545f0b1d2ac9d7ecac2c2e1b1a9ffc3d8d665",
+   "bytes": 1639456
+  },
+  "jena_multix": {
+   "file": "library-models/chemlab/jena_multix.glb",
+   "source": "assets/expansion_batch04/t3_analytical/jena_multix/model.glb",
+   "sha256": "0f0e179afabbec040b560ea6903d1ece297b121a814dd18d8b6b90658b01b54f",
+   "bytes": 2687308
+  },
+  "jeol_jem1400flash": {
+   "file": "library-models/chemlab/jeol_jem1400flash.glb",
+   "source": "assets/expansion_batch04/t3_analytical/jeol_jem1400flash/model.glb",
+   "sha256": "d1f244ffc33f372402ffd96a8d4b5728aa45bf9e9a1e07d4cf4c6783a22abd37",
+   "bytes": 1255788
+  },
+  "jeol_jsmit200": {
+   "file": "library-models/chemlab/jeol_jsmit200.glb",
+   "source": "assets/expansion_batch04/t3_analytical/jeol_jsmit200/model.glb",
+   "sha256": "0ab34fc5094be72b8c0991090fbf919cc2c4b532c680f9d50190e33745540f30",
+   "bytes": 1383492
+  },
+  "julabo_corio_cd200f": {
+   "file": "library-models/chemlab/julabo_corio_cd200f.glb",
+   "source": "assets/basic40_batch02/t1_thermal/julabo_corio_cd200f/model.glb",
+   "sha256": "110fe88366abcde62c6e74d926ab25b6d80bae048ef968aa31719c46a3bce9e7",
+   "bytes": 1938740
+  },
+  "keyence_vkx3000": {
+   "file": "library-models/chemlab/keyence_vkx3000.glb",
+   "source": "assets/expansion_batch04/t3_analytical/keyence_vkx3000/model.glb",
+   "sha256": "a69394f3f9e2736636b0af3dbd2e13d8a8a4508a895a6d1ea4a8caa969227750",
+   "bytes": 1085672
+  },
+  "knauer_k7400s": {
+   "file": "library-models/chemlab/knauer_k7400s.glb",
+   "source": "assets/expansion_batch04/t4_measure/knauer_k7400s/model.glb",
+   "sha256": "6377d316c452571d1b40ec86f24bdd7218edf382aaa395f673d4f48dfee4e7a9",
+   "bytes": 153500
+  },
+  "kratos_axissupra": {
+   "file": "library-models/chemlab/kratos_axissupra.glb",
+   "source": "assets/expansion_batch04/t3_analytical/kratos_axissupra/model.glb",
+   "sha256": "dd842d6815abd296734b2ebbcbf1e7d15595e7febc9db7aba1c5ce094ef708cb",
+   "bytes": 753364
+  },
+  "laboao_cvdltf12p50": {
+   "file": "library-models/chemlab/laboao_cvdltf12p50.glb",
+   "source": "assets/expansion_batch04/t5_automation/laboao_cvdltf12p50/model.glb",
+   "sha256": "f01a84cfec8865478341fb37e0b6b43da720228aaa05c159c087a92ec162e7bc",
+   "bytes": 2012144
+  },
+  "lakeshore_8604vsm": {
+   "file": "library-models/chemlab/lakeshore_8604vsm.glb",
+   "source": "assets/expansion_batch04/t1_thermal/lakeshore_8604vsm/model.glb",
+   "sha256": "96dfba8de3396a1eac514309a17fb8b35f25db3c39f8f3a3d7cd16c7cac96648",
+   "bytes": 1048488
+  },
+  "lakeshore_measurereadym91": {
+   "file": "library-models/chemlab/lakeshore_measurereadym91.glb",
+   "source": "assets/expansion_batch04/t1_thermal/lakeshore_measurereadym91/model.glb",
+   "sha256": "1d1f4138d52829d6173f0abbcb22c694b9dcbc5c25994ec6a29352a097bcde7a",
+   "bytes": 212444
+  },
+  "leco_onh836": {
+   "file": "library-models/chemlab/leco_onh836.glb",
+   "source": "assets/expansion_batch04/t3_analytical/leco_onh836/model.glb",
+   "sha256": "be311f0ac5cc519dafa47f1b560ecdb591c982659b142e63fa8ea7403c1bc82e",
+   "bytes": 941408
+  },
+  "linari_rtadvanced": {
+   "file": "library-models/chemlab/linari_rtadvanced.glb",
+   "source": "assets/expansion_batch04/t5_automation/linari_rtadvanced/model.glb",
+   "sha256": "1aa06b46103b3b4dda95681817e51580fd3b32939b9af14883465247d7fbb715",
+   "bytes": 548004
+  },
+  "linseis_lsr3": {
+   "file": "library-models/chemlab/linseis_lsr3.glb",
+   "source": "assets/expansion_batch04/t1_thermal/linseis_lsr3/model.glb",
+   "sha256": "7f94c18e6f771a102c34b1f044b6fae569f1d3c5ba4732a85874942a1c6b4ad5",
+   "bytes": 545420
+  },
+  "magritek_spinsolve80": {
+   "file": "library-models/chemlab/magritek_spinsolve80.glb",
+   "source": "assets/basic40_batch02/t4_measure/magritek_spinsolve80/model.glb",
+   "sha256": "f503187a07f394c81dcc04628ab7afbdadc29dbb984ab5dc9303e7ec15eab4de",
+   "bytes": 1122216
+  },
+  "malvern_leneo": {
+   "file": "library-models/chemlab/malvern_leneo.glb",
+   "source": "assets/expansion_batch03/t1_thermal/malvern_leneo/model.glb",
+   "sha256": "6d09062e9914294e155e8cee828a47fb9977cdcc9ff469575890e7a292991f49",
+   "bytes": 610420
+  },
+  "malvern_microcalpeaq": {
+   "file": "library-models/chemlab/malvern_microcalpeaq.glb",
+   "source": "assets/expansion_batch04/t4_measure/malvern_microcalpeaq/model.glb",
+   "sha256": "699a8c9ec5379fc33133406c698bf7adae29fdfbd7d40761e83a808137ff439f",
+   "bytes": 434660
+  },
+  "markes_unityxr": {
+   "file": "library-models/chemlab/markes_unityxr.glb",
+   "source": "assets/expansion_batch03/t3_analytical/markes_unityxr/model.glb",
+   "sha256": "71ceaf76e74e97b128582fdbb40452611f3ecd8a9cf35607fdb490147c0f19ed",
+   "bytes": 676436
+  },
+  "metrohm_899": {
+   "file": "library-models/chemlab/metrohm_899.glb",
+   "source": "assets/basic40_batch02/t4_measure/metrohm_899/model.glb",
+   "sha256": "0d7b6af4052287e5e7dc411e9e6a3f06db11a710708baf4e3756093f16d068b9",
+   "bytes": 1096684
+  },
+  "metrohm_909uv": {
+   "file": "library-models/chemlab/metrohm_909uv.glb",
+   "source": "assets/expansion_batch03/t1_thermal/metrohm_909uv/model.glb",
+   "sha256": "96ca71617592e6c769c36c340b79f3decefdfb97fe7a1e4596f766747a14f903",
+   "bytes": 883648
+  },
+  "metrohm_914": {
+   "file": "library-models/chemlab/metrohm_914.glb",
+   "source": "assets/basic40_batch02/t4_measure/metrohm_914/model.glb",
+   "sha256": "fc31fdb0ce7184ebe0643b085c4dbb179fcf1f13309f08a4fabc20cde2e1eda8",
+   "bytes": 1223172
+  },
+  "metrohm_omnis": {
+   "file": "library-models/chemlab/metrohm_omnis.glb",
+   "source": "assets/basic40_batch02/t4_measure/metrohm_omnis/model.glb",
+   "sha256": "764d8a7ff7512f6bcef50cdf696debfc5be39adb717509b4662e8d15875f381a",
+   "bytes": 1027860
+  },
+  "micromeritics_autochemiii": {
+   "file": "library-models/chemlab/micromeritics_autochemiii.glb",
+   "source": "assets/expansion_batch03/t4_measure/micromeritics_autochemiii/model.glb",
+   "sha256": "4f8196a35f19599ff43193b9195941da3c520f86122ab0b2b6b9c0631bfa1be0",
+   "bytes": 4175176
+  },
+  "microtrac_turbiscanlab": {
+   "file": "library-models/chemlab/microtrac_turbiscanlab.glb",
+   "source": "assets/expansion_batch03/t4_measure/microtrac_turbiscanlab/model.glb",
+   "sha256": "dbcb9a270e5324612cb2367c6a61bc7059e2d8dbabfdaf17df34be8c9bd6da05",
+   "bytes": 339140
+  },
+  "miele_plw6111": {
+   "file": "library-models/chemlab/miele_plw6111.glb",
+   "source": "assets/basic40_batch02/t1_thermal/miele_plw6111/model.glb",
+   "sha256": "7c084e3384046009dccf425d37a3717f18e9dcd40fd1e22f97a6ffa96b03814c",
+   "bytes": 2832828
+  },
+  "milestone_dma80": {
+   "file": "library-models/chemlab/milestone_dma80.glb",
+   "source": "assets/expansion_batch04/t3_analytical/milestone_dma80/model.glb",
+   "sha256": "313035249059b6f350bc0fe33ade4eca58421ec68e4e4bd9bff58195cdab1157",
+   "bytes": 3495340
+  },
+  "mt_hx204": {
+   "file": "library-models/chemlab/mt_hx204.glb",
+   "source": "assets/expansion_batch04/t4_measure/mt_hx204/model.glb",
+   "sha256": "c10651624111786037ce35d62e42af1a0433d46f9758f85849041d4e9dfc1422",
+   "bytes": 1171732
+  },
+  "mt_mp70": {
+   "file": "library-models/chemlab/mt_mp70.glb",
+   "source": "assets/expansion_batch03/t4_measure/mt_mp70/model.glb",
+   "sha256": "cb796df78ec39346fa08e70080681269f7a8e632bfec5433d4b876be6b12aacd",
+   "bytes": 480832
+  },
+  "mt_quantos_q2_xpe206dr": {
+   "file": "library-models/chemlab/mt_quantos_q2_xpe206dr.glb",
+   "source": "assets/basic40_batch02/t5_automation/mt_quantos_q2/model.glb",
+   "sha256": "e53dc6145036e9c8899f0300fa6f9e3e75268d2e737ff371e6379ab1471eb13a",
+   "bytes": 1862208
+  },
+  "mt_rc1mxhfcal": {
+   "file": "library-models/chemlab/mt_rc1mxhfcal.glb",
+   "source": "assets/expansion_batch04/t1_thermal/mt_rc1mxhfcal/model.glb",
+   "sha256": "c98306ecd292289224e1508c00af741595b51e52ea6c917b6616a1f8a8952335",
+   "bytes": 2600684
+  },
+  "mt_xpr204e": {
+   "file": "library-models/chemlab/mt_xpr204e.glb",
+   "source": "assets/basic40_batch02/t4_measure/mt_xpr204e/model.glb",
+   "sha256": "5f9c00ca9598cfc07fbfea066f90b0e6c166e9c653da7d611c058638c93d19b3",
+   "bytes": 998508
+  },
+  "multiwave_7101": {
+   "file": "library-models/chemlab/multiwave_7101.glb",
+   "source": "assets/basic40_batch02/t1_thermal/multiwave_7101/model.glb",
+   "sha256": "f640b6c50d8122b429dfea13316122ca498d4c58db6d86c4c8875832aaf5ca14",
+   "bytes": 6660088
+  },
+  "nabertherm_l9": {
+   "file": "library-models/chemlab/nabertherm_l9.glb",
+   "source": "assets/basic40_batch02/t1_thermal/nabertherm_l9/model.glb",
+   "sha256": "02130155d351a4b73e2e6b6c4b14f83ade20adfac68f8ce7ffe2107a9e47a60f",
+   "bytes": 1405504
+  },
+  "nanosurf_naiostm": {
+   "file": "library-models/chemlab/nanosurf_naiostm.glb",
+   "source": "assets/expansion_batch04/t3_analytical/nanosurf_naiostm/model.glb",
+   "sha256": "c60c234c064349b041fb7b952191490adc29082b5d47da49e506c4c3302b642d",
+   "bytes": 818108
+  },
+  "netzsch_lfa467": {
+   "file": "library-models/chemlab/netzsch_lfa467.glb",
+   "source": "assets/expansion_batch04/t1_thermal/netzsch_lfa467/model.glb",
+   "sha256": "734b46becfae72a6d1bca3b70e2d5a34267f3bedb2fe90dab7117d1e2d8accc6",
+   "bytes": 477296
+  },
+  "netzsch_mmc315": {
+   "file": "library-models/chemlab/netzsch_mmc315.glb",
+   "source": "assets/expansion_batch04/t1_thermal/netzsch_mmc315/model.glb",
+   "sha256": "9aae951516fd2ff77c4db7186c9f620b5faf5d15c4ad494c626d11c668f323d0",
+   "bytes": 615560
+  },
+  "newera_ne1000": {
+   "file": "library-models/chemlab/newera_ne1000.glb",
+   "source": "assets/expansion_batch05/t5_automation/newera_ne1000/model.glb",
+   "sha256": "98aecc4d5fdba93c28ba95d352d19093356df96eafb426ae2496ee88153742eb",
+   "bytes": 2593280
+  },
+  "novocontrol_alphat": {
+   "file": "library-models/chemlab/novocontrol_alphat.glb",
+   "source": "assets/expansion_batch04/t1_thermal/novocontrol_alphat/model.glb",
+   "sha256": "974bb8a4d1816694b7e5bc67f9b730f0ed18835757c806b6ab2d4c9053273800",
+   "bytes": 383452
+  },
+  "opentrons_flex_single_5_1000ul": {
+   "file": "library-models/chemlab/opentrons_flex_single_5_1000ul.glb",
+   "source": "assets/basic40_batch02/t5_automation/opentrons_flex/model.glb",
+   "sha256": "72c2262f270e62eeadacadbb6f74587b86530335416d129c6acd4ec788a639f5",
+   "bytes": 991576
+  },
+  "ossila_dipcoater": {
+   "file": "library-models/chemlab/ossila_dipcoater.glb",
+   "source": "assets/expansion_batch04/t5_automation/ossila_dipcoater/model.glb",
+   "sha256": "51a8e96bc9707060c7e3a95a36580db23bdd860811bc20103ba62cea39f7b778",
+   "bytes": 534704
+  },
+  "ossila_doctorblade": {
+   "file": "library-models/chemlab/ossila_doctorblade.glb",
+   "source": "assets/expansion_batch04/t5_automation/ossila_doctorblade/model.glb",
+   "sha256": "d667da1dc81f364acdca92012965e7912a92ed2efb1805539163c3231a523d38",
+   "bytes": 666292
+  },
+  "ossila_slotdie": {
+   "file": "library-models/chemlab/ossila_slotdie.glb",
+   "source": "assets/expansion_batch04/t5_automation/ossila_slotdie/model.glb",
+   "sha256": "b0a7c4c415ebe4c34a830cb71109f7ee45e77367192e67fadb84a3dd2219fce0",
+   "bytes": 1674420
+  },
+  "ossila_spincoater": {
+   "file": "library-models/chemlab/ossila_spincoater.glb",
+   "source": "assets/expansion_batch04/t5_automation/ossila_spincoater/model.glb",
+   "sha256": "7347131916a8f60d32f0a5ee4a0e364aaa364cb5763ae5732ac61943c8c8a063",
+   "bytes": 972384
+  },
+  "park_nx10": {
+   "file": "library-models/chemlab/park_nx10.glb",
+   "source": "assets/expansion_batch04/t3_analytical/park_nx10/model.glb",
+   "sha256": "f90d90521b48f295138f75e1ed54fb97140afa0c9cb0d1a1f65a445d7a6e5ae7",
+   "bytes": 479196
+  },
+  "parr_4591": {
+   "file": "library-models/chemlab/parr_4591.glb",
+   "source": "assets/basic40_batch02/t1_thermal/parr_4591/model.glb",
+   "sha256": "92bbbfe29147ee7d6be7bf696c0d0fb268e5e16dd7fecc2dc42dd00b2c039d0b",
+   "bytes": 3723244
+  },
+  "pccell_ed64002": {
+   "file": "library-models/chemlab/pccell_ed64002.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/pccell_ed64002/model.glb",
+   "sha256": "acfdfd796d7a9df81cf323c367fc48c12cd633f3ffdf3de0a83f8f0c2ab7684b",
+   "bytes": 679156
+  },
+  "peak_precisionhydrogen": {
+   "file": "library-models/chemlab/peak_precisionhydrogen.glb",
+   "source": "assets/expansion_batch04/t2_vacuum/peak_precisionhydrogen/model.glb",
+   "sha256": "8361fab5f23d6c13a1e3da4827837e6d2428efe2c134d3e2ddb7751122d0077a",
+   "bytes": 982576
+  },
+  "pilodist_pilodist104": {
+   "file": "library-models/chemlab/pilodist_pilodist104.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/pilodist_pilodist104/model.glb",
+   "sha256": "e58deb99f3f553c4d770199c103ff4b9f9185d68422e469c4eee996f83d41151",
+   "bytes": 1020328
+  },
+  "pine_wavevortex10": {
+   "file": "library-models/chemlab/pine_wavevortex10.glb",
+   "source": "assets/expansion_batch04/t4_measure/pine_wavevortex10/model.glb",
+   "sha256": "d3fdfa1771743ef4d8189b31c094614bfc95fe1dfa3dff5c897206419b6ab0e2",
+   "bytes": 247140
+  },
+  "porometer_poroluxrevo": {
+   "file": "library-models/chemlab/porometer_poroluxrevo.glb",
+   "source": "assets/expansion_batch03/t4_measure/porometer_poroluxrevo/model.glb",
+   "sha256": "103b6486148cb855ea9cd70241396cf5da429e3fe51219f80f70dee53d0c7baf",
+   "bytes": 419596
+  },
+  "quorum_q150tes": {
+   "file": "library-models/chemlab/quorum_q150tes.glb",
+   "source": "assets/expansion_batch04/t5_automation/quorum_q150tes/model.glb",
+   "sha256": "edc59396628acb1a48ff957df1304017ce5342f0ddea6faa5b84a03f954a30fe",
+   "bytes": 433036
+  },
+  "radleys_mya4": {
+   "file": "library-models/chemlab/radleys_mya4.glb",
+   "source": "assets/basic40_batch02/t1_thermal/radleys_mya4/model.glb",
+   "sha256": "82e5d2b92c3966701d13ba3003cd58245bf6dc071a3b925bb02ddf99a43f8e48",
+   "bytes": 3195080
+  },
+  "retsch_as200": {
+   "file": "library-models/chemlab/retsch_as200.glb",
+   "source": "assets/expansion_batch03/t1_thermal/retsch_as200/model.glb",
+   "sha256": "40678c3f4eef5e550911587484b59cd96d8e85efd56abb9c5e61ab1acd3b3f73",
+   "bytes": 1721628
+  },
+  "retsch_pm100": {
+   "file": "library-models/chemlab/retsch_pm100.glb",
+   "source": "assets/expansion_batch03/t1_thermal/retsch_pm100/model.glb",
+   "sha256": "56851b92bbbff647bfe56739e0597f82d39d58ccd07485b54b3df18f3b4fdc45",
+   "bytes": 1044720
+  },
+  "retsch_pt100": {
+   "file": "library-models/chemlab/retsch_pt100.glb",
+   "source": "assets/expansion_batch03/t1_thermal/retsch_pt100/model.glb",
+   "sha256": "5f3b6330bbc3e3c3c58d73ef5827ad57a6329f055a615140b11d0ed8d8e412d4",
+   "bytes": 1083360
+  },
+  "rigaku_miniflex600_external_cooling": {
+   "file": "library-models/chemlab/rigaku_miniflex600_external_cooling.glb",
+   "source": "assets/basic40_batch02/t4_measure/rigaku_miniflex600/model.glb",
+   "sha256": "c159e1be9d4754ca731039740b5326d2eb6ba9e996fae60bbe7570d8fae00e53",
+   "bytes": 2021732
+  },
+  "rigaku_xtalabsynergy": {
+   "file": "library-models/chemlab/rigaku_xtalabsynergy.glb",
+   "source": "assets/expansion_batch04/t3_analytical/rigaku_xtalabsynergy/model.glb",
+   "sha256": "86f723385204356cbff859152daca345a0ae8034efb9711b84771b9a6dbfbf61",
+   "bytes": 787388
+  },
+  "sartorius_vivaflow200": {
+   "file": "library-models/chemlab/sartorius_vivaflow200.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/sartorius_vivaflow200/model.glb",
+   "sha256": "41bd0dc02d7d2cf0a9e7e00a566020a199df210ac89df5997650e46a868e1325",
+   "bytes": 260684
+  },
+  "sciex_pa800": {
+   "file": "library-models/chemlab/sciex_pa800.glb",
+   "source": "assets/expansion_batch04/t3_analytical/sciex_pa800/model.glb",
+   "sha256": "5898e8e7b61ebbb273093a57de8ffd4277a6f01878c2a8ce29e487efc34bef8a",
+   "bytes": 750080
+  },
+  "scp_digiprepms": {
+   "file": "library-models/chemlab/scp_digiprepms.glb",
+   "source": "assets/expansion_batch03/t1_thermal/scp_digiprepms/model.glb",
+   "sha256": "8a3d276601fa9174ce3c3bc111951ec076f49c2692ae9e396988a4279f9fd476",
+   "bytes": 1264528
+  },
+  "seal_aa500": {
+   "file": "library-models/chemlab/seal_aa500.glb",
+   "source": "assets/expansion_batch04/t4_measure/seal_aa500/model.glb",
+   "sha256": "28c80d8664c84ca9b360bfb6c71bc2ca59a83b7c92b2ef17cdcf1c05ba0bdb05",
+   "bytes": 2095088
+  },
+  "sft_sft110": {
+   "file": "library-models/chemlab/sft_sft110.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/sft_sft110/model.glb",
+   "sha256": "898a009cea7cd39918ce12d910da02775212e291f3e5aacb1ea6b64e8fe27850",
+   "bytes": 1453196
+  },
+  "shimadzu_ags10knxd": {
+   "file": "library-models/chemlab/shimadzu_ags10knxd.glb",
+   "source": "assets/expansion_batch04/t1_thermal/shimadzu_ags10knxd/model.glb",
+   "sha256": "35fe7c11e8e974a26450739e8d5e946135b277fdc5d2237e68b05bcf355ccee4",
+   "bytes": 14196520
+  },
+  "shimadzu_edx7200": {
+   "file": "library-models/chemlab/shimadzu_edx7200.glb",
+   "source": "assets/expansion_batch04/t3_analytical/shimadzu_edx7200/model.glb",
+   "sha256": "b3a22ca002134889eb528486637515d1d05d4e1579f7b274f518f5bacf2afca4",
+   "bytes": 834836
+  },
+  "shimadzu_icpe9800": {
+   "file": "library-models/chemlab/shimadzu_icpe9800.glb",
+   "source": "assets/expansion_batch04/t3_analytical/shimadzu_icpe9800/model.glb",
+   "sha256": "69d8dc7fc5ebec8dbc53e33db027295168cd81bab7ac97210c7d0c6e89fbdaa0",
+   "bytes": 1247140
+  },
+  "shimadzu_icpms2030": {
+   "file": "library-models/chemlab/shimadzu_icpms2030.glb",
+   "source": "assets/expansion_batch04/t3_analytical/shimadzu_icpms2030/model.glb",
+   "sha256": "daac0b10dadd5e4bc1e84a84873d587fc98f5940c45af0c68f69d06511044f7e",
+   "bytes": 1881360
+  },
+  "shimadzu_tocl": {
+   "file": "library-models/chemlab/shimadzu_tocl.glb",
+   "source": "assets/expansion_batch03/t3_analytical/shimadzu_tocl/model.glb",
+   "sha256": "a0071dc3294537fd36ae29e30c200f76e1b6295cd0eb0880830291b45a211b58",
+   "bytes": 1030724
+  },
+  "signatone_quadpro2": {
+   "file": "library-models/chemlab/signatone_quadpro2.glb",
+   "source": "assets/expansion_batch04/t1_thermal/signatone_quadpro2/model.glb",
+   "sha256": "0847eedd352bd1c7adef6564d3346aa4a0cc65eb889ab8aa84831b4fbd48c7c4",
+   "bytes": 505180
+  },
+  "sonics_vcx750": {
+   "file": "library-models/chemlab/sonics_vcx750.glb",
+   "source": "assets/expansion_batch03/t1_thermal/sonics_vcx750/model.glb",
+   "sha256": "7b2e353f5866873f156423ff437f93590d2da7b3820ffd2b73a5cb882b12ba45",
+   "bytes": 1292132
+  },
+  "specac_atlasmanual": {
+   "file": "library-models/chemlab/specac_atlasmanual.glb",
+   "source": "assets/expansion_batch03/t1_thermal/specac_atlasmanual/model.glb",
+   "sha256": "2620c299699028f5dc5f14aa774e1bc0829923a2f2822b3ad63969007f060d21",
+   "bytes": 1224260
+  },
+  "stanford_rga100": {
+   "file": "library-models/chemlab/stanford_rga100.glb",
+   "source": "assets/expansion_batch04/t3_analytical/stanford_rga100/model.glb",
+   "sha256": "8799c9c5c1eb4d94a62511e5b81c48b85ad6fdff28b2be8f571d7d6e2e985329",
+   "bytes": 3245620
+  },
+  "surface_dvsresolution": {
+   "file": "library-models/chemlab/surface_dvsresolution.glb",
+   "source": "assets/expansion_batch03/t4_measure/surface_dvsresolution/model.glb",
+   "sha256": "0ae5bd0f09418a9ec1652c6daea0c7eee91c69faeed93fd22411fc8326126192",
+   "bytes": 579304
+  },
+  "syrris_asiadiscovery": {
+   "file": "library-models/chemlab/syrris_asiadiscovery.glb",
+   "source": "assets/expansion_batch03/t5_automation/syrris_asiadiscovery/model.glb",
+   "sha256": "b7fe1977828da1f28c0bf776c790360603b0849fdd24eab8ddac61267634f199",
+   "bytes": 1230464
+  },
+  "syrris_asiafllex": {
+   "file": "library-models/chemlab/syrris_asiafllex.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/syrris_asiafllex/model.glb",
+   "sha256": "fb9e42cadad7c664e87bfd5dee68d74955673a470f3087e7c088195fb602db46",
+   "bytes": 466828
+  },
+  "ta_dma850": {
+   "file": "library-models/chemlab/ta_dma850.glb",
+   "source": "assets/expansion_batch04/t1_thermal/ta_dma850/model.glb",
+   "sha256": "993784ca354258f4031486cac10d55797064695864a2b76b541f98dc77d24aaa",
+   "bytes": 281028
+  },
+  "ta_dsc2500": {
+   "file": "library-models/chemlab/ta_dsc2500.glb",
+   "source": "assets/expansion_batch03/t1_thermal/ta_dsc2500/model.glb",
+   "sha256": "6512bc1d4f4b1c861c156715ff85bf25d63353917d5c765d35846b78f3174c8a",
+   "bytes": 876300
+  },
+  "ta_tamiv": {
+   "file": "library-models/chemlab/ta_tamiv.glb",
+   "source": "assets/expansion_batch04/t1_thermal/ta_tamiv/model.glb",
+   "sha256": "b8ab163b10629f2e17aa019f05817a8e3a17a865e45c654f0ae21f93aa339094",
+   "bytes": 605688
+  },
+  "ta_tga5500": {
+   "file": "library-models/chemlab/ta_tga5500.glb",
+   "source": "assets/expansion_batch03/t1_thermal/ta_tga5500/model.glb",
+   "sha256": "5660c90e093a99484bf66e6cfa8889be59b7a7740188b78dccb9db72635cf44d",
+   "bytes": 616172
+  },
+  "ta_tma450": {
+   "file": "library-models/chemlab/ta_tma450.glb",
+   "source": "assets/expansion_batch04/t1_thermal/ta_tma450/model.glb",
+   "sha256": "f85586e18587547a44f57ef40d0c4fe8aae6736bdbd0e2136cfa42618b853b7c",
+   "bytes": 653704
+  },
+  "teledyne_analyteexcite": {
+   "file": "library-models/chemlab/teledyne_analyteexcite.glb",
+   "source": "assets/expansion_batch03/t3_analytical/teledyne_analyteexcite/model.glb",
+   "sha256": "d1ebd9b8f90810720fe8c55d89adfa03a701c5d288131a80284a7ba5b75cde8e",
+   "bytes": 218180
+  },
+  "teledyne_atomxxyz": {
+   "file": "library-models/chemlab/teledyne_atomxxyz.glb",
+   "source": "assets/expansion_batch03/t3_analytical/teledyne_atomxxyz/model.glb",
+   "sha256": "9d4f3369df7641e18b3f7fa1c0bfeb6a69b3d4422241dfc07d0ed31f8ccd20c8",
+   "bytes": 944972
+  },
+  "thalesnano_hcube": {
+   "file": "library-models/chemlab/thalesnano_hcube.glb",
+   "source": "assets/expansion_batch03/t5_automation/thalesnano_hcube/model.glb",
+   "sha256": "1721119f370935dd5de1468d7696875474ed2909c51844fd5b2017c5582701c5",
+   "bytes": 1016476
+  },
+  "thermo_dionexintegrion": {
+   "file": "library-models/chemlab/thermo_dionexintegrion.glb",
+   "source": "assets/expansion_batch03/t3_analytical/thermo_dionexintegrion/model.glb",
+   "sha256": "d28bc4ba289ae3c2015b44a37d55dd1d5a6a0f74d8a91d7a7cac0bf5c9b3550a",
+   "bytes": 102016
+  },
+  "thermo_ibrightfl1500": {
+   "file": "library-models/chemlab/thermo_ibrightfl1500.glb",
+   "source": "assets/expansion_batch03/t4_measure/thermo_ibrightfl1500/model.glb",
+   "sha256": "c3aa6190a49ba5b410145c77b3de8d9497170e0e673ad6783d13a94d97bef007",
+   "bytes": 147356
+  },
+  "thermo_orbitrapexploris": {
+   "file": "library-models/chemlab/thermo_orbitrapexploris.glb",
+   "source": "assets/expansion_batch04/t3_analytical/thermo_orbitrapexploris/model.glb",
+   "sha256": "6748212f10005baa6dfba0c6fa384dfa1f983ab42bbbfb47eae958d827e8618d",
+   "bytes": 1795668
+  },
+  "thermo_process11": {
+   "file": "library-models/chemlab/thermo_process11.glb",
+   "source": "assets/expansion_batch04/t5_automation/thermo_process11/model.glb",
+   "sha256": "790c510d17d194aaf4ece0086790276673caa7f707470ef474c70f1c237a18d7",
+   "bytes": 749856
+  },
+  "thinky_are310s": {
+   "file": "library-models/chemlab/thinky_are310s.glb",
+   "source": "assets/expansion_batch03/t1_thermal/thinky_are310s/model.glb",
+   "sha256": "8e0d8bb0710b3241d6c008fe2d9243a56eadf7508e60c1e61d9588e7def07876",
+   "bytes": 807472
+  },
+  "tousimis_autosamdri815": {
+   "file": "library-models/chemlab/tousimis_autosamdri815.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/tousimis_autosamdri815/model.glb",
+   "sha256": "904df8d2f0d62a7cb2ae8e493ccc588af1aef5e3b27e53396f87dd64c79f0bb4",
+   "bytes": 2157152
+  },
+  "tuttnauer_3870elvd": {
+   "file": "library-models/chemlab/tuttnauer_3870elvd.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/tuttnauer_3870elvd/model.glb",
+   "sha256": "80547f8596136d3dcdb4f0087cd1291a10b8f90aa933ceb66e59de813a60cc12",
+   "bytes": 572268
+  },
+  "uic_kdl1basic": {
+   "file": "library-models/chemlab/uic_kdl1basic.glb",
+   "source": "assets/expansion_batch03/t2_vacuum/uic_kdl1basic/model.glb",
+   "sha256": "920cdd673a58942a13e40ca7270153d306ec559a43e1682bfd188a97afac60c9",
+   "bytes": 1911824
+  },
+  "ultrafast_helios": {
+   "file": "library-models/chemlab/ultrafast_helios.glb",
+   "source": "assets/expansion_batch04/t3_analytical/ultrafast_helios/model.glb",
+   "sha256": "a3a11fac0875cc8d5dd143c5f5d920114e360b8d6ec943eee57d383fb5bc329f",
+   "bytes": 2137968
+  },
+  "vacuubrand_pc3001_vario_select": {
+   "file": "library-models/chemlab/vacuubrand_pc3001_vario_select.glb",
+   "source": "assets/basic40_batch02/t2_vacuum/vacuubrand_pc3001/model.glb",
+   "sha256": "0790aa6de2954351d1ec45030072ca5e1317be2ad589f947ed4d28845170b7ed",
+   "bytes": 1099288
+  },
+  "vaisala_dmt152": {
+   "file": "library-models/chemlab/vaisala_dmt152.glb",
+   "source": "assets/expansion_batch04/t2_vacuum/vaisala_dmt152/model.glb",
+   "sha256": "c7eb7010b00e74449e217e8b4228e2cdf4431a1960527949c8325fdd8337e661",
+   "bytes": 429940
+  },
+  "velp_udk159": {
+   "file": "library-models/chemlab/velp_udk159.glb",
+   "source": "assets/expansion_batch03/t1_thermal/velp_udk159/model.glb",
+   "sha256": "15f3e0a5d6cdb763b8188a9e81e63981bca777ac4072411b2435a19284e1e84e",
+   "bytes": 902392
+  },
+  "vici_euta_2sd6mwe": {
+   "file": "library-models/chemlab/vici_euta_2sd6mwe.glb",
+   "source": "assets/basic40_batch02/t5_automation/vici_euta/model.glb",
+   "sha256": "479e2f3a958108a2c03854ea1c3fc4b8f4efc2e16e1c6d19c738c90402011600",
+   "bytes": 748852
+  },
+  "wtw_oxitopi": {
+   "file": "library-models/chemlab/wtw_oxitopi.glb",
+   "source": "assets/expansion_batch04/t4_measure/wtw_oxitopi/model.glb",
+   "sha256": "5b945865ca9aa8ee2769744a6218d1f70d6ec40bacf07b2a063fb358bb9cb130",
+   "bytes": 789416
+  },
+  "wyatt_eclipseaf4": {
+   "file": "library-models/chemlab/wyatt_eclipseaf4.glb",
+   "source": "assets/expansion_batch04/t3_analytical/wyatt_eclipseaf4/model.glb",
+   "sha256": "b001edb57d741ac9cc50137dc3a24c370b2320192ae4a2722280d9781822bf00",
+   "bytes": 1115528
+  },
+  "ziath_dp5_mirage_2023": {
+   "file": "library-models/chemlab/ziath_dp5_mirage_2023.glb",
+   "source": "assets/basic40_batch02/t5_automation/ziath_dp5/model.glb",
+   "sha256": "358210860085aaba0335805e88c07a17643e0c2096eda8da0b92ff521afcb36d",
+   "bytes": 1684584
+  },
+  "zwick_hit5p": {
+   "file": "library-models/chemlab/zwick_hit5p.glb",
+   "source": "assets/expansion_batch04/t1_thermal/zwick_hit5p/model.glb",
+   "sha256": "874dc2f9a616ea2bb727adf1cceea904a407285abe58dbed56b82d7ad26f9f23",
+   "bytes": 267804
+  },
+  "zwick_mflow": {
+   "file": "library-models/chemlab/zwick_mflow.glb",
+   "source": "assets/expansion_batch04/t1_thermal/zwick_mflow/model.glb",
+   "sha256": "f9dba756ea87dbc810468305c6fd3f4f9de457229aca04f71ca26aa0024ca402",
+   "bytes": 320788
+  }
+ }
+}

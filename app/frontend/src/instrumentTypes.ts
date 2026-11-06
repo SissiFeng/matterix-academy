@@ -72,8 +72,17 @@ export type Residual = {
   resolved_in: number | null;
   evidence: "learner_observation";
 };
+/** The registered model drawn in place of the planning box. */
+export type Mesh = {
+  kind: "glb" | "ot2" | "balance" | "ur5e";
+  url?: string;
+  sha256?: string;
+  up?: "z";
+  asset?: string;
+};
 export type SimReadyProvenance = {
   id: string;
+  mesh?: Mesh | null;
   label: string;
   provider: string;
   license: string;
@@ -87,7 +96,7 @@ export type SimReadyAsset = Omit<SimReadyProvenance, "id"> & {
   spec: TwinSpec;
 };
 export type LibraryEntry = {
-  collection: "simready" | "chemlab";
+  collection: "workcell" | "simready" | "chemlab";
   id: string;
   name: string;
   label: string;
@@ -127,7 +136,11 @@ export type Twin = {
   confirmed: boolean;
   mode: "mock" | "real";
   source:
-    "astra_image" | "academy_template" | "simready_asset" | "chemlab_asset";
+    | "astra_image"
+    | "academy_template"
+    | "simready_asset"
+    | "chemlab_asset"
+    | "workcell_asset";
   asset?: SimReadyProvenance | null;
   identification?: Identification | null;
   matches?: LibraryMatch[];
@@ -151,6 +164,8 @@ export type Placement = {
   z: number;
   yaw: number;
   access: Access;
+  /** Stays put when layouts are searched. */
+  kept?: boolean;
 };
 export type Bench = { width: number; depth: number };
 export type Layout = { bench: Bench; placements: Placement[] };
@@ -165,8 +180,14 @@ export type MotionSummary = {
   planner: "swing" | "joint" | "rrt_connect";
   length_m: number;
   clearance_m: number;
+  /** Arm time at the connector's default speed; absent on older runs. */
+  seconds?: number;
 };
-export type Motion = MotionSummary & { frames: ArmFrame[] };
+export type Motion = MotionSummary & {
+  frames: ArmFrame[];
+  /** Joint angles (rad) of the same frames. */
+  joints: number[][];
+};
 export type BlockedMotion = {
   step: number;
   actor_id: string;
@@ -176,6 +197,7 @@ export type BlockedMotion = {
   blocked_by: string | null;
   link: string | null;
   frames: ArmFrame[];
+  joints: number[][];
 };
 export type LayoutPreview = {
   arm: string;
@@ -183,6 +205,52 @@ export type LayoutPreview = {
   motions: Motion[];
   error: { message: string; layer: string } | null;
   blocked: BlockedMotion | null;
+};
+export type LayoutMetrics = {
+  run_s: number;
+  arm_s: number;
+  path_m: number;
+  clearance_m: number;
+  reach_margin_m: number;
+  area_m2: number;
+};
+export type LayoutCandidate = LayoutMetrics & {
+  layout: Layout;
+  motions: MotionSummary[];
+};
+export type LayoutSearchChunk = {
+  arm: string;
+  total: number;
+  next: number | null;
+  candidates: LayoutCandidate[];
+  checked: number;
+  failure: string | null;
+};
+export type BriefRole = {
+  key: string;
+  name: string;
+  operations: Operation[];
+  vessel: Vessel;
+  query: string;
+};
+export type BriefStep = {
+  role: string;
+  operation: Operation;
+  source_role: string;
+  target_role: string;
+  value: number;
+};
+export type Brief = {
+  id: string;
+  text: string;
+  status: "starting" | "generating" | "draft" | "failed" | "submission_unknown";
+  message: string;
+  draft: {
+    roles: BriefRole[];
+    steps: BriefStep[];
+    assumptions: string[];
+  } | null;
+  bindings: Record<string, string>;
 };
 export type TraceStep = {
   step: number;
@@ -219,6 +287,7 @@ export type InstrumentCatalog = {
   steps: Step[];
   runs: InstrumentRun[];
   layout: Layout | null;
+  brief: Brief | null;
   templates: Record<string, TwinSpec>;
   simready: Record<string, SimReadyAsset>;
   astra_available: boolean;

@@ -4,6 +4,7 @@ import type {
   Access,
   Layout,
   LayoutPreview,
+  LayoutSearchChunk,
   Placement,
   Twin,
   TwinSpec,
@@ -18,6 +19,7 @@ import {
   type Point,
 } from "./layoutGeometry";
 import studio from "./InstrumentStudio.module.css";
+import LayoutOptions from "./LayoutOptions";
 import s from "./LayoutPanel.module.css";
 
 const PAD = 0.12;
@@ -37,6 +39,7 @@ export default function LayoutPanel({
   onSave,
   saveDisabled,
   onExport,
+  onSearch,
 }: {
   twins: Twin[];
   layout: Layout;
@@ -49,6 +52,12 @@ export default function LayoutPanel({
   saveDisabled: boolean;
   /** Present only while the previewed layout is the saved one. */
   onExport?: (step: number, speed: number) => void;
+  /** One chunk of the layout search for the saved workflow. */
+  onSearch: (
+    fixed: Placement[],
+    start: number,
+    avoid: Placement[][],
+  ) => Promise<LayoutSearchChunk>;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [speed, setSpeed] = useState(20);
@@ -62,7 +71,6 @@ export default function LayoutPanel({
   const placed = new Set(layout.placements.map((p) => p.twin_id));
   const current = layout.placements.find((p) => p.twin_id === selected);
   const { width, depth } = layout.bench;
-
   const update = (id: string, patch: Partial<Placement>) =>
     onChange({
       ...layout,
@@ -106,10 +114,9 @@ export default function LayoutPanel({
     <>
       <h2>Lay out the bench</h2>
       <p className={studio.muted}>
-        Drag instruments to where they stand, or select one and use the arrow
-        keys (Shift for 10 cm, R to rotate). Each transfer robot is a{" "}
-        {preview?.arm ?? "UR5e"} on its own pedestal; every transfer in the
-        saved workflow is checked for link collisions.
+        Search for layouts, or drag instruments into place and keep the ones
+        that cannot move. Arrow keys nudge the selection (Shift for 10 cm, R to
+        rotate).
       </p>
       <svg
         ref={svg}
@@ -180,6 +187,7 @@ export default function LayoutPanel({
             s.footprint,
             arm ? s.arm : "",
             p.twin_id === selected ? s.selected : "",
+            p.kept ? s.kept : "",
             bad.has(p.twin_id) || preview?.blocked?.blocked_by === spec.name
               ? s.conflict
               : "",
@@ -252,6 +260,8 @@ export default function LayoutPanel({
         ))}
       </div>
 
+      <LayoutOptions layout={layout} onApply={onChange} onSearch={onSearch} />
+
       {current ? (
         <fieldset className={s.selectedFields}>
           <legend>{name(current.twin_id)}</legend>
@@ -280,6 +290,16 @@ export default function LayoutPanel({
                 update(current.twin_id, { yaw: Number(e.target.value) })
               }
             />
+          </label>
+          <label className={s.keep}>
+            <input
+              type="checkbox"
+              checked={!!current.kept}
+              onChange={(e) =>
+                update(current.twin_id, { kept: e.target.checked })
+              }
+            />
+            Keep here when searching
           </label>
           {!isArm({ spec: specs.get(current.twin_id)! }) && (
             <label>

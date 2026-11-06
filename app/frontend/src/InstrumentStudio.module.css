@@ -262,6 +262,10 @@
   border: var(--hairline) solid var(--line-strong);
   color: var(--ink-2);
 }
+.source[data-collection="workcell"] {
+  background: var(--brand-soft, var(--surface-2));
+  border-color: var(--brand);
+}
 .source[data-collection="chemlab"] {
   background: var(--warn-soft);
   border-color: var(--warn);
@@ -703,4 +707,15 @@
 .residualForm {
   display: grid;
   gap: 8px;
+}
+.fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+.fill small {
+  color: var(--muted);
+  font-size: 12px;
 }

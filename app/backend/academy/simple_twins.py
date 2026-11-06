@@ -23,6 +23,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 from pydantic import Field, ValidationError, model_validator
 
+from .layout_search import search_layouts
 from .mock_contract import PlanError, execute_mock
 from .models import StrictModel
 from .store import Conflict
@@ -316,14 +317,21 @@ class CreateTwin(Revision):
     template_id: Literal["liquid-handler", "heater", "reader", "transfer-arm"] | None = None
     simready_id: str | None = Field(default=None, max_length=80)
     chemlab_id: str | None = Field(default=None, max_length=80)
+    workcell_id: str | None = Field(default=None, max_length=80)
     image: str | None = Field(default=None, max_length=1_400_000)
     mime: Literal["image/png", "image/jpeg", "image/webp"] = "image/png"
 
     @model_validator(mode="after")
     def one_source(self):
-        sources = (self.template_id, self.simready_id, self.chemlab_id, self.image)
+        sources = (
+            self.template_id,
+            self.simready_id,
+            self.chemlab_id,
+            self.workcell_id,
+            self.image,
+        )
         if sum(map(bool, sources)) != 1:
-            raise ValueError("Choose one template, one SimReady or ChemLab asset or one image")
+            raise ValueError("Choose one template, one library asset or one image")
         return self
 
 
@@ -332,7 +340,7 @@ class ConfirmTwin(Revision):
 
 
 class MatchTwin(Revision):
-    collection: Literal["simready", "chemlab"]
+    collection: Literal["workcell", "simready", "chemlab"]
     asset_id: str = Field(min_length=1, max_length=80)
 
 
@@ -382,6 +390,7 @@ class Placement(StrictModel):
     z: float = Field(ge=-1.5, le=1.5, allow_inf_nan=False)
     yaw: float = Field(ge=-180, le=180, allow_inf_nan=False)
     access: Literal["top", "front"] = "top"
+    kept: bool = False  # stays put when layouts are searched
 
 
 class LayoutDraft(StrictModel):
@@ -397,6 +406,21 @@ class LayoutDraft(StrictModel):
 
 class SaveLayout(Revision, LayoutDraft):
     pass
+
+
+class SearchLayouts(StrictModel):
+    bench: Bench
+    # Instruments the user keeps where they are; the search places the rest.
+    fixed: list[Placement] = Field(default=[], max_length=12)
+    start: int = Field(default=0, ge=0, le=100_000)
+    # Layouts earlier chunks returned; the client sends them back so they are skipped.
+    avoid: list[list[Placement]] = Field(default=[], max_length=200)
+
+    @model_validator(mode="after")
+    def unique(self):
+        if len({p.twin_id for p in self.fixed}) != len(self.fixed):
+            raise ValueError("Keep each instrument once")
+        return self
 
 
 class BedrockTwins:
@@ -529,6 +553,35 @@ class BedrockTwins:
         if not isinstance(response_id, str) or not re.fullmatch(
             r"resp_[A-Za-z0-9_-]{1,200}", response_id
         ):
+            raise HTTPException(502, "Bedrock returned an invalid task identifier")
+        return response_id, result
+
+    def begin_brief(self, text):
+        from .workflow_brief import PROMPT, schema, valid_response_id
+
+        result = self.request(
+            "POST",
+            "responses",
+            json={
+                "model": MODEL,
+                "background": True,
+                "store": True,
+                "max_output_tokens": 4000,
+                "text": {
+                    "format": {
+                        "type": "json_schema",
+                        "name": "teaching_workflow_draft",
+                        "schema": schema(),
+                        "strict": True,
+                    }
+                },
+                "input": [
+                    {"role": "user", "content": [{"type": "input_text", "text": PROMPT + text}]}
+                ],
+            },
+        )
+        response_id = result.get("id", "")
+        if not valid_response_id(response_id):
             raise HTTPException(502, "Bedrock returned an invalid task identifier")
         return response_id, result
 
@@ -833,6 +886,7 @@ class SimpleTwinService:
             "steps": [],
             "runs": [],
             "layout": None,
+            "brief": None,
         }
 
     def catalog(self, owner):
@@ -840,6 +894,7 @@ class SimpleTwinService:
 
         return {
             "layout": None,  # records saved before layouts existed
+            "brief": None,  # or before workflow descriptions
             **self.get(owner),
             "templates": TEMPLATES,
             "simready": SIMREADY,
@@ -945,23 +1000,55 @@ class SimpleTwinService:
             result["error"] = {"message": str(exc), "layer": exc.layer}
         return result
 
+    def search_layout(self, owner, data):
+        """Read-only chunk of the layout enumeration for the saved workflow."""
+        record = self.get(owner)
+        twins = {t["id"]: t for t in record["twins"] if t["confirmed"] and t["spec"]}
+        used = {s[k] for s in record["steps"] for k in ("device_id", "source_id", "target_id")}
+        if not used.issubset({*twins, None}):
+            raise HTTPException(409, "Confirm every instrument in the workflow first")
+        for placement in data.fixed:
+            if str(placement.twin_id) not in twins:
+                raise HTTPException(409, "Only confirmed instruments can be kept in place")
+        try:
+            execute_mock(twins, record["steps"])
+            return search_layouts(
+                twins,
+                data.bench.model_dump(),
+                record["steps"],
+                [p.model_dump(mode="json") for p in data.fixed],
+                data.start,
+                [[p.model_dump(mode="json") for p in layout] for layout in data.avoid],
+            )
+        except PlanError as exc:
+            raise HTTPException(422, {"message": str(exc), "layer": exc.layer}) from exc
+
     def create(self, owner, data):
         record = self.current(owner, data.expected_version)
         if self.twin(record, data.id):
             raise HTTPException(409, "This device already exists. Reload the saved workspace.")
         if len(record["twins"]) >= 12:
             raise HTTPException(422, "A simple workcell supports at most 12 devices")
-        from . import chemlab, simready
+        from . import chemlab, simready, workcell_models
 
         if data.simready_id and data.simready_id not in simready.SIMREADY:
             raise HTTPException(422, "Unknown SimReady asset")
         if data.chemlab_id and data.chemlab_id not in chemlab.CHEMLAB:
             raise HTTPException(422, "Unknown ChemLab asset")
+        if data.workcell_id and data.workcell_id not in workcell_models.catalog():
+            raise HTTPException(422, "Unknown workcell model")
         source, assets, provenance, asset_id = (
             ("simready_asset", simready.SIMREADY, simready.provenance, data.simready_id)
             if data.simready_id
             else ("chemlab_asset", chemlab.CHEMLAB, chemlab.provenance, data.chemlab_id)
             if data.chemlab_id
+            else (
+                "workcell_asset",
+                workcell_models.catalog(),
+                workcell_models.provenance,
+                data.workcell_id,
+            )
+            if data.workcell_id
             else ("astra_image" if data.image else "academy_template", None, None, None)
         )
         raw = b""
@@ -1041,7 +1128,7 @@ class SimpleTwinService:
 
     def match(self, owner, twin_id, data):
         """Replace a photo sketch with a library footprint Astra offered for it."""
-        from . import chemlab, simready
+        from . import chemlab, simready, workcell_models
 
         record = self.current(owner, data.expected_version)
         twin = self.found(record, twin_id)
@@ -1050,14 +1137,17 @@ class SimpleTwinService:
         offered = {(m["collection"], m["id"]) for m in twin.get("matches", [])}
         if (data.collection, data.asset_id) not in offered:
             raise HTTPException(422, "Choose one of the library matches offered for this photo")
-        module = chemlab if data.collection == "chemlab" else simready
-        assets = module.CHEMLAB if data.collection == "chemlab" else module.SIMREADY
+        assets, provenance = {
+            "chemlab": (chemlab.CHEMLAB, chemlab.provenance),
+            "simready": (simready.SIMREADY, simready.provenance),
+            "workcell": (workcell_models.catalog(), workcell_models.provenance),
+        }[data.collection]
         twin.update(
             status="draft",
             message="",
             source=f"{data.collection}_asset",
             spec=deepcopy(assets[data.asset_id]["spec"]),
-            asset=module.provenance(data.asset_id),
+            asset=provenance(data.asset_id),
         )
         return self.save(owner, record, data.expected_version)
 
@@ -1129,6 +1219,9 @@ class SimpleTwinService:
         ):
             raise HTTPException(409, "Remove this device from the workflow first")
         record["twins"].remove(twin)
+        if record.get("brief"):
+            bindings = record["brief"]["bindings"]
+            record["brief"]["bindings"] = {k: v for k, v in bindings.items() if v != twin["id"]}
         if record.get("layout"):
             placements = [p for p in record["layout"]["placements"] if p["twin_id"] != twin["id"]]
             record["layout"] = (
@@ -1144,6 +1237,95 @@ class SimpleTwinService:
         if kind == "usd":
             return usda(twin["spec"], twin.get("asset"))
         return connector_package(twin, record)
+
+    def describe(self, owner, data):
+        """Ask Astra to draft roles and steps from a description; the client polls."""
+        if not self.provider.available:
+            raise HTTPException(
+                503, "Astra is not configured here. Add instruments and build the steps by hand."
+            )
+        record = self.current(owner, data.expected_version)
+        if (record.get("brief") or {}).get("status") == "generating":
+            raise HTTPException(409, "A draft is still being written")
+        if hasattr(self.provider, "api_key"):
+            self.provider.api_key()  # fail before claiming
+        brief = {
+            "id": str(uuid4()),
+            "text": data.text,
+            "status": "starting",
+            "response_id": None,
+            "message": "",
+            "draft": None,
+            # Kept so a redraft with the same roles keeps the chosen instruments.
+            "bindings": (record.get("brief") or {}).get("bindings", {}),
+        }
+        record["brief"] = deepcopy(brief)
+        # Claim before the paid call so a crash leaves a visible record, never a replay.
+        self.save(owner, record, data.expected_version)
+        try:
+            brief["response_id"], result = self.provider.begin_brief(data.text)
+            self._brief_result(brief, result)
+        except HTTPException as exc:
+            brief.update(status="submission_unknown", message=str(exc.detail))
+        for _ in range(3):
+            latest = self.get(owner)
+            if (latest.get("brief") or {}).get("id") != brief["id"]:
+                return self.catalog(owner)
+            latest["brief"] = brief
+            try:
+                return self.save(owner, latest, latest["version"])
+            except Conflict:
+                continue
+        raise Conflict
+
+    @staticmethod
+    def _brief_result(brief, result):
+        from .workflow_brief import parse
+
+        status, draft, message = parse(result)
+        brief.update(status=status, draft=draft, message=message)
+        if draft:
+            keys = {r["key"] for r in draft["roles"]}
+            brief["bindings"] = {k: v for k, v in brief["bindings"].items() if k in keys}
+
+    def poll_brief(self, owner, data):
+        record = self.current(owner, data.expected_version)
+        brief = record.get("brief")
+        if not brief or brief["status"] != "generating":
+            return self.catalog(owner)
+        result = self.provider.poll(brief["response_id"])
+        self._brief_result(brief, result)
+        if brief["status"] == "generating":
+            return self.catalog(owner)
+        return self.save(owner, record, data.expected_version)
+
+    def bind_role(self, owner, data):
+        record = self.current(owner, data.expected_version)
+        brief = record.get("brief")
+        if not brief or not brief["draft"]:
+            raise HTTPException(409, "Draft a workflow from a description first")
+        if data.role not in {r["key"] for r in brief["draft"]["roles"]}:
+            raise HTTPException(422, "Unknown role")
+        bindings = {k: v for k, v in brief["bindings"].items() if v != data.twin_id}
+        bindings.pop(data.role, None)
+        if data.twin_id:
+            bindings[data.role] = self.found(record, data.twin_id)["id"]
+        brief["bindings"] = bindings
+        return self.save(owner, record, data.expected_version)
+
+    def apply_brief(self, owner, data):
+        """Replace the saved workflow with the drafted steps on the chosen instruments."""
+        from .workflow_brief import apply
+
+        record = self.current(owner, data.expected_version)
+        twins = {t["id"]: t for t in record["twins"]}
+        try:
+            steps = apply(record.get("brief") or {}, twins)
+        except ValueError as exc:
+            raise HTTPException(422, {"message": str(exc), "layer": "state"}) from exc
+        self.check_plan(record, steps)
+        record["steps"] = steps
+        return self.save(owner, record, data.expected_version)
 
     def plan(self, owner, data):
         record = self.current(owner, data.expected_version)

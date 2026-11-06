@@ -16,12 +16,21 @@ test("instrument twins run a multi-device workflow on the mock contract", async 
   await page
     .getByRole("button", { name: "Meet the instruments", exact: true })
     .click();
-  // The twin builder sits below the Flex/OT-2 introductions on the same page.
+  // The instruments page teaches; planning your own workcell has its own page.
   await expect(page.getByTestId("instrument-stories")).toBeVisible();
-  const studio = page.getByRole("region", {
-    name: "Find your instrument. Run it as a twin.",
-  });
+  await page
+    .getByRole("button", { name: /Bring your own instruments/ })
+    .click();
+  await expect(page).toHaveURL(/#\/plan$/);
+  const studio = page.getByRole("region", { name: "Plan your workcell" });
   await expect(studio).toBeVisible();
+  // Without Astra the description step says so and the manual path stays open.
+  await expect(
+    studio.getByRole("button", { name: "Draft roles and steps" }),
+  ).toBeDisabled();
+  await expect(studio.getByText(/Drafting needs Astra/)).toBeVisible();
+  await studio.getByRole("button", { name: /Skip to instruments/ }).click();
+  await expect(page).toHaveURL(/#\/plan\/instruments$/);
   await expect(
     studio.getByText("Astra is not configured on this server."),
   ).toBeVisible();
@@ -76,7 +85,7 @@ test("instrument twins run a multi-device workflow on the mock contract", async 
   });
 
   // Detail is added only against a recorded failure residual.
-  await studio.getByRole("tab", { name: "1 · Instruments" }).click();
+  await studio.getByRole("tab", { name: "2 · Instruments" }).click();
   const reader = studio.locator("article", { hasText: "Plate reader" });
   const addConsumable = reader.getByRole("button", { name: "Add consumable" });
   await expect(addConsumable).toBeDisabled();
@@ -99,7 +108,7 @@ test("instrument twins run a multi-device workflow on the mock contract", async 
     reader.getByText("Academy USD template · revision 2"),
   ).toBeVisible();
 
-  await page.getByRole("tab", { name: "4 · Connectors" }).click();
+  await page.getByRole("tab", { name: "5 · Connectors" }).click();
   await expect(
     studio.getByRole("radio", { name: /Real device/ }).first(),
   ).toBeDisabled();
@@ -138,8 +147,9 @@ async function openInstruments(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
   await page
-    .getByRole("button", { name: "Meet the instruments", exact: true })
+    .getByRole("button", { name: "Plan workcell", exact: true })
     .click();
+  await page.getByRole("tab", { name: "2 · Instruments" }).click();
 }
 
 async function enterInstruments(page: import("@playwright/test").Page) {
@@ -208,7 +218,7 @@ test("a stale workflow save preserves local steps and can be reconciled", async 
     .getByRole("button", { name: "Open instrument mock connectors" })
     .click();
   await expect(
-    page.getByRole("tab", { name: "4 · Connectors" }),
+    page.getByRole("tab", { name: "5 · Connectors" }),
   ).toHaveAttribute("aria-selected", "true");
   const downloaded = page.waitForEvent("download");
   await page
@@ -246,7 +256,7 @@ test("a SimReady asset starts an attributed twin that becomes a mock connector",
   ).toHaveAttribute("href", /huggingface\.co\/datasets\/ForgeCAD\//);
   await card.getByRole("button", { name: "Confirm twin" }).click();
   await expect(card.getByText("revision 1")).toBeVisible();
-  await page.getByRole("tab", { name: "4 · Connectors" }).click();
+  await page.getByRole("tab", { name: "5 · Connectors" }).click();
   await page
     .getByRole("button", { name: "View mock connector" })
     .last()
@@ -269,7 +279,7 @@ test("a ChemLab asset starts a non-commercial reference twin", async ({
     .getByRole("button", { name: "Add Analytical balance (XPR204E)" })
     .click();
   const card = page.locator("article", {
-    hasText: "ChemLab reference · CC-BY-NC-4.0",
+    hasText: "ChemLab model · CC-BY-NC-4.0",
   });
   await expect(
     card.getByRole("link", { name: /XPR204E .* © MBZUAI, CC-BY-NC-4.0/ }),
@@ -368,7 +378,7 @@ test("a photo match swaps the Astra sketch for the catalogued footprint", async 
     asset_id: "mt_xpr204e",
   });
   await expect(
-    page.getByText("ChemLab reference · CC-BY-NC-4.0", { exact: true }),
+    page.getByText("ChemLab model · CC-BY-NC-4.0", { exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -421,7 +431,7 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   ).toBeDisabled();
 
   // A suggested layout is checked against the saved workflow straight away.
-  await page.getByRole("tab", { name: "2 · Layout" }).click();
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
   const path = page.getByRole("button", {
     name: /Step 2 · Heating station → Plate reader/,
   });
@@ -495,7 +505,7 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   ).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("tab", { name: "2 · Layout" }).click();
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
   await expect(path).toBeVisible();
   await expect
     .poll(() =>
@@ -506,6 +516,206 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
     .toBe(true);
   await page.screenshot({
     path: "/tmp/academy-instruments-layout-mobile.png",
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});
+
+test("layout search keeps pinned instruments and compares measured options", async ({
+  page,
+}) => {
+  // Each search chunk runs up to 6 s of planning; CI runners are slower than laptops.
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await enterInstruments(page);
+  for (const name of ["Plate reader", "Transfer robot"])
+    await page.getByRole("button", { name, exact: true }).click();
+  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  for (let i = 3; i > 0; i--) {
+    await confirm.first().click();
+    await expect(confirm).toHaveCount(i - 1);
+  }
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  const add = page.getByRole("button", { name: "Add step" });
+  await add.click();
+  await add.click();
+  await page
+    .getByLabel("Step 2 instrument")
+    .selectOption({ label: "Sample transfer robot" });
+  await page
+    .getByLabel("Step 2 from")
+    .selectOption({ label: "From Heating station" });
+  await page.getByLabel("Step 2 to").selectOption({ label: "To Plate reader" });
+  await page.getByLabel("Step 1 volume").fill("150");
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save workflow" }),
+  ).toBeDisabled();
+
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
+  // Pin the heater somewhere the default layout does not put it.
+  await page.getByRole("button", { name: /^Heating station at x/ }).focus();
+  await page.getByLabel("Heating station x").fill("-0.6");
+  await page.getByLabel("Heating station z").fill("-0.3");
+  await page.getByLabel("Keep here when searching").check();
+  await expect(
+    page.getByRole("radio", { name: "Around 1 kept" }),
+  ).toBeChecked();
+  await page.getByRole("button", { name: "Search layouts" }).click();
+  const first = page.getByRole("button", { name: /^Layout \d+/ }).first();
+  await expect(first).toContainText("s run", { timeout: 60_000 });
+  await expect(first).toContainText("cm reach margin");
+  await page.getByRole("button", { name: "Stop" }).click();
+  await expect(
+    page.getByText(/layouts? from \d+ of \d+ starting/),
+  ).toBeVisible();
+  // Every metric can order the list; dominated layouts are hidden by default.
+  await page.getByLabel("Sort by").selectOption("clearance_m");
+  await expect(page.getByLabel("Best trade-offs only")).toBeChecked();
+  const option = page.getByRole("button", { name: /^Layout \d+/ }).first();
+  await option.click();
+  await expect(option).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: /^Heating station at x/ }),
+  ).toHaveAttribute("aria-label", /x -0\.6 m, z -0\.3 m/);
+  const path = page.getByRole("button", {
+    name: /Step 2 · Heating station → Plate reader/,
+  });
+  await expect(path).toContainText("cm min clearance");
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: "/tmp/academy-instruments-layout-search.png",
+    fullPage: true,
+  });
+  // Kept instruments are saved with the layout.
+  await page.reload();
+  await page.getByRole("button", { name: /^Heating station at x/ }).focus();
+  await expect(page.getByLabel("Keep here when searching")).toBeChecked();
+
+  // Too small a bench is explained instead of returning a broken layout.
+  await page.getByRole("radio", { name: "Whole bench" }).check();
+  await page.getByLabel("Bench width (m)").fill("0.8");
+  await page.getByLabel("Bench depth (m)").fill("0.6");
+  await page.getByRole("button", { name: "Search layouts" }).click();
+  await expect(page.getByText(/No feasible layout/)).toBeVisible({
+    timeout: 60_000,
+  });
+  expect(errors).toEqual([]);
+});
+
+test("browser fixture only: a drafted description lists roles and guides instrument choice", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const brief = {
+    id: "b1",
+    text: "Heat a plate to 37 °C, then read it.",
+    status: "draft",
+    message: "",
+    bindings: {},
+    draft: {
+      roles: [
+        {
+          key: "heater",
+          name: "Heating station",
+          operations: ["load", "heat"],
+          vessel: "plate",
+          query: "plate heater",
+        },
+        {
+          key: "reader",
+          name: "Plate reader",
+          operations: ["load", "read"],
+          vessel: "plate",
+          query: "microplate reader",
+        },
+      ],
+      steps: [
+        {
+          role: "heater",
+          operation: "load",
+          source_role: "",
+          target_role: "",
+          value: 150,
+        },
+        {
+          role: "heater",
+          operation: "heat",
+          source_role: "",
+          target_role: "",
+          value: 37,
+        },
+      ],
+      assumptions: ["Four plates reduced to one tracked sample."],
+    },
+  };
+  // Every catalog the server returns carries the drafted brief.
+  await page.route("**/api/twins**", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json().catch(() => null);
+    if (!body || !Array.isArray(body.twins)) return route.fulfill({ response });
+    await route.fulfill({
+      response,
+      json: { ...body, brief, astra_available: true },
+    });
+  });
+  await openInstruments(page);
+  await page.getByRole("tab", { name: "1 · Describe" }).click();
+  await expect(page.getByLabel("Workflow description")).toHaveValue(brief.text);
+  await expect(page.getByRole("button", { name: "Redraft" })).toBeEnabled();
+  const roles = page.getByRole("region", { name: "Instrument roles" });
+  await expect(roles.getByText("Heating station")).toBeVisible();
+  await expect(roles.getByText("Not chosen")).toHaveCount(2);
+  await expect(
+    page
+      .getByRole("region", { name: "Drafted steps" })
+      .getByText("Heating station · Heat 37 °C"),
+  ).toBeVisible();
+  await page.getByText("Assumptions").click();
+  await expect(
+    page.getByText("Four plates reduced to one tracked sample."),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: /Choose instruments/ }).click();
+  const bindings = page.getByRole("region", {
+    name: "Instruments for your workflow",
+  });
+  await expect(bindings.getByLabel("Plate reader instrument")).toHaveValue("");
+  await bindings.getByRole("button", { name: "Find" }).last().click();
+  await expect(page.getByLabel("Search the asset library")).toHaveValue(
+    "microplate reader",
+  );
+  await expect(
+    bindings.getByRole("button", { name: "Find" }).last(),
+  ).toHaveAttribute("aria-pressed", "true");
+  // The workflow tab says what is missing before drafted steps can be used.
+  await page
+    .getByRole("button", { name: "Heating station", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Confirm twin" }).click();
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Use drafted steps" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Choose an instrument for Heating station."),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("tab", { name: "2 · Instruments" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: "/tmp/academy-plan-roles-mobile.png",
     fullPage: true,
   });
   expect(errors).toEqual([]);

@@ -7,7 +7,10 @@ import pytest
 from academy.chemlab import CHEMLAB
 from academy.simple_twins import TEMPLATES, TwinSpec, usda
 from academy.simready import SIMREADY
+from academy.workcell_models import catalog as workcell_catalog
 from fastapi import HTTPException
+
+WORKCELL = workcell_catalog()
 
 PNG = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\0" * 32).decode()
 SPEC = {
@@ -406,9 +409,15 @@ def test_library_search_ranks_name_matches_and_spans_both_collections(client):
         assert response.status_code == 200, response.text
         return response.json()
 
+    from academy.workcell_models import catalog as workcell
+
     featured = search("")
-    assert featured["size"] == len(CHEMLAB) + len(SIMREADY)
-    assert {r["collection"] for r in featured["results"]} == {"chemlab", "simready"}
+    assert featured["size"] == len(CHEMLAB) + len(SIMREADY) + len(workcell())
+    assert {r["collection"] for r in featured["results"]} == {"workcell", "chemlab", "simready"}
+    # Instruments drawn with a full 3D model lead the featured list.
+    assert [r["collection"] for r in featured["results"][: len(workcell())]] == ["workcell"] * len(
+        workcell()
+    )
     assert all(
         CHEMLAB[r["id"]]["featured"] for r in featured["results"] if r["collection"] == "chemlab"
     )
@@ -422,6 +431,34 @@ def test_library_search_ranks_name_matches_and_spans_both_collections(client):
     hit = search("XPR204E")["results"][0]
     assert hit["license"] == "CC-BY-NC-4.0" and hit["size_m"] == [0.209, 0.4604, 0.339]
     assert client.get("/api/twins/library", params={"q": "x" * 81}).status_code == 422
+
+
+def test_workcell_model_twin_records_the_registered_model(client):
+    from academy.workcell_assets import registry
+    from academy.workcell_models import catalog
+
+    registered = {a.id for a in registry().assets}
+    for key, entry in catalog().items():
+        assert entry["mesh"]["asset"] in registered
+        twin_id, created = add(client, client.get("/api/twins").json()["version"], workcell_id=key)
+        twin = next(t for t in created["twins"] if t["id"] == twin_id)
+        assert twin["source"] == "workcell_asset" and twin["asset"]["mesh"] == entry["mesh"]
+        assert twin["spec"] == entry["spec"]
+    arm = catalog()["ur5e-2f140"]["spec"]
+    assert arm["operations"] == ["transfer", "wait"]
+    bad = {"expected_version": created["version"], "id": str(uuid4()), "workcell_id": "nope"}
+    assert client.post("/api/twins", json=bad).status_code == 422
+
+
+def test_chemlab_models_are_pinned_and_served_from_the_app_origin():
+    from academy.chemlab import MODELS, REVISION
+
+    assert MODELS["revision"] == REVISION and len(MODELS["models"]) >= 190
+    for slug, model in MODELS["models"].items():
+        mesh = CHEMLAB[slug]["mesh"]
+        assert mesh["url"] == f"/library-models/chemlab/{slug}.glb"
+        assert mesh["sha256"] == model["sha256"] and len(mesh["sha256"]) == 64
+        assert 0 < model["bytes"] <= 16_000_000
 
 
 def test_chemlab_asset_starts_an_attributed_twin_without_external_references(client):
@@ -610,7 +647,7 @@ def test_bedrock_request_has_a_complete_strict_output_schema(monkeypatch):
         strict(schema)
         keys = schema["properties"]["identification"]["properties"]["library_id"]["enum"]
         assert "chemlab:mt_xpr204e" in keys and "simready:franka-fr3" in keys
-        assert keys[-1] == "none" and len(keys) == len(CHEMLAB) + len(SIMREADY) + 1
+        assert keys[-1] == "none" and len(keys) == len(CHEMLAB) + len(SIMREADY) + len(WORKCELL) + 1
         prompt = payload["input"][0]["content"][0]["text"]
         assert "chemlab:mt_xpr204e | METTLER TOLEDO XPR204E analytical balance" in prompt
         calls.append(payload)

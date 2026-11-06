@@ -1,10 +1,12 @@
 """MBZUAI ChemLab-Assets instruments usable as starting points for teaching twins.
 
 `chemlab_catalog.json` is a pinned snapshot of the release catalog (name, maker, model,
-domain, dataset path and overall size of all 203 instruments). Academy never downloads
-or references the third-party meshes, URDF, contracts or behaviour models: a twin keeps
-one box with the catalog footprint, and its operations, vessel, volume, slots and limits
-are Academy teaching defaults, not manufacturer specifications or ChemLab behaviour.
+domain, dataset path and overall size of all 203 instruments). A twin plans with one box
+with the catalog footprint; the 3D view draws the dataset's own model.glb in its place.
+Those models are pinned by sha256 in `chemlab_models.json` and served from the web app's
+origin (`scripts/library-models/chemlab_models.py`); URDF, contracts and behaviour models
+are never used. Operations, vessel, volume, slots and limits are Academy teaching
+defaults, not manufacturer specifications or ChemLab behaviour.
 Featured instruments carry hand-chosen defaults; the rest get defaults from their kind.
 ChemLab geometry is reconstructed from public documents and may reuse a stand-in model,
 so the box is a reference footprint, not instrument CAD. The assets are CC-BY-NC-4.0:
@@ -21,6 +23,18 @@ LICENSE = "CC-BY-NC-4.0"
 REPO = "MBZUAI/ChemLab-Assets"
 REVISION = "3b67020dcccb22e60be3235f32b39d03da5959ab"  # dataset release 1.5.0
 SNAPSHOT = json.loads((Path(__file__).parent / "chemlab_catalog.json").read_text())
+MODELS = json.loads((Path(__file__).parent / "chemlab_models.json").read_text())
+assert MODELS["revision"] == REVISION, "chemlab_models.json is pinned to another revision"
+
+
+def mesh(slug):
+    """The pinned model.glb the 3D view draws for this instrument, if the dataset has one."""
+    model = MODELS["models"].get(slug)
+    if not model:
+        return None
+    # ChemLab models stand on z = 0 with Z up; the view turns them to Y up.
+    return {"kind": "glb", "url": f"/{model['file']}", "sha256": model["sha256"], "up": "z"}
+
 
 FEATURED = {
     "mt_xpr204e": {
@@ -187,6 +201,7 @@ def entry(row):
         "revision": REVISION,
         "path": row["path"],
         "url": f"https://huggingface.co/datasets/{REPO}/tree/{REVISION}/{row['path']}",
+        "mesh": mesh(row["slug"]),
         "spec": twin,
     }
 
@@ -195,6 +210,6 @@ CHEMLAB = {row["slug"]: entry(row) for row in SNAPSHOT["instruments"]}
 
 
 def provenance(asset_id):
-    """Attribution stored on a twin; never a reference that exports resolve."""
+    """Attribution and the drawn model stored on a twin; exports never resolve them."""
     asset = CHEMLAB[asset_id]
     return {"id": asset_id, **{k: v for k, v in asset.items() if k != "spec"}}

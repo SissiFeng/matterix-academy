@@ -40,6 +40,7 @@ SAMPLE = 0.025  # capsule sampling spacing
 JOINT_STEP = 0.05  # interpolation resolution in joint space
 LIFT = 0.25
 KEEP_FRAMES = 90
+NOMINAL_SPEED = 20  # °/s, the UR5e connector's default, for runtime estimates
 
 
 class MotionError(PlanError):
@@ -606,7 +607,16 @@ def plan_transfer(twins, layout, step_no, step):
             "planner": kind,
             "length_m": round(length, 3),
             "clearance_m": round(min(pick_clear, transit_clear, place_clear), 3),
+            # Joints move together, so each sample takes its largest joint change.
+            "seconds": round(
+                sum(_span(a, b) for a, b in zip(joints, joints[1:], strict=False))
+                / math.radians(NOMINAL_SPEED)
+                + 2 * DWELL,
+                1,
+            ),
             "frames": [_rounded(f) for f in _thin(frames_)],
+            # Joint angles (rad) of the same frames, to pose the drawn arm model.
+            "joints": [[round(v, 4) for v in q] for q in _thin(joints)],
             # Full-resolution joints for export; never stored or returned.
             "_chain": {
                 "planner": planner,
@@ -667,6 +677,7 @@ def plan_transfer(twins, layout, step_no, step):
             "blocked_by": hit[2] if hit else None,
             "link": hit[1] if hit else None,
             "frames": [_rounded(points(q, planner.base)) for q in _thin(attempt)],
+            "joints": [[round(v, 4) for v in q] for q in _thin(attempt)],
         },
     )
 
@@ -689,6 +700,7 @@ def plan_workflow(twins, layout, steps, keep_frames=False):
         planned.pop("_chain")
         if not keep_frames:
             planned.pop("frames")
+            planned.pop("joints")
         motions.append(planned)
     return motions
 
