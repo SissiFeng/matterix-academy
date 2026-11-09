@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Download, RotateCw, Trash2 } from "lucide-react";
 import type {
   Access,
+  Constraint,
   Layout,
   LayoutPreview,
   LayoutSearchChunk,
@@ -10,16 +11,19 @@ import type {
   TwinSpec,
 } from "./instrumentTypes";
 import {
-  REACH,
+  SLOT,
+  armReach,
   centre,
   conflicts,
   corners,
   frontFace,
   isArm,
+  siteCentres,
   type Point,
 } from "./layoutGeometry";
 import studio from "./InstrumentStudio.module.css";
 import LayoutOptions from "./LayoutOptions";
+import LayoutPreferences from "./LayoutPreferences";
 import s from "./LayoutPanel.module.css";
 
 const PAD = 0.12;
@@ -40,6 +44,9 @@ export default function LayoutPanel({
   saveDisabled,
   onExport,
   onSearch,
+  constraints,
+  onConstraints,
+  busy,
 }: {
   twins: Twin[];
   layout: Layout;
@@ -58,8 +65,18 @@ export default function LayoutPanel({
     start: number,
     avoid: Placement[][],
   ) => Promise<LayoutSearchChunk>;
+  constraints: Constraint[];
+  onConstraints: (next: Constraint[]) => void;
+  busy: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  // Slots the arm reaches in the layout last taken from the search list.
+  const [reached, setReached] = useState<{
+    layout: string;
+    slots: Record<string, string[]>;
+  } | null>(null);
+  const reachedNow =
+    reached?.layout === JSON.stringify(layout.placements) ? reached.slots : {};
   const [speed, setSpeed] = useState(20);
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<{ id: string; dx: number; dz: number } | null>(null);
@@ -172,7 +189,7 @@ export default function LayoutPanel({
               className={s.reach}
               cx={cx}
               cy={cz}
-              r={preview?.reach_m ?? REACH}
+              r={armReach(spec)}
             />
           );
         })}
@@ -226,11 +243,25 @@ export default function LayoutPanel({
                 points={shape.map((c) => c.join(",")).join(" ")}
                 style={{ fill: spec.parts[0].color }}
               />
+              {p.access === "top" &&
+                siteCentres(spec, p).map(({ key, at }) => (
+                  <rect
+                    key={key}
+                    className={`${s.slot} ${reachedNow[p.twin_id]?.includes(key) ? s.slotReached : ""}`}
+                    x={at[0] - SLOT[0] / 2}
+                    y={at[1] - SLOT[1] / 2}
+                    width={SLOT[0]}
+                    height={SLOT[1]}
+                    transform={`rotate(${-p.yaw} ${at[0]} ${at[1]})`}
+                  />
+                ))}
               {!arm &&
                 (p.access === "front" ? (
                   <circle className={s.access} cx={fx} cy={fz} r={0.025} />
                 ) : (
-                  <circle className={s.access} cx={cx} cy={cz} r={0.025} />
+                  !spec.sites?.length && (
+                    <circle className={s.access} cx={cx} cy={cz} r={0.025} />
+                  )
                 ))}
               <text x={cx} y={cz - 0.05} className={s.label}>
                 {spec.name}
@@ -260,7 +291,22 @@ export default function LayoutPanel({
         ))}
       </div>
 
-      <LayoutOptions layout={layout} onApply={onChange} onSearch={onSearch} />
+      <LayoutPreferences
+        twins={twins}
+        constraints={constraints}
+        onSave={onConstraints}
+        busy={busy}
+      />
+      <LayoutOptions
+        layout={layout}
+        constraints={constraints}
+        name={name}
+        onApply={(next, slots) => {
+          setReached({ layout: JSON.stringify(next.placements), slots });
+          onChange(next);
+        }}
+        onSearch={onSearch}
+      />
 
       {current ? (
         <fieldset className={s.selectedFields}>

@@ -67,13 +67,17 @@ class MockWorkcell:
     def property(self, device_id, name, consumables):
         with self.lock:
             state = self.trace[-1] if self.trace else {}
-            here = state.get("location") == device_id
+            # The first sample on this device, in load order.
+            here = next(
+                (s for s in state.get("samples", {}).values() if s["location"] == device_id),
+                None,
+            )
             if name == "SampleLoaded":
-                return here
+                return here is not None
             if name == "TemperatureC":
-                return state.get("temperature_c", 20.0) if here else 20.0
+                return here["temperature_c"] if here else 20.0
             if name == "VolumeMicroliters":
-                return state.get("volume_ul", 0.0) if here else 0.0
+                return here["volume_ul"] if here else 0.0
             item = consumables[name]
             return state.get("consumables", {}).get(device_id, {}).get(item["name"], item["stock"])
 

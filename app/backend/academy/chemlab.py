@@ -89,7 +89,8 @@ FEATURED = {
         "operations": ["load", "mix", "wait"],
         "vessel": "plate",
         "volume": 2000,
-        "slots": 4,
+        "slots": 11,
+        "deck": "flex",
         "consumables": [{"name": "Pipette tips", "used_by": "mix", "per_use": 1, "stock": 96}],
     },
     "azenta_automated_roll_heat_sealer_a4s": {

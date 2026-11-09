@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Square, Wand2 } from "lucide-react";
 import type {
+  Consolidation,
+  Constraint,
+  Diagnosis,
   Layout,
   LayoutCandidate,
   LayoutMetrics,
@@ -46,6 +49,12 @@ const METRICS: {
     show: (v) => `${(v * 100).toFixed(0)} cm reach margin`,
   },
   {
+    key: "elbow_deg",
+    label: "Elbow bend",
+    better: "high",
+    show: (v) => `${v.toFixed(0)}° elbow`,
+  },
+  {
     key: "area_m2",
     label: "Bench area",
     better: "low",
@@ -73,11 +82,15 @@ const sameLayout = (a: Layout, b: Layout) =>
 
 export default function LayoutOptions({
   layout,
+  constraints,
+  name,
   onApply,
   onSearch,
 }: {
   layout: Layout;
-  onApply: (next: Layout) => void;
+  constraints: Constraint[];
+  name: (id: string) => string;
+  onApply: (next: Layout, slots: Record<string, string[]>) => void;
   onSearch: (
     fixed: Placement[],
     start: number,
@@ -93,6 +106,8 @@ export default function LayoutOptions({
     total: number;
   } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [diagnosis, setDiagnosis] = useState<Diagnosis[]>([]);
+  const [fewer, setFewer] = useState<Consolidation[]>([]);
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
   const [sortBy, setSortBy] = useState<Key>("run_s");
@@ -100,13 +115,15 @@ export default function LayoutOptions({
   const [all, setAll] = useState(false);
   const runId = useRef(0);
 
-  // Results answer one bench and one set of kept instruments.
-  const inputs = JSON.stringify([layout.bench, fixed]);
+  // Results answer one bench, one set of kept instruments and one set of preferences.
+  const inputs = JSON.stringify([layout.bench, fixed, constraints]);
   useEffect(() => {
     runId.current += 1;
     setFound([]);
     setProgress(null);
     setFailure(null);
+    setDiagnosis([]);
+    setFewer([]);
     setRunning(false);
   }, [inputs]);
 
@@ -129,6 +146,8 @@ export default function LayoutOptions({
         all = [...all, ...chunk.candidates];
         setFound(all);
         setFailure(chunk.failure);
+        setDiagnosis(chunk.diagnosis ?? []);
+        if (chunk.consolidation) setFewer(chunk.consolidation);
         setProgress({ done: chunk.next ?? chunk.total, total: chunk.total });
         start = chunk.next;
       }
@@ -198,10 +217,40 @@ export default function LayoutOptions({
           {error}
         </p>
       )}
-      {!running && progress && !found.length && failure && (
-        <p className={s.problem} role="status">
-          No feasible layout. {failure}
-        </p>
+      {!running &&
+        progress &&
+        !found.length &&
+        (failure || diagnosis.length > 0) && (
+          <div className={s.problem} role="status">
+            <strong>No feasible layout</strong>
+            {diagnosis.length > 0 ? (
+              <ul className={s.diagnosis}>
+                {diagnosis.slice(0, 3).map((d) => (
+                  <li key={d.kind}>{d.hint}</li>
+                ))}
+              </ul>
+            ) : null}
+            {failure && (
+              <details>
+                <summary>Last check</summary>
+                {failure}
+              </details>
+            )}
+          </div>
+        )}
+      {fewer.length > 0 && (
+        <details className={s.fewer}>
+          <summary>Fewer instruments</summary>
+          <ul>
+            {fewer.map((c) => (
+              <li key={`${c.drop_id}-${c.into_id}`}>
+                {c.message}
+                {c.transfers_saved > 0 &&
+                  `, saving ${c.transfers_saved} transfer${c.transfers_saved === 1 ? "" : "s"}`}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {found.length > 0 && (
         <>
@@ -234,7 +283,7 @@ export default function LayoutOptions({
                 <button
                   className={`${s.motion} ${sameLayout(c.layout, layout) ? s.motionActive : ""}`}
                   aria-pressed={sameLayout(c.layout, layout)}
-                  onClick={() => onApply(c.layout)}
+                  onClick={() => onApply(c.layout, c.slots ?? {})}
                 >
                   <span>Layout {c.n}</span>
                   <small>
@@ -244,6 +293,11 @@ export default function LayoutOptions({
                         className={m.key === sortBy ? s.sorted : ""}
                       >
                         {m.show(c[m.key])}
+                      </span>
+                    ))}
+                    {Object.entries(c.slots ?? {}).map(([id, keys]) => (
+                      <span key={id}>
+                        {keys.length} slots on {name(id)}
                       </span>
                     ))}
                   </small>

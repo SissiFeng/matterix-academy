@@ -1,7 +1,7 @@
 """Bench layout and link-level arm motion for teaching twins.
 
-Every twin that performs `transfer` is modelled as a UR5e mounted on top of its own
-parts. Links are capsules, instrument parts are yaw-rotated boxes and the bench is the
+Every twin that performs `transfer` is modelled as a Universal Robots arm (UR5e unless
+the twin names another profile in `arms.py`) mounted on top of its own parts. Links are capsules, instrument parts are yaw-rotated boxes and the bench is the
 plane y = 0 (world is y-up, matching the twin parts). The planner is deterministic and
 pure Python so the same layout always gets the same verdict on Lambda and locally.
 
@@ -12,28 +12,21 @@ pose. A passing path is not motion-planning, Isaac/GPU or physical robot validat
 import math
 import random
 
-from .mock_contract import PlanError
+from .arms import ARMS, ELBOW_MIN_DEG, arm_for
+from .mock_contract import PlanError, transfer_sites
 
-# Universal Robots' published UR5e DH parameters (metres, radians).
-D = (0.1625, 0.0, 0.0, 0.1333, 0.0997, 0.0996)
-A = (0.0, -0.425, -0.3922, 0.0, 0.0, 0.0)
-ALPHA = (math.pi / 2, 0.0, 0.0, math.pi / 2, -math.pi / 2, 0.0)
-ARM = "UR5e"
-REACH = 0.85
+UR5E = ARMS["ur5e"]
+# The default arm's values, for callers that do not plan with a specific twin.
+D, A, ALPHA = UR5E.d, UR5E.a, UR5E.alpha
+ARM = UR5E.name
+REACH = UR5E.reach
 TOOL = 0.16  # flange to grasp point: gripper holding the labware
-LINKS = (
-    ("base", 0.075),
-    ("upper arm", 0.065),
-    ("forearm", 0.055),
-    ("wrist 1", 0.048),
-    ("wrist 2", 0.048),
-    ("wrist 3", 0.048),
-    ("gripper", 0.06),
-)
+LINKS = UR5E.links
 GRIPPER = len(LINKS) - 1
-# Kept inside the UR5e SiLA connector's margins (elbow < 155°, others < 355°) so a
+# Kept inside the UR SiLA connector's margins (elbow < 155°, others < 355°) so a
 # planned path can be exported to it without angle wrapping.
-LIMITS = tuple(math.radians(d) for d in (354, 354, 154, 354, 354, 354))
+LIMITS = UR5E.limits
+ELBOW_MIN = math.radians(ELBOW_MIN_DEG)
 SAFETY = 0.01  # required clearance between any capsule and any obstacle
 APPROACH = 0.12  # straight-line approach and retreat along the access direction
 SAMPLE = 0.025  # capsule sampling spacing
@@ -90,19 +83,19 @@ def _yaw(yaw_deg, x, z):
     return c * x + s * z, -s * x + c * z
 
 
-def frames(q, base):
+def frames(q, base, arm=UR5E):
     """World frames of the base, six joints and the grasp point."""
     out = [base]
     t = base
     for i in range(6):
-        t = _mul(t, _dh(q[i], D[i], A[i], ALPHA[i]))
+        t = _mul(t, _dh(q[i], arm.d[i], arm.a[i], arm.alpha[i]))
         out.append(t)
     out.append(_mul(t, [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, TOOL], [0, 0, 0, 1]]))
     return out
 
 
-def points(q, base):
-    return [_col(f, 3) for f in frames(q, base)]
+def points(q, base, arm=UR5E):
+    return [_col(f, 3) for f in frames(q, base, arm)]
 
 
 def _solve6(m, v):
@@ -120,11 +113,11 @@ def _solve6(m, v):
     return x
 
 
-def solve_ik(position, rotation, seed, base):
+def solve_ik(position, rotation, seed, base, arm=UR5E):
     """Damped least squares to a full grasp pose; returns joint angles or None."""
     q = list(seed)
     for _ in range(80):
-        fr = frames(q, base)
+        fr = frames(q, base, arm)
         tip = fr[7]
         ep = _sub(position, _col(tip, 3))
         er = (0.0, 0.0, 0.0)
@@ -149,7 +142,7 @@ def solve_ik(position, rotation, seed, base):
         biggest = max(abs(v) for v in dq)
         if biggest > 0.4:
             dq = [v * 0.4 / biggest for v in dq]
-        q = [max(-lim, min(lim, a + b)) for a, b, lim in zip(q, dq, LIMITS, strict=True)]
+        q = [max(-lim, min(lim, a + b)) for a, b, lim in zip(q, dq, arm.limits, strict=True)]
     return None
 
 
@@ -180,10 +173,10 @@ class Scene:
     def __init__(self, boxes):
         self.boxes = boxes
 
-    def measure(self, pts, ignore):
+    def measure(self, pts, ignore, links=LINKS):
         """Smallest clearance of the arm's capsules and what it is against."""
         worst = (math.inf, None, None)
-        for li, (link, radius) in enumerate(LINKS):
+        for li, (link, radius) in enumerate(links):
             a, b = pts[li], pts[li + 1]
             seg = _sub(b, a)
             length = _norm(seg)
@@ -289,8 +282,18 @@ def mount(spec, placement):
     return [[c, -s, 0, x], [0, 0, 1, y], [-s, -c, 0, z], [0, 0, 0, 1]]
 
 
-def access(spec, placement):
-    """Grasp point, approach direction and grasp rotation (as columns) of a station."""
+def site_xz(spec, site=None):
+    """Local x/z of a named slot; the footprint centre when it has no drawn slots."""
+    x0, x1, z0, z1 = footprint(spec)
+    drawn = next((s for s in spec.get("sites", []) if s["key"] == site), None)
+    return (drawn["x"], drawn["z"]) if drawn else ((x0 + x1) / 2, (z0 + z1) / 2)
+
+
+def access(spec, placement, site=None):
+    """Grasp point, approach direction and grasp rotation (as columns) of a station.
+
+    Top access reaches the named slot; front access is one opening, whatever the slot.
+    """
     x0, x1, z0, z1 = footprint(spec)
     height = top(spec)
     yaw = placement["yaw"]
@@ -301,7 +304,8 @@ def access(spec, placement):
         tool_z = (-nx, 0.0, -nz)
         tool_x = (0.0, 1.0, 0.0)
     else:
-        local = ((x0 + x1) / 2, height + 0.02, (z0 + z1) / 2)
+        sx, sz = site_xz(spec, site)
+        local = (sx, height + 0.02, sz)
         direction = (0.0, 1.0, 0.0)
         tool_z = (0.0, -1.0, 0.0)
         ax, az = _yaw(yaw, 1, 0)
@@ -387,18 +391,30 @@ class Planner:
     def __init__(self, twins, layout, actor):
         self.places = {p["twin_id"]: p for p in layout["placements"]}
         self.scene = _scene(twins, layout)
+        self.arm = arm_for(actor["spec"])
         self.base = mount(actor["spec"], self.places[actor["id"]])
         self.name = actor["spec"]["name"]
         self.rest = {0: {actor["id"]}}  # the base capsule sits on its own pedestal
+        self.bent = 0  # straight-elbow solutions rejected, for the failure reason
 
     def measure(self, q, ignore=None):
-        return self.scene.measure(points(q, self.base), ignore or self.rest)
+        return self.scene.measure(
+            points(q, self.base, self.arm), ignore or self.rest, self.arm.links
+        )
+
+    def ik(self, position, rotation, seed):
+        """An IK solution with the elbow comfortably bent, or None."""
+        q = solve_ik(position, rotation, seed, self.base, self.arm)
+        if q is not None and abs(math.atan2(math.sin(q[2]), math.cos(q[2]))) < ELBOW_MIN:
+            self.bent += 1
+            return None
+        return q
 
     def candidates(self, position, rotation, ignore, prefer=None):
         found, hits = [], []
         seeds = _seeds(self.base, position)
         for seed in [prefer, *seeds] if prefer else seeds:
-            q = solve_ik(position, rotation, seed, self.base)
+            q = self.ik(position, rotation, seed)
             if q is None:
                 continue
             q = _wrap(q)
@@ -430,7 +446,7 @@ class Planner:
         joints, worst = [q], math.inf
         for k in range(1, steps + 1):
             point, rotation = pose(k / steps)
-            nxt = solve_ik(point, rotation, q, self.base)
+            nxt = self.ik(point, rotation, q)
             if nxt is None or _span(nxt, q) > 0.35:
                 return None, None, joints
             clear = self.measure(nxt, ignore)
@@ -480,7 +496,9 @@ class Planner:
             return out
 
         for _ in range(300):
-            ia = extend(a, [rng.uniform(-min(lim, math.pi), min(lim, math.pi)) for lim in LIMITS])
+            ia = extend(
+                a, [rng.uniform(-min(lim, math.pi), min(lim, math.pi)) for lim in self.arm.limits]
+            )
             if ia is not None:
                 while (ib := extend(b, a[0][ia])) is not None:
                     if _span(b[0][ib], a[0][ia]) < 1e-9:
@@ -501,21 +519,24 @@ class Planner:
             dense += self.edge(x, y)[0]
         return dense
 
-    def station(self, twin, ignore, prefer=None):
+    def station(self, twin, ignore, prefer=None, site=None):
         """Collision-free configurations at a station's pre-grasp pose with a clear approach."""
         spec = twin["spec"]
-        point, direction, rotation = access(spec, self.places[twin["id"]])
+        point, direction, rotation = access(spec, self.places[twin["id"]], site)
         pre = _add(point, direction, APPROACH)
         found, blocked = self.candidates(pre, rotation, ignore, prefer)
         reason = f"the {blocked[1]} would hit {blocked[2]}" if blocked else None
         if not found and not blocked:
             flange = _add(pre, rotation[2], -TOOL)
-            shoulder = _add(_col(self.base, 3), _col(self.base, 2), D[0])
+            shoulder = _add(_col(self.base, 3), _col(self.base, 2), self.arm.d[0])
             distance = _norm(_sub(flange, shoulder))
+            name, reach = self.arm.name, self.arm.reach
             reason = (
-                f"it is {distance:.2f} m from the {ARM} shoulder and the arm reaches about {REACH:.2f} m"
-                if distance > REACH
-                else f"the {ARM} cannot hold the gripper in that orientation there"
+                f"it is {distance:.2f} m from the {name} shoulder and the arm reaches about {reach:.2f} m"
+                if distance > reach
+                else f"the {name} would need its elbow almost straight there, with no room to lift"
+                if self.bent
+                else f"the {name} cannot hold the gripper in that orientation there"
             )
         options = []
         for q in found:
@@ -530,7 +551,8 @@ class Planner:
                 )
         if not options:
             side = self.places[twin["id"]]["access"]
-            raise PlanError("geometry", f"{spec['name']}'s {side} access point: {reason}")
+            where = f"slot {site}" if site and side == "top" and spec.get("sites") else side
+            raise PlanError("geometry", f"{spec['name']}'s {where} access point: {reason}")
         return options, pre, rotation, point
 
     def swing(self, qa, pa, ra, pb, rb, target_ignore, grasp):
@@ -574,8 +596,9 @@ def _thin(seq):
     return seq[::keep] + ([seq[-1]] if (len(seq) - 1) % keep else [])
 
 
-def plan_transfer(twins, layout, step_no, step):
+def plan_transfer(twins, layout, step_no, step, sites=(None, None)):
     actor, source, target = (twins[step[k]] for k in ("device_id", "source_id", "target_id"))
+    src_site, tgt_site = sites
     places = {p["twin_id"] for p in layout["placements"]}
     for twin in (actor, source, target):
         if twin["id"] not in places:
@@ -587,26 +610,37 @@ def plan_transfer(twins, layout, step_no, step):
     src_ignore = {**planner.rest, GRIPPER: {source["id"]}}
     tgt_ignore = {**planner.rest, GRIPPER: {target["id"]}}
     try:
-        src_options, src_pre, src_rot, _ = planner.station(source, src_ignore)
+        src_options, src_pre, src_rot, _ = planner.station(source, src_ignore, site=src_site)
         tgt_options, tgt_pre, tgt_rot, tgt_point = planner.station(
-            target, tgt_ignore, prefer=src_options[0][0]
+            target, tgt_ignore, prefer=src_options[0][0], site=tgt_site
         )
     except PlanError as exc:
         raise PlanError("geometry", f"{label}: {exc}") from exc
 
     def motion(kind, pick, pick_clear, transit, transit_clear, place, place_clear):
         joints = pick + pick[::-1][1:] + transit[1:] + place[1:] + place[::-1][1:]
-        frames_ = [points(q, planner.base) for q in joints]
+        frames_ = [points(q, planner.base, planner.arm) for q in joints]
         length = sum(_norm(_sub(b[-1], a[-1])) for a, b in zip(frames_, frames_[1:], strict=False))
         return {
             "step": step_no,
             "actor_id": actor["id"],
             "source_id": source["id"],
             "target_id": target["id"],
-            "arm": ARM,
+            "source_site": src_site,
+            "target_site": tgt_site,
+            "arm": planner.arm.name,
             "planner": kind,
             "length_m": round(length, 3),
             "clearance_m": round(min(pick_clear, transit_clear, place_clear), 3),
+            # Least elbow bend while lowering into either station: near 0° the arm is at
+            # full stretch and cannot lift straight up.
+            "elbow_deg": round(
+                min(
+                    abs(math.degrees(math.atan2(math.sin(q[2]), math.cos(q[2]))))
+                    for q in pick + place
+                ),
+                1,
+            ),
             # Joints move together, so each sample takes its largest joint change.
             "seconds": round(
                 sum(_span(a, b) for a, b in zip(joints, joints[1:], strict=False))
@@ -662,7 +696,8 @@ def plan_transfer(twins, layout, step_no, step):
     blocker = (
         f"; the {hit[1]} hits {hit[2]}"
         if hit
-        else "; the arm cannot stay continuous within the UR5e joint limits (elbow ±155°, others ±355°)"
+        else f"; the arm cannot stay continuous within the {planner.arm.name} joint limits "
+        f"(elbow ±{math.degrees(planner.arm.limits[2]):.0f}°, bent at least {ELBOW_MIN_DEG}°)"
     )
     raise MotionError(
         f"{label}: no collision-free path from {source['spec']['name']} to "
@@ -673,10 +708,10 @@ def plan_transfer(twins, layout, step_no, step):
             "actor_id": actor["id"],
             "source_id": source["id"],
             "target_id": target["id"],
-            "arm": ARM,
+            "arm": planner.arm.name,
             "blocked_by": hit[2] if hit else None,
             "link": hit[1] if hit else None,
-            "frames": [_rounded(points(q, planner.base)) for q in _thin(attempt)],
+            "frames": [_rounded(points(q, planner.base, planner.arm)) for q in _thin(attempt)],
             "joints": [[round(v, 4) for v in q] for q in _thin(attempt)],
         },
     )
@@ -685,12 +720,13 @@ def plan_transfer(twins, layout, step_no, step):
 def plan_workflow(twins, layout, steps, keep_frames=False):
     """Motions for every transfer step; raises PlanError('geometry') on the first failure."""
     validate_layout(twins, layout)
+    sites = transfer_sites(twins, steps)
     motions = []
     for index, step in enumerate(steps):
         if step["operation"] != "transfer":
             continue
         try:
-            planned = plan_transfer(twins, layout, index + 1, step)
+            planned = plan_transfer(twins, layout, index + 1, step, sites[index + 1])
         except MotionError as exc:
             exc.motions = motions
             raise
@@ -737,7 +773,10 @@ def action_chain(twins, layout, steps, step_no, speed):
     validate_layout(twins, layout)
     if not 0 < step_no <= len(steps) or steps[step_no - 1]["operation"] != "transfer":
         raise PlanError("state", f"Step {step_no} is not a transfer")
-    planned = plan_transfer(twins, layout, step_no, steps[step_no - 1])
+    if arm_for(twins[steps[step_no - 1]["device_id"]]["spec"]).key != "ur5e":
+        raise PlanError("state", "Arm paths export to the UR5e connector only")
+    sites = transfer_sites(twins, steps)[step_no]
+    planned = plan_transfer(twins, layout, step_no, steps[step_no - 1], sites)
     planner = planned["_chain"]["planner"]
     segments = planned["_chain"]["segments"]
     reference = segments[0][1][0]

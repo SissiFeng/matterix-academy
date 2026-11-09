@@ -31,6 +31,8 @@ import {
   type Operation,
   type Step,
   type Twin,
+  DEFAULT_SAMPLE,
+  siteKeys,
 } from "./instrumentTypes";
 import BriefPanel, { RoleBindings, applyBlocker } from "./BriefPanel";
 import s from "./InstrumentStudio.module.css";
@@ -568,6 +570,20 @@ export default function InstrumentStudio({
               catalog={catalog}
               busy={busy}
               onDescribe={(text) => mutate("/twins/workflow/brief", { text })}
+              onImport={(name, draft) =>
+                mutate("/twins/workflow/brief/import", { name, draft })
+              }
+              onSchema={async () => {
+                try {
+                  const doc = await apiText("/twins/workflow/brief/schema");
+                  saveBlob(
+                    "academy-workflow-draft.schema.json",
+                    new Blob([doc], { type: "application/json" }),
+                  );
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
               onNext={() => go("instruments")}
             />
           )}
@@ -789,6 +805,15 @@ export default function InstrumentStudio({
                     json({ bench: draft.bench, fixed, start, avoid }),
                   )
                 }
+                constraints={catalog.constraints ?? []}
+                onConstraints={(next) =>
+                  mutate(
+                    "/twins/layout/constraints",
+                    { constraints: next },
+                    "PUT",
+                  )
+                }
+                busy={busy}
                 onSave={async () => {
                   const submitted = layoutRevision.current;
                   if (await mutate("/twins/layout", draft, "PUT"))
@@ -830,18 +855,44 @@ export default function InstrumentStudio({
                     </div>
                   )}
                   <p className={s.muted}>
-                    One sample moves through your instruments. Load it once,
-                    transfer it between stations, and act on it where it is.
+                    Load each plate once, transfer it between stations, and act
+                    on it where it is.
                     {catalog.layout &&
                       " Transfers must also have a collision-free arm path on the saved bench layout."}
                   </p>
+                  <datalist id="workflow-samples">
+                    {[
+                      ...new Set([
+                        DEFAULT_SAMPLE,
+                        ...steps.map((x) => x.sample ?? DEFAULT_SAMPLE),
+                      ]),
+                    ].map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                   <ol className={s.steps}>
                     {steps.map((step, i) => {
                       const device = confirmed.find(
                         (t) => t.id === step.device_id,
                       );
                       const replace = (next: Step) =>
-                        editSteps(steps.map((x, j) => (j === i ? next : x)));
+                        editSteps(
+                          steps.map((x, j) =>
+                            j === i
+                              ? { ...next, sample: next.sample ?? step.sample }
+                              : x,
+                          ),
+                        );
+                      // A slot is worth choosing only where there is more than one.
+                      const slotTwin =
+                        step.operation === "load"
+                          ? device
+                          : step.operation === "transfer"
+                            ? confirmed.find((t) => t.id === step.target_id)
+                            : undefined;
+                      const slots = slotTwin ? siteKeys(slotTwin.spec!) : [];
+                      const slotField =
+                        step.operation === "load" ? "site" : "target_site";
                       return (
                         <li
                           key={i}
@@ -915,6 +966,44 @@ export default function InstrumentStudio({
                                   </select>
                                 ),
                               )}
+                            {step.operation !== "wait" && (
+                              <input
+                                className={s.sample}
+                                list="workflow-samples"
+                                aria-label={`Step ${i + 1} sample`}
+                                value={step.sample ?? DEFAULT_SAMPLE}
+                                maxLength={24}
+                                onChange={(e) =>
+                                  replace({
+                                    ...step,
+                                    sample:
+                                      e.target.value
+                                        .toLowerCase()
+                                        .replace(/[^a-z0-9-]/g, "-") ||
+                                      DEFAULT_SAMPLE,
+                                  })
+                                }
+                              />
+                            )}
+                            {slots.length > 1 && (
+                              <select
+                                aria-label={`Step ${i + 1} slot`}
+                                value={step[slotField] ?? ""}
+                                onChange={(e) =>
+                                  replace({
+                                    ...step,
+                                    [slotField]: e.target.value,
+                                  })
+                                }
+                              >
+                                <option value="">Any free slot</option>
+                                {slots.map((key) => (
+                                  <option key={key} value={key}>
+                                    Slot {key}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                             {step.operation in units && (
                               <label className={s.inline}>
                                 <input

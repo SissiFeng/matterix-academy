@@ -33,6 +33,7 @@ from .simple_twins import (
     LayoutDraft,
     MatchTwin,
     RecordResidual,
+    SaveConstraints,
     SaveLayout,
     SavePlan,
     SearchLayouts,
@@ -42,7 +43,8 @@ from .simple_twins import Revision as TwinRevision
 from .store import Conflict, DynamoStore, SQLiteStore
 from .teaching import InvalidTransition, control, execute_step, initial_state, new_session
 from .workcell_assets import router as workcell_router
-from .workflow_brief import BindRole, DescribeWorkflow
+from .workflow_brief import BindRole, DescribeWorkflow, ImportWorkflow
+from .workflow_brief import schema as brief_schema
 from .workflow_course import KEY as COURSE_KEY
 from .workflow_course import CourseCommand, initial, transition
 
@@ -286,6 +288,10 @@ def create_app(settings: Settings | None = None, store=None):
     def preview_instrument_layout(data: LayoutDraft, owner: str = Depends(identify)):
         return app.state.twins.preview_layout(owner, data)
 
+    @app.put("/api/twins/layout/constraints")
+    def save_layout_constraints(data: SaveConstraints, owner: str = Depends(identify)):
+        return app.state.twins.save_constraints(owner, data)
+
     @app.post("/api/twins/layout/search")
     def search_instrument_layouts(data: SearchLayouts, owner: str = Depends(identify)):
         return app.state.twins.search_layout(owner, data)
@@ -357,6 +363,14 @@ def create_app(settings: Settings | None = None, store=None):
     @app.post("/api/twins/workflow/brief/poll")
     def poll_instrument_workflow(data: TwinRevision, owner: str = Depends(identify)):
         return app.state.twins.poll_brief(owner, data)
+
+    @app.post("/api/twins/workflow/brief/import")
+    def import_instrument_workflow(data: ImportWorkflow, owner: str = Depends(identify)):
+        return app.state.twins.import_brief(owner, data)
+
+    @app.get("/api/twins/workflow/brief/schema")
+    def instrument_workflow_schema(owner: str = Depends(identify)):
+        return {"$id": "matterix-academy/workflow-draft/1", **brief_schema()}
 
     @app.put("/api/twins/workflow/brief/bind")
     def bind_instrument_role(data: BindRole, owner: str = Depends(identify)):

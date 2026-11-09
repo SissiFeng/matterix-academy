@@ -14,15 +14,14 @@ chunk stays under its time cap. Synthetic geometry only, as checked by the plann
 import itertools
 import math
 import time
+from collections import Counter
 
-from .mock_contract import PlanError, execute_mock
+from .arms import arm_for
+from .mock_contract import PlanError, execute_mock, site_keys
 from .workcell_layout import (
     APPROACH,
-    ARM,
     GRIPPER,
-    REACH,
     TOOL,
-    D,
     Planner,
     _add,
     _col,
@@ -74,13 +73,41 @@ def _stretch(twins, arm, station):
     spec = twins[station["twin_id"]]["spec"]
     point, direction, rotation = access(spec, station)
     flange = _add(_add(point, direction, APPROACH), rotation[2], -TOOL)
-    base = mount(twins[arm["twin_id"]]["spec"], arm)
-    return _norm(_sub(flange, _add(_col(base, 3), _col(base, 2), D[0])))
+    spec = twins[arm["twin_id"]]["spec"]
+    base = mount(spec, arm)
+    return _norm(_sub(flange, _add(_col(base, 3), _col(base, 2), arm_for(spec).d[0])))
 
 
 def _access_xz(twins, placement):
     point = access(twins[placement["twin_id"]]["spec"], placement)[0]
     return point[0], point[2]
+
+
+def _centre(twins, placement):
+    shape = corners(twins[placement["twin_id"]]["spec"], placement)
+    return sum(x for x, _ in shape) / 4, sum(z for _, z in shape) / 4
+
+
+ZONES = {
+    "left": lambda x, z: x <= 0,
+    "right": lambda x, z: x >= 0,
+    "back": lambda x, z: z <= 0,
+    "front": lambda x, z: z >= 0,
+}
+
+# What a recorded failure usually needs changed, by kind.
+HINTS = {
+    "reach": "Instruments end up beyond the {arm}'s reach (about {reach:.2f} m). Allow front "
+    "access, add a second arm, or keep fewer instruments in place.",
+    "room": "The bench is too small for every instrument around the arm. Make the bench "
+    "larger or leave unused instruments off it.",
+    "collision": "Arm paths run into {blocker}. Let it move, or change its access side.",
+    "path": "The arm cannot keep a continuous path between some stations. Let the stations "
+    "turn toward the arm or allow front access.",
+    "constraint": "Your preferences rule out every arrangement tried: {detail}. Relax one of them.",
+    "slots": "The arm cannot reach enough slots on {detail}. Ask for fewer slots or let the "
+    "instrument turn its deck toward the arm.",
+}
 
 
 def _distinct(a, b):
@@ -89,9 +116,11 @@ def _distinct(a, b):
 
 
 class Search:
-    def __init__(self, twins, bench, steps, fixed):
+    def __init__(self, twins, bench, steps, fixed, constraints=()):
         self.twins, self.bench, self.steps = twins, bench, steps
         self.fixed = {p["twin_id"]: {**p, "kept": True} for p in fixed}
+        self.reasons = Counter()
+        self.details = {}
         self.transfers = [s for s in steps if s["operation"] == "transfer"]
         if not self.transfers:
             raise PlanError("state", "Save a workflow with a transfer step to search for a layout")
@@ -108,15 +137,25 @@ class Search:
             (t for t in self.serving if t not in self.fixed), key=lambda t: -uses[t]
         )
         busy = {*self.arms, *self.serving}
-        self.spares = [t for t in twins if t not in busy and t not in self.fixed]
+        self.read_constraints(constraints, {*busy, *(s["device_id"] for s in steps)})
+        self.spares = [
+            t for t in twins if t not in busy and t not in self.fixed and t not in self.excluded
+        ]
         self.free_arms = [a for a in self.arms if a not in self.fixed]
         trace = execute_mock(twins, steps)
+        self.sites = {
+            s["step"]: (s["source_site"], s["site"]) for s in trace if s["operation"] == "transfer"
+        }
         # The mock books one second per transfer; the arm estimate replaces it.
         self.device_s = trace[-1]["elapsed_s"] - len(self.transfers)
         self.plans = 0
         self.failure = None
         self.reach_cache = {}
         validate_layout(twins, self.layout(self.fixed.values()))
+        for p in self.fixed.values():
+            if not self.preferred(p["twin_id"], p, list(self.fixed.values())):
+                name = twins[p["twin_id"]]["spec"]["name"]
+                raise PlanError("constraint", f"{name} is kept where your preferences rule out")
         arms = len(self.arm_grid(self.free_arms[0], [])) if self.free_arms else 1
         self.starts = list(
             itertools.product(
@@ -126,6 +165,109 @@ class Search:
                 START_ANGLES,
             )
         )
+
+    def read_constraints(self, constraints, used):
+        name = lambda t: self.twins[t]["spec"]["name"]  # noqa: E731
+        self.excluded, self.zones, self.pairs, self.slot_needs = set(), {}, [], {}
+        for c in constraints:
+            ids = [c["twin_id"], *([c["other_id"]] if c.get("other_id") else [])]
+            if any(t not in self.twins for t in ids):
+                raise PlanError(
+                    "constraint", "A preference names an instrument that is not confirmed"
+                )
+            twin_id = c["twin_id"]
+            if c["kind"] == "exclude":
+                if twin_id in used:
+                    raise PlanError(
+                        "constraint",
+                        f"The workflow uses {name(twin_id)}; it has to be on the bench",
+                    )
+                self.excluded.add(twin_id)
+            elif c["kind"] == "zone":
+                self.zones[twin_id] = c["side"]
+            elif c["kind"] in {"near", "apart"}:
+                self.pairs.append((c["kind"], twin_id, c["other_id"], c["metres"]))
+            elif c["kind"] == "reach_slots":
+                keys = site_keys(self.twins[twin_id]["spec"])
+                if c["count"] > len(keys):
+                    raise PlanError("constraint", f"{name(twin_id)} has only {len(keys)} slots")
+                self.slot_needs[twin_id] = c["count"]
+
+    def profile(self, arm_id):
+        return arm_for(self.twins[arm_id]["spec"])
+
+    def arm_names(self):
+        return " and ".join(dict.fromkeys(self.profile(a).name for a in self.arms))
+
+    def fail(self, kind, message, detail=None):
+        self.failure = message
+        self.reasons[kind] += 1
+        if detail:
+            self.details.setdefault(kind, Counter())[detail] += 1
+
+    def preferred(self, twin_id, placement, placed):
+        """Zone and distance preferences that can be judged once these two are placed."""
+        centre = _centre(self.twins, placement)
+        side = self.zones.get(twin_id)
+        if side and not ZONES[side](*centre):
+            want = f"{self.twins[twin_id]['spec']['name']} on the {side}"
+            self.fail("constraint", f"Keeping {want} rules out this pose", want)
+            return False
+        where = {p["twin_id"]: p for p in placed}
+        for kind, a, b, metres in self.pairs:
+            other = b if a == twin_id else a if b == twin_id else None
+            if other is None or other not in where:
+                continue
+            gap = math.dist(centre, _centre(self.twins, where[other]))
+            if (kind == "near" and gap > metres) or (kind == "apart" and gap < metres):
+                names = " and ".join(self.twins[t]["spec"]["name"] for t in (a, b))
+                want = f"{names} {'within' if kind == 'near' else 'at least'} {metres:g} m apart"
+                self.fail("constraint", f"Keeping {want} rules out this pose", want)
+                return False
+        return True
+
+    def slot_reach(self, layout, twin_id):
+        """Slots of an instrument that some arm serving it reaches in this layout."""
+        arms = self.serving.get(twin_id) or self.arms
+        reached = []
+        for key in site_keys(self.twins[twin_id]["spec"]):
+            for arm in arms:
+                planner = Planner(self.twins, layout, self.twins[arm])
+                try:
+                    planner.station(
+                        self.twins[twin_id], {**planner.rest, GRIPPER: {twin_id}}, site=key
+                    )
+                except PlanError:
+                    continue
+                reached.append(key)
+                break
+        return reached
+
+    def diagnosis(self):
+        out = []
+        for kind, count in self.reasons.most_common():
+            detail = self.details.get(kind, Counter()).most_common(1)
+            out.append(
+                {
+                    "kind": kind,
+                    "count": count,
+                    "hint": HINTS[kind].format(
+                        arm=self.arm_names(),
+                        reach=min(self.profile(a).reach for a in self.arms),
+                        blocker=detail[0][0] if detail else "another instrument",
+                        detail=detail[0][0] if detail else "an instrument",
+                    ),
+                }
+            )
+        if self.fixed and out:
+            out.append(
+                {
+                    "kind": "kept",
+                    "count": len(self.fixed),
+                    "hint": "Kept instruments pin the cell. Let one of them move.",
+                }
+            )
+        return out
 
     def layout(self, placements):
         keys = ("twin_id", "x", "z", "yaw", "access")
@@ -141,9 +283,9 @@ class Search:
         half_w, half_d = self.bench["width"] / 2, self.bench["depth"] / 2
         if any(abs(x) > half_w or abs(z) > half_d for x, z in shape):
             return False
-        return not any(
-            _overlap(shape, corners(self.twins[p["twin_id"]]["spec"], p)) for p in placed
-        )
+        if any(_overlap(shape, corners(self.twins[p["twin_id"]]["spec"], p)) for p in placed):
+            return False
+        return self.preferred(twin_id, placement, placed)
 
     def reachable(self, arm_id, station_id, side, radius):
         """Whether the arm can reach this station alone at this radius and side.
@@ -157,13 +299,19 @@ class Search:
             bx, bz = _base(self.twins, arm)
             spec = self.twins[station_id]["spec"]
             station = {"twin_id": station_id, **_pose(spec, side, (bx, bz + radius), (bx, bz))}
-            ok = _stretch(self.twins, arm, station) <= REACH - MARGIN
-            if ok:
+            profile = self.profile(arm_id)
+            ok = _stretch(self.twins, arm, station) <= profile.reach - MARGIN
+            if not ok:
+                self.fail(
+                    "reach", f"{spec['name']} is beyond the {profile.name}'s reach at {radius} m"
+                )
+            else:
                 planner = Planner(self.twins, self.layout([arm, station]), self.twins[arm_id])
                 try:
                     planner.station(self.twins[station_id], {**planner.rest, GRIPPER: {station_id}})
                 except PlanError as exc:
-                    ok, self.failure = False, str(exc)
+                    ok = False
+                    self.fail("collision" if "hit" in str(exc) else "reach", str(exc))
             self.reach_cache[key] = ok
         return self.reach_cache[key]
 
@@ -181,12 +329,13 @@ class Search:
         for x, z in grid:
             pose = {"twin_id": arm_id, "x": x, "z": z, "yaw": 0, "access": "top"}
             base = _base(self.twins, pose)
-            if any(math.dist(base, o) < 0.6 for o in others):
+            if any(math.dist(base, o) < 0.6 * self.profile(arm_id).scale for o in others):
                 continue
             # Kept stations this arm serves must stay within its reach.
             if any(
                 arm_id in self.serving[t]
-                and math.dist(base, _access_xz(self.twins, self.fixed[t])) > REACH
+                and math.dist(base, _access_xz(self.twins, self.fixed[t]))
+                > self.profile(arm_id).reach
                 for t in self.fixed
                 if t in self.serving
             ):
@@ -212,23 +361,29 @@ class Search:
         start = near[-1] if near else order["angle"]
         angles = sorted(ANGLES, key=lambda a: (abs((a - start + 180) % 360 - 180), a))
         offered = False
+        scale = self.profile(home).scale
         for side in order["sides"]:
-            for radius in order["radii"]:
+            for ring in order["radii"]:
+                radius = round(ring * scale, 3)
                 if not self.reachable(home, station_id, side, radius):
                     continue
                 for angle in angles:
                     t = math.radians(angle)
                     point = (bx + radius * math.sin(t), bz + radius * math.cos(t))
-                    if any(math.dist(point, bases[a]) > REACH - MARGIN for a in rest):
+                    if any(
+                        math.dist(point, bases[a]) > self.profile(a).reach - MARGIN for a in rest
+                    ):
                         continue
                     pose = {"twin_id": station_id, **_pose(spec, side, point, (bx, bz))}
                     if self.fits(station_id, pose, placed):
                         offered = True
                         yield pose
         if not offered:
-            self.failure = (
-                f"{spec['name']} has no pose within the {ARM}'s reach that fits on the bench "
-                "beside the instruments already placed"
+            self.fail(
+                "room",
+                f"{spec['name']} has no pose within the {self.profile(home).name}'s reach that "
+                "fits on the bench "
+                "beside the instruments already placed",
             )
 
     def spare_pose(self, twin_id, placed):
@@ -283,8 +438,9 @@ class Search:
 
     def metrics(self, layout, motions):
         places = {p["twin_id"]: p for p in layout["placements"]}
-        stretch = max(
-            _stretch(self.twins, places[s["device_id"]], places[s[k]])
+        margin = min(
+            self.profile(s["device_id"]).reach
+            - _stretch(self.twins, places[s["device_id"]], places[s[k]])
             for s in self.transfers
             for k in ("source_id", "target_id")
         )
@@ -302,7 +458,8 @@ class Search:
             "arm_s": round(arm_s, 1),
             "path_m": round(sum(m["length_m"] for m in motions), 3),
             "clearance_m": min(m["clearance_m"] for m in motions),
-            "reach_margin_m": round(REACH - stretch, 3),
+            "reach_margin_m": round(margin, 3),
+            "elbow_deg": min(m["elbow_deg"] for m in motions),
             "area_m2": round((max(xs) - min(xs)) * (max(zs) - min(zs)), 2),
         }
 
@@ -338,7 +495,7 @@ class Search:
                 pose = self.spare_pose(twin_id, full)
                 if pose is None:
                     name = self.twins[twin_id]["spec"]["name"]
-                    self.failure = f"No room left on the bench for {name}"
+                    self.fail("room", f"No room left on the bench for {name}")
                     return None
                 full.append(pose)
             if any(not self.distinct(full, other) for other in seen):
@@ -346,23 +503,48 @@ class Search:
             layout = self.layout(full)
             budget[0] -= 1
             self.plans += 1
+            slots = {}
+            for twin_id, count in self.slot_needs.items():
+                slots[twin_id] = self.slot_reach(layout, twin_id)
+                if len(slots[twin_id]) < count:
+                    name = self.twins[twin_id]["spec"]["name"]
+                    self.fail(
+                        "slots",
+                        f"The arm reaches {len(slots[twin_id])} of the {count} slots asked for "
+                        f"on {name}",
+                        name,
+                    )
+                    return None
             try:
                 motions = plan_workflow(self.twins, layout, self.steps)
             except PlanError as exc:
-                self.failure = str(exc)
+                hit = getattr(exc, "attempt", None) or {}
+                if hit.get("blocked_by"):
+                    self.fail("collision", str(exc), hit["blocked_by"])
+                else:
+                    self.fail("path", str(exc))
                 return None
             seen.append(full)
-            return {"layout": layout, **self.metrics(layout, motions), "motions": motions}
+            return {
+                "layout": layout,
+                **self.metrics(layout, motions),
+                "slots": slots,
+                "motions": motions,
+            }
 
         return place(list(self.fixed.values()), self.free_arms, self.stations)
 
 
-def search_layouts(twins, bench, steps, fixed=(), start=0, avoid=(), seconds=CHUNK_SECONDS):
+def search_layouts(
+    twins, bench, steps, fixed=(), start=0, avoid=(), seconds=CHUNK_SECONDS, constraints=()
+):
     """One chunk of the enumeration, from starting arrangement `start` onward.
 
     `avoid` holds layouts earlier chunks already returned, so they are not checked again.
+    `constraints` are the user's preferences: slots an arm must reach, zones, distances
+    and instruments left off the bench.
     """
-    search = Search(twins, bench, steps, fixed)
+    search = Search(twins, bench, steps, fixed, constraints)
     deadline = time.monotonic() + seconds
     found = []
     seen = [list(placements) for placements in avoid]
@@ -377,10 +559,12 @@ def search_layouts(twins, bench, steps, fixed=(), start=0, avoid=(), seconds=CHU
         if result:
             found.append(result)
     return {
-        "arm": ARM,
+        "arm": search.arm_names(),
+        "reach_m": min(search.profile(a).reach for a in search.arms),
         "total": len(search.starts),
         "next": index if index < len(search.starts) else None,
         "candidates": found,
         "checked": search.plans,
         "failure": search.failure,
+        "diagnosis": search.diagnosis(),
     }

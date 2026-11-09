@@ -1,8 +1,16 @@
-import type { Layout, Placement, Twin, TwinSpec } from "./instrumentTypes";
+import {
+  armProfiles,
+  type Layout,
+  type Placement,
+  type Twin,
+  type TwinSpec,
+} from "./instrumentTypes";
 
 /** Mirrors workcell_layout.py; the server's check is authoritative. */
 export const ARM_RADII = [0.075, 0.065, 0.055, 0.048, 0.048, 0.048, 0.06];
 export const REACH = 0.85;
+/** ANSI/SLAS plate footprint, drawn for each deck slot. */
+export const SLOT: Point = [0.128, 0.086];
 export type Point = [number, number];
 
 export function rotate(yawDeg: number, x: number, z: number): Point {
@@ -155,4 +163,16 @@ export function defaultLayout(twins: Twin[]): Layout {
     });
   });
   return { bench: { width: 2.4, depth: 1.6 }, placements };
+}
+
+/** Reach of the arm profile a transfer twin carries (UR5e unless it names another). */
+export const armReach = (spec: TwinSpec) =>
+  armProfiles.find((a) => a.key === (spec.arm ?? "ur5e"))!.reach;
+
+/** World x/z of each drawn deck slot. */
+export function siteCentres(spec: TwinSpec, p: Placement) {
+  return (spec.sites ?? []).map((site) => {
+    const [rx, rz] = rotate(p.yaw, site.x, site.z);
+    return { key: site.key, at: [p.x + rx, p.z + rz] as Point };
+  });
 }

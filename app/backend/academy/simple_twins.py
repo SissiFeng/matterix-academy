@@ -23,13 +23,13 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 from pydantic import Field, ValidationError, model_validator
 
+from .arms import arm_for
+from .consolidate import consolidation
 from .layout_search import search_layouts
-from .mock_contract import PlanError, execute_mock
+from .mock_contract import PlanError, execute_mock, site_keys
 from .models import StrictModel
 from .store import Conflict
 from .workcell_layout import (
-    ARM,
-    REACH,
     MotionError,
     action_chain,
     plan_workflow,
@@ -74,6 +74,14 @@ class Resource(StrictModel):
     slots: int = Field(ge=0, le=96)
 
 
+class Site(StrictModel):
+    """A named slot on the twin's top face, in its local frame (metres)."""
+
+    key: str = Field(pattern=r"^[A-Za-z0-9-]{1,8}$")
+    x: float = Field(ge=-1.5, le=1.5, allow_inf_nan=False)
+    z: float = Field(ge=-1.5, le=1.5, allow_inf_nan=False)
+
+
 class Consumable(StrictModel):
     name: str = Field(min_length=1, max_length=40)
     used_by: Operation
@@ -96,6 +104,11 @@ class TwinSpec(StrictModel):
     consumables: list[Consumable] = Field(max_length=4)
     limits: Limits
     assumptions: str = Field(min_length=1, max_length=800)
+    # Drawn slots (a deck); without them every slot is reached at the top centre.
+    sites: list[Site] = Field(default=[], max_length=24)
+    # Transfer twins: the arm profile, and joint limits its connector narrows to (degrees).
+    arm: Literal["ur3e", "ur5e", "ur10e"] | None = None
+    joint_limits_deg: list[float] = Field(default=[], max_length=6)
 
     @model_validator(mode="after")
     def consistent(self):
@@ -116,6 +129,27 @@ class TwinSpec(StrictModel):
             raise ValueError("Consumables must be used by a supported operation")
         if len({c.name for c in self.consumables}) != len(self.consumables):
             raise ValueError("Consumable names must be unique")
+        if (self.arm or self.joint_limits_deg) and "transfer" not in self.operations:
+            raise ValueError("Only an instrument that transfers carries an arm")
+        if self.joint_limits_deg and (
+            len(self.joint_limits_deg) != 6
+            or any(not 10 <= v <= 360 for v in self.joint_limits_deg)
+        ):
+            raise ValueError("Give six joint limits of 10–360°")
+        if self.sites:
+            if len({s.key for s in self.sites}) != len(self.sites):
+                raise ValueError("Slot names must be unique")
+            if len(self.sites) != self.resource.slots:
+                raise ValueError(
+                    f"This instrument has {len(self.sites)} drawn slots; keep the slot count at "
+                    f"{len(self.sites)}"
+                )
+            x0 = min(p.position[0] - p.size[0] / 2 for p in self.parts)
+            x1 = max(p.position[0] + p.size[0] / 2 for p in self.parts)
+            z0 = min(p.position[2] - p.size[2] / 2 for p in self.parts)
+            z1 = max(p.position[2] + p.size[2] / 2 for p in self.parts)
+            if any(not (x0 <= s.x <= x1 and z0 <= s.z <= z1) for s in self.sites):
+                raise ValueError("Every slot must lie on the instrument's footprint")
         return self
 
 
@@ -356,20 +390,31 @@ class RecordResidual(Revision):
     note: str = Field(default="", max_length=400)
 
 
+SAMPLE_KEY = r"^[a-z][a-z0-9-]{0,23}$"
+SITE_KEY = r"^[A-Za-z0-9-]{0,8}$"
+
+
 class Step(StrictModel):
     device_id: UUID
     operation: Operation
     source_id: UUID | None = None
     target_id: UUID | None = None
     value: float = Field(default=1, ge=0.001, le=1_000_000, allow_inf_nan=False)
+    # Which tracked sample the step acts on, and the slots it uses (empty: first free).
+    sample: str = Field(default="sample", pattern=SAMPLE_KEY)
+    site: str = Field(default="", pattern=SITE_KEY)
+    source_site: str = Field(default="", pattern=SITE_KEY)
+    target_site: str = Field(default="", pattern=SITE_KEY)
 
     @model_validator(mode="after")
     def handoff(self):
         if self.operation == "transfer":
             if not self.source_id or not self.target_id or self.source_id == self.target_id:
                 raise ValueError("A transfer requires two different sample stations")
-        elif self.source_id or self.target_id:
+        elif self.source_id or self.target_id or self.source_site or self.target_site:
             raise ValueError("Only transfers have source and target stations")
+        if self.site and self.operation != "load":
+            raise ValueError("Only a load chooses a slot")
         if self.operation == "heat" and not 4 <= self.value <= 120:
             raise ValueError("Teaching temperature must be 4–120 °C")
         return self
@@ -406,6 +451,31 @@ class LayoutDraft(StrictModel):
 
 class SaveLayout(Revision, LayoutDraft):
     pass
+
+
+class Constraint(StrictModel):
+    """A user preference the layout search must honour."""
+
+    kind: Literal["reach_slots", "zone", "near", "apart", "exclude"]
+    twin_id: UUID
+    other_id: UUID | None = None
+    count: int = Field(default=1, ge=1, le=24)  # reach_slots
+    side: Literal["left", "right", "front", "back"] | None = None  # zone
+    metres: float = Field(default=0.5, ge=0.05, le=4, allow_inf_nan=False)  # near, apart
+
+    @model_validator(mode="after")
+    def complete(self):
+        if (self.kind in {"near", "apart"}) != (self.other_id is not None):
+            raise ValueError("Near and apart name two instruments; other preferences name one")
+        if self.other_id == self.twin_id:
+            raise ValueError("Name two different instruments")
+        if (self.kind == "zone") != (self.side is not None):
+            raise ValueError("A zone preference needs a side of the bench")
+        return self
+
+
+class SaveConstraints(Revision):
+    constraints: list[Constraint] = Field(max_length=16)
 
 
 class SearchLayouts(StrictModel):
@@ -895,6 +965,7 @@ class SimpleTwinService:
         return {
             "layout": None,  # records saved before layouts existed
             "brief": None,  # or before workflow descriptions
+            "constraints": [],  # or before layout preferences
             **self.get(owner),
             "templates": TEMPLATES,
             "simready": SIMREADY,
@@ -978,11 +1049,32 @@ class SimpleTwinService:
         except PlanError as exc:
             raise HTTPException(422, {"message": str(exc), "layer": exc.layer}) from exc
 
+    def save_constraints(self, owner, data):
+        record = self.current(owner, data.expected_version)
+        constraints = [c.model_dump(mode="json") for c in data.constraints]
+        for c in constraints:
+            for key in ("twin_id", "other_id"):
+                if c[key] and not self.twin(record, c[key]):
+                    raise HTTPException(404, "Device twin not found")
+        record["constraints"] = constraints
+        return self.save(owner, record, data.expected_version)
+
     def preview_layout(self, owner, data):
         """Read-only motion check of an unsaved layout against the saved workflow."""
         record = self.get(owner)
         layout = self.placed(record, data)
-        result = {"arm": ARM, "reach_m": REACH, "motions": [], "error": None, "blocked": None}
+        arms = [
+            arm_for(t["spec"])
+            for t in record["twins"]
+            if t["spec"] and "transfer" in t["spec"]["operations"]
+        ] or [arm_for({})]
+        result = {
+            "arm": " and ".join(dict.fromkeys(a.name for a in arms)),
+            "reach_m": min(a.reach for a in arms),
+            "motions": [],
+            "error": None,
+            "blocked": None,
+        }
         if not layout:
             return result
         twins = {t["id"]: t for t in record["twins"]}
@@ -1012,14 +1104,18 @@ class SimpleTwinService:
                 raise HTTPException(409, "Only confirmed instruments can be kept in place")
         try:
             execute_mock(twins, record["steps"])
-            return search_layouts(
+            result = search_layouts(
                 twins,
                 data.bench.model_dump(),
                 record["steps"],
                 [p.model_dump(mode="json") for p in data.fixed],
                 data.start,
                 [[p.model_dump(mode="json") for p in layout] for layout in data.avoid],
+                constraints=record.get("constraints", []),
             )
+            if data.start == 0:
+                result["consolidation"] = consolidation(twins, record["steps"])
+            return result
         except PlanError as exc:
             raise HTTPException(422, {"message": str(exc), "layer": exc.layer}) from exc
 
@@ -1222,6 +1318,11 @@ class SimpleTwinService:
         if record.get("brief"):
             bindings = record["brief"]["bindings"]
             record["brief"]["bindings"] = {k: v for k, v in bindings.items() if v != twin["id"]}
+        record["constraints"] = [
+            c
+            for c in record.get("constraints", [])
+            if twin["id"] not in {c["twin_id"], c.get("other_id")}
+        ]
         if record.get("layout"):
             placements = [p for p in record["layout"]["placements"] if p["twin_id"] != twin["id"]]
             record["layout"] = (
@@ -1320,11 +1421,45 @@ class SimpleTwinService:
         record = self.current(owner, data.expected_version)
         twins = {t["id"]: t for t in record["twins"]}
         try:
-            steps = apply(record.get("brief") or {}, twins)
+            steps, constraints = apply(record.get("brief") or {}, twins)
         except ValueError as exc:
             raise HTTPException(422, {"message": str(exc), "layer": "state"}) from exc
+        for c in constraints:
+            if c["kind"] == "reach_slots" and c["count"] > len(
+                site_keys(twins[c["twin_id"]]["spec"])
+            ):
+                name = twins[c["twin_id"]]["spec"]["name"]
+                raise HTTPException(
+                    422,
+                    {
+                        "message": f"The description asks for {c['count']} reachable slots on "
+                        f"{name}; choose an instrument with that many",
+                        "layer": "resource",
+                    },
+                )
         self.check_plan(record, steps)
         record["steps"] = steps
+        record["constraints"] = constraints
+        return self.save(owner, record, data.expected_version)
+
+    def import_brief(self, owner, data):
+        """A workflow file from another tool, checked like an Astra draft; nothing is run."""
+        record = self.current(owner, data.expected_version)
+        if (record.get("brief") or {}).get("status") == "generating":
+            raise HTTPException(409, "A draft is still being written")
+        draft = data.draft.model_dump(mode="json")
+        keys = {r["key"] for r in draft["roles"]}
+        bindings = (record.get("brief") or {}).get("bindings", {})
+        record["brief"] = {
+            "id": str(uuid4()),
+            "text": data.name,
+            "status": "draft",
+            "source": "import",
+            "response_id": None,
+            "message": "",
+            "draft": draft,
+            "bindings": {k: v for k, v in bindings.items() if k in keys},
+        }
         return self.save(owner, record, data.expected_version)
 
     def plan(self, owner, data):

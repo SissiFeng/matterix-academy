@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { ArrowRight, Search, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowRight, FileUp, Search, Sparkles } from "lucide-react";
 import {
+  DEFAULT_SAMPLE,
   operationLabels,
+  siteKeys,
   type Brief,
   type BriefRole,
   type BriefStep,
@@ -20,7 +22,8 @@ export function fits(role: BriefRole, twin: Twin) {
   return (
     !!spec &&
     role.operations.every((op) => spec.operations.includes(op)) &&
-    (role.vessel === "none" || spec.container.vessel === role.vessel)
+    (role.vessel === "none" || spec.container.vessel === role.vessel) &&
+    siteKeys(spec).length >= (role.reach_slots ?? 0)
   );
 }
 
@@ -47,8 +50,10 @@ export function applyBlocker(brief: Brief | null, twins: Twin[]) {
 
 function stepText(step: BriefStep, roles: Map<string, BriefRole>) {
   const role = roles.get(step.role)?.name ?? step.role;
+  const sample =
+    step.sample && step.sample !== DEFAULT_SAMPLE ? ` · ${step.sample}` : "";
   if (step.operation === "transfer")
-    return `${role} · ${roles.get(step.source_role)?.name} → ${roles.get(step.target_role)?.name}`;
+    return `${role} · ${roles.get(step.source_role)?.name} → ${roles.get(step.target_role)?.name}${sample}`;
   const unit =
     step.operation === "load"
       ? ` ${step.value} µL`
@@ -57,22 +62,31 @@ function stepText(step: BriefStep, roles: Map<string, BriefRole>) {
         : step.operation === "mix" || step.operation === "wait"
           ? ` ${step.value} s`
           : "";
-  return `${role} · ${operationLabels[step.operation]}${unit}`;
+  return `${role} · ${operationLabels[step.operation]}${unit}${sample}`;
 }
 
 export default function BriefPanel({
   catalog,
   busy,
   onDescribe,
+  onImport,
+  onSchema,
   onNext,
 }: {
   catalog: InstrumentCatalog;
   busy: boolean;
   onDescribe: (text: string) => void;
+  /** A workflow file from another tool, in the draft schema. */
+  onImport: (name: string, draft: unknown) => void;
+  onSchema: () => void;
   onNext: () => void;
 }) {
   const brief = catalog.brief;
-  const [text, setText] = useState(brief?.text ?? "");
+  const [text, setText] = useState(
+    brief?.source === "import" ? "" : (brief?.text ?? ""),
+  );
+  const [fileError, setFileError] = useState("");
+  const file = useRef<HTMLInputElement>(null);
   const drafting =
     brief?.status === "generating" || brief?.status === "starting";
   const roles = new Map(brief?.draft?.roles.map((r) => [r.key, r]) ?? []);
@@ -110,11 +124,49 @@ export default function BriefPanel({
               ? "Redraft"
               : "Draft roles and steps"}
         </button>
+        <button
+          className={studio.secondary}
+          disabled={busy || drafting}
+          onClick={() => file.current?.click()}
+        >
+          <FileUp size={14} /> Import file
+        </button>
+        <input
+          ref={file}
+          type="file"
+          accept="application/json,.json"
+          className={s.srOnly}
+          aria-label="Workflow file"
+          onChange={async (e) => {
+            const chosen = e.target.files?.[0];
+            e.target.value = "";
+            if (!chosen) return;
+            setFileError("");
+            try {
+              const parsed = JSON.parse(await chosen.text());
+              onImport(
+                chosen.name.replace(/\.json$/i, "").slice(0, 120) ||
+                  "Imported workflow",
+                parsed.draft ?? parsed,
+              );
+            } catch {
+              setFileError(`${chosen.name} is not a JSON workflow file.`);
+            }
+          }}
+        />
         <button className={studio.secondary} onClick={onNext}>
           {brief?.draft ? "Choose instruments" : "Skip to instruments"}{" "}
           <ArrowRight size={14} />
         </button>
       </div>
+      {fileError && (
+        <p className={s.problem} role="status">
+          {fileError}
+        </p>
+      )}
+      {brief?.source === "import" && brief.draft && (
+        <p className={studio.muted}>From {brief.text}</p>
+      )}
       {!catalog.astra_available && (
         <p className={studio.muted}>
           Drafting needs Astra, which is not configured here. Add instruments
@@ -142,6 +194,8 @@ export default function BriefPanel({
                       .map((op) => operationLabels[op])
                       .join(" · ")}
                     {role.vessel !== "none" && ` · ${role.vessel}`}
+                    {!!role.reach_slots &&
+                      ` · arm reaches ${role.reach_slots} slots`}
                   </small>
                   <span
                     className={brief.bindings[role.key] ? s.bound : s.unbound}
@@ -160,6 +214,21 @@ export default function BriefPanel({
               ))}
             </ol>
           </section>
+          {!!brief.draft.preferences?.length && (
+            <section aria-label="Layout preferences">
+              <h3>Layout</h3>
+              <ul className={s.draftSteps}>
+                {brief.draft.preferences.map((p, i) => (
+                  <li key={i}>
+                    {roles.get(p.role)?.name}
+                    {p.kind === "zone"
+                      ? ` on the ${p.side}`
+                      : ` ${p.kind === "near" ? "within" : "at least"} ${p.metres} m ${p.kind === "near" ? "of" : "from"} ${roles.get(p.other_role)?.name}`}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {brief.draft.assumptions.length > 0 && (
             <details className={s.details}>
               <summary>Assumptions</summary>
@@ -178,8 +247,17 @@ export default function BriefPanel({
           GPT-6 Astra on Amazon Bedrock reads the description and drafts
           instrument roles and steps against the same bounded operations as the
           step editor. It never picks a model: you choose each instrument, then
-          the drafted steps become your workflow. One sample is tracked through
-          the workflow, so several plates are reduced to one.
+          the drafted steps become your workflow and its slot and layout wishes
+          become layout preferences.
+        </p>
+        <p>
+          A workflow exported from an orchestrator can be imported instead when
+          it follows the{" "}
+          <button className={s.link} onClick={onSchema}>
+            draft schema
+          </button>
+          : roles, steps on named samples, slots to reach and layout
+          preferences.
         </p>
       </details>
     </>
@@ -218,6 +296,7 @@ export function RoleBindings({
                 <small>
                   {role.operations.map((op) => operationLabels[op]).join(" · ")}
                   {role.vessel !== "none" && ` · ${role.vessel}`}
+                  {!!role.reach_slots && ` · ${role.reach_slots}+ slots`}
                 </small>
               </span>
               <select

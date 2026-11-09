@@ -59,7 +59,24 @@ export type TwinSpec = {
   consumables: Consumable[];
   limits: { min_temp_c: number; max_temp_c: number; max_duration_s: number };
   assumptions: string;
+  /** Drawn deck slots in the twin's local frame (metres); empty: one top access point. */
+  sites?: Site[];
+  /** Transfer twins: the arm profile and joint limits narrowed by its connector. */
+  arm?: ArmProfile | null;
+  joint_limits_deg?: number[];
 };
+export type Site = { key: string; x: number; z: number };
+export type ArmProfile = "ur3e" | "ur5e" | "ur10e";
+export const armProfiles: { key: ArmProfile; name: string; reach: number }[] = [
+  { key: "ur3e", name: "UR3e", reach: 0.5 },
+  { key: "ur5e", name: "UR5e", reach: 0.85 },
+  { key: "ur10e", name: "UR10e", reach: 1.3 },
+];
+/** Slot names a sample can take: drawn slots, else numbered ones. */
+export const siteKeys = (spec: TwinSpec) =>
+  spec.sites?.length
+    ? spec.sites.map((s) => s.key)
+    : Array.from({ length: spec.resource.slots }, (_, i) => String(i + 1));
 export type Residual = {
   id: string;
   created_at: string;
@@ -156,7 +173,14 @@ export type Step = {
   source_id: string | null;
   target_id: string | null;
   value: number;
+  /** Tracked sample the step acts on; "sample" when the workflow tracks one. */
+  sample?: string;
+  /** Slots used; empty takes the first free one. */
+  site?: string;
+  source_site?: string;
+  target_site?: string;
 };
+export const DEFAULT_SAMPLE = "sample";
 export type Access = "top" | "front";
 export type Placement = {
   twin_id: string;
@@ -182,6 +206,10 @@ export type MotionSummary = {
   clearance_m: number;
   /** Arm time at the connector's default speed; absent on older runs. */
   seconds?: number;
+  source_site?: string | null;
+  target_site?: string | null;
+  /** Least elbow bend while lowering into a station. */
+  elbow_deg?: number;
 };
 export type Motion = MotionSummary & {
   frames: ArmFrame[];
@@ -212,19 +240,44 @@ export type LayoutMetrics = {
   path_m: number;
   clearance_m: number;
   reach_margin_m: number;
+  elbow_deg: number;
   area_m2: number;
 };
 export type LayoutCandidate = LayoutMetrics & {
   layout: Layout;
   motions: MotionSummary[];
+  /** Slots the arm reaches on instruments with a slot preference. */
+  slots: Record<string, string[]>;
+};
+export type Diagnosis = { kind: string; count: number; hint: string };
+export type Consolidation = {
+  drop_id: string;
+  into_id: string;
+  extra_slots: number;
+  free_slots: number;
+  transfers_saved: number;
+  message: string;
 };
 export type LayoutSearchChunk = {
   arm: string;
+  reach_m: number;
   total: number;
   next: number | null;
   candidates: LayoutCandidate[];
   checked: number;
   failure: string | null;
+  diagnosis: Diagnosis[];
+  /** Only on the first chunk. */
+  consolidation?: Consolidation[];
+};
+export type Side = "left" | "right" | "front" | "back";
+export type Constraint = {
+  kind: "reach_slots" | "zone" | "near" | "apart" | "exclude";
+  twin_id: string;
+  other_id?: string | null;
+  count?: number;
+  side?: Side | null;
+  metres?: number;
 };
 export type BriefRole = {
   key: string;
@@ -232,6 +285,7 @@ export type BriefRole = {
   operations: Operation[];
   vessel: Vessel;
   query: string;
+  reach_slots?: number;
 };
 export type BriefStep = {
   role: string;
@@ -239,16 +293,27 @@ export type BriefStep = {
   source_role: string;
   target_role: string;
   value: number;
+  sample?: string;
+};
+export type BriefPreference = {
+  kind: "zone" | "near" | "apart";
+  role: string;
+  other_role: string;
+  side: Side | "";
+  metres: number;
 };
 export type Brief = {
   id: string;
   text: string;
   status: "starting" | "generating" | "draft" | "failed" | "submission_unknown";
+  /** "import" when the draft came from a workflow file. */
+  source?: "import";
   message: string;
   draft: {
     roles: BriefRole[];
     steps: BriefStep[];
     assumptions: string[];
+    preferences?: BriefPreference[];
   } | null;
   bindings: Record<string, string>;
 };
@@ -256,6 +321,8 @@ export type TraceStep = {
   step: number;
   device_id: string;
   operation: Operation;
+  sample?: string;
+  site?: string | null;
   location: string | null;
   vessel: Vessel | null;
   volume_ul: number;
@@ -288,6 +355,7 @@ export type InstrumentCatalog = {
   runs: InstrumentRun[];
   layout: Layout | null;
   brief: Brief | null;
+  constraints: Constraint[];
   templates: Record<string, TwinSpec>;
   simready: Record<string, SimReadyAsset>;
   astra_available: boolean;

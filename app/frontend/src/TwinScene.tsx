@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ArmFrame, Layout, Twin, Vec } from "./instrumentTypes";
 import { armModel, fitted, instrumentModel } from "./instrumentModels";
-import { ARM_RADII, isArm, mountMatrix } from "./layoutGeometry";
+import { ARM_RADII, armReach, isArm, mountMatrix } from "./layoutGeometry";
 import { HOME } from "./workcellCase/cell";
 import s from "./InstrumentStudio.module.css";
 
@@ -145,7 +145,8 @@ export default function TwinScene({
           })
           // The planning box stays when a model is missing or does not verify.
           .catch((e) => console.warn((e as Error).message));
-      if (isArm(twin))
+      // Only the UR5e has a drawn model; other arm profiles are drawn as capsules.
+      if (isArm(twin) && (spec.arm ?? "ur5e") === "ur5e")
         armModel()
           .then((robot) => {
             if (!alive) return dispose(robot.group);
@@ -282,14 +283,16 @@ export default function TwinScene({
       roughness: 0.35,
       metalness: 0.4,
     });
-    // Capsules stand in for the arm only until its model has loaded.
+    // Capsules stand in for the arm until its model has loaded, or when it has none.
     const drawn = !!armActor && robots.current.has(armActor) && !!armJoints;
+    const actorSpec = twins.find((t) => t.id === armActor)?.spec;
+    const armScale = actorSpec ? armReach(actorSpec) / 0.85 : 1;
     if (arm && !drawn) {
       arm.slice(0, -1).forEach((a, i) => {
         const from = new THREE.Vector3(...a);
         const to = new THREE.Vector3(...arm[i + 1]);
         const length = from.distanceTo(to);
-        const r = ARM_RADII[i];
+        const r = ARM_RADII[i] * armScale;
         const joint = new THREE.Mesh(
           new THREE.SphereGeometry(r, 18, 12),
           metal,

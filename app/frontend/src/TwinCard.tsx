@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Download, Plus, Trash2, X } from "lucide-react";
 import {
+  armProfiles,
   layerLabels,
   layers,
   operationLabels,
   operations,
   vessels,
+  type ArmProfile,
   type Layer,
   type LibraryMatch,
   type Twin,
@@ -217,7 +219,9 @@ export default function TwinCard({
           ? { vessel: "plate", max_volume_ul: 200 }
           : { vessel: "none", max_volume_ul: 0 },
         resource: { slots: loads ? 1 : 0 },
+        sites: [],
       }),
+      ...(op === "transfer" && !on && { arm: null, joint_limits_deg: [] }),
     });
   };
   return (
@@ -383,16 +387,46 @@ export default function TwinCard({
                   })
                 }
               />
-              <NumberField
-                label="Slots"
-                value={draft.resource.slots}
-                min={1}
-                max={96}
-                step={1}
-                onChange={(slots) =>
-                  setDraft({ ...draft, resource: { slots } })
-                }
-              />
+              {draft.sites?.length ? (
+                <p className={s.field}>
+                  Slots
+                  <strong>
+                    {draft.sites.length} on the deck (
+                    {draft.sites.map((site) => site.key).join(", ")})
+                  </strong>
+                </p>
+              ) : (
+                <NumberField
+                  label="Slots"
+                  value={draft.resource.slots}
+                  min={1}
+                  max={96}
+                  step={1}
+                  onChange={(slots) =>
+                    setDraft({ ...draft, resource: { slots } })
+                  }
+                />
+              )}
+            </fieldset>
+          )}
+          {draft.operations.includes("transfer") && (
+            <fieldset className={s.layer}>
+              <legend>Arm</legend>
+              <label className={s.field}>
+                Model
+                <select
+                  value={draft.arm ?? "ur5e"}
+                  onChange={(e) =>
+                    setDraft({ ...draft, arm: e.target.value as ArmProfile })
+                  }
+                >
+                  {armProfiles.map((a) => (
+                    <option key={a.key} value={a.key}>
+                      {a.name} · {a.reach} m reach
+                    </option>
+                  ))}
+                </select>
+              </label>
             </fieldset>
           )}
           <fieldset className={s.layer}>
