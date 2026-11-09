@@ -5,16 +5,18 @@ import s from "./LearningLab.module.css";
 export function FirstLessonCard({
   onStart,
   resume,
+  disabled = false,
 }: {
   onStart: () => void;
   resume: boolean;
+  disabled?: boolean;
 }) {
   return (
     <section className={s.lessonCard}>
       <div>
         <h2>Learn automated pipetting.</h2>
         <p>From finding tips and wells to explaining a 100 µL transfer.</p>
-        <button className={s.primary} onClick={onStart}>
+        <button className={s.primary} onClick={onStart} disabled={disabled}>
           {resume ? "Continue my Flex lesson" : "Start learning Flex"}
           <ArrowRight size={18} />
         </button>
