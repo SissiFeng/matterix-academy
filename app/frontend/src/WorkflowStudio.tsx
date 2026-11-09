@@ -334,7 +334,7 @@ export default function WorkflowStudio({
     >
       <div className={s.topline}>
         <button className={s.textButton} onClick={onBack}>
-          <ArrowLeft size={16} /> Instrument introductions
+          <ArrowLeft size={16} /> Back to learning lab
         </button>
         <span className={s.evidence}>
           <i /> Synthetic teaching model

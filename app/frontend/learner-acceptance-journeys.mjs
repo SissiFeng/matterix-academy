@@ -6,6 +6,7 @@ import { completedTeaching } from "./learner-acceptance-helpers.mjs";
 export async function courseJourney(actor, { read, report }) {
   const page = actor.page;
   await page.getByRole("button", { name: "Learning lab", exact: true }).click();
+  await page.getByRole("link", { name: "Intermediate", exact: true }).click();
   await page
     .getByRole("button", { name: "Open workflow judgment course" })
     .click();

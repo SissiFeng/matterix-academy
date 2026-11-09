@@ -137,7 +137,7 @@ test("late response from another experiment cannot replace the active workspace"
   await expect(
     page.getByRole("button", { name: "Save changes", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "My workspace", exact: true }).click();
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
   await page.getByRole("button", { name: "Start an experiment" }).click();
   await page.getByLabel("Experiment title").fill("Experiment B");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -147,7 +147,7 @@ test("late response from another experiment cannot replace the active workspace"
   await expect(
     page.getByRole("button", { name: "Save changes", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "My workspace", exact: true }).click();
+  await page.getByRole("button", { name: /^My experiments \d+$/ }).click();
   await page.getByRole("button", { name: /Experiment A/ }).click();
   let release: () => void = () => {};
   const pending = new Promise<void>((resolve) => {
@@ -167,7 +167,7 @@ test("late response from another experiment cannot replace the active workspace"
     .getByRole("button", { name: "Run experiment", exact: true })
     .click();
   await seen;
-  await page.getByRole("button", { name: "My workspace", exact: true }).click();
+  await page.getByRole("button", { name: /^My experiments \d+$/ }).click();
   await page.getByRole("button", { name: /Experiment B/ }).click();
   release();
   await expect(page.getByLabel("Experiment title")).toHaveValue("Experiment B");
