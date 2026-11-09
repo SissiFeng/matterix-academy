@@ -2,7 +2,6 @@ import math
 from copy import deepcopy
 
 import pytest
-
 from academy import workcell_layout as wl
 from academy.arms import ARMS, ELBOW_MIN_DEG, arm_for
 from academy.mock_contract import PlanError

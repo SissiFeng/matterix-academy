@@ -114,3 +114,12 @@ def test_top_access_reaches_the_named_slot():
     assert wl.access(spec, placement)[0][0] == pytest.approx(0.0)
     turned = wl.access(spec, {**placement, "yaw": 90}, "1")[0]
     assert turned[0] == pytest.approx(one[2], abs=1e-6)
+
+
+def test_library_points_to_lessons_first_when_searching():
+    from academy.library import search
+
+    assert search("OT-2")["results"][0]["lesson"] == "ot2"
+    flex = search("opentrons flex")["results"][0]
+    assert (flex["id"], flex["lesson"]) == ("opentrons_flex_single_5_1000ul", "flex")
+    assert search("xpr204e")["results"][0]["lesson"] is None

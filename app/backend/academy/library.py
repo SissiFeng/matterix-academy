@@ -8,6 +8,11 @@ from .workcell_models import catalog as workcell_catalog
 
 # Registered 3D models first: they are the instruments drawn in full in the 3D view.
 COLLECTIONS = {"workcell": workcell_catalog(), "simready": SIMREADY, "chemlab": CHEMLAB}
+# Library entries with an instrument lesson in Meet the instruments.
+LESSONS = {
+    ("workcell", "opentrons-ot2"): "ot2",
+    ("chemlab", "opentrons_flex_single_5_1000ul"): "flex",
+}
 
 
 def summary(collection, asset_id, asset):
@@ -23,6 +28,7 @@ def summary(collection, asset_id, asset):
         "attribution": asset["attribution"],
         "size_m": [x, z, y],  # width, depth, height
         "operations": asset["spec"]["operations"],
+        "lesson": LESSONS.get((collection, asset_id)),
     }
 
 
@@ -47,8 +53,14 @@ def search(query, limit=16):
                 continue
             else:
                 in_name = True
-            # Instruments with a full 3D model come before footprint-only ones.
-            rank = (not in_name, not featured, collection != "workcell", asset["spec"]["name"])
+            # A search puts lessons first; then instruments with a full 3D model.
+            rank = (
+                not in_name,
+                bool(words) and (collection, asset_id) not in LESSONS,
+                not featured,
+                collection != "workcell",
+                asset["spec"]["name"],
+            )
             hits.append((rank, collection, asset_id))
     hits.sort()
     return {

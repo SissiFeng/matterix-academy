@@ -7,6 +7,8 @@
   upload BUCKET       fetch into the local cache, then put the models the bucket does not
                       already hold under library-models/chemlab/ (needs AWS credentials;
                       pass --account to pin the AWS account)
+  time SLUG...        time importing single instruments end to end: Hub lookup, model
+                      download and sha256 check, then the twin a learner starts from
 
 The models are CC-BY-NC-4.0; attribution travels with every twin started from them.
 """
@@ -97,6 +99,52 @@ def fetch(dest):
     return data
 
 
+def lookup(rev, path):
+    url = f"https://huggingface.co/api/datasets/{REPO}/tree/{rev}/{path}"
+    with urllib.request.urlopen(url, timeout=60) as response:
+        files = json.load(response)
+    return next((f for f in files if f["path"].endswith("/model.glb") and "lfs" in f), None)
+
+
+def timed(slugs):
+    """Seconds per stage for each instrument, as a new device would be imported."""
+    sys.path.insert(0, str(ROOT / "app/backend"))
+    from academy.chemlab import entry
+
+    rev = revision()
+    rows = {
+        r["slug"]: r
+        for r in json.loads((BACKEND / "chemlab_catalog.json").read_text())["instruments"]
+    }
+    cache = ROOT / "build/library-models"
+    print(f"{'instrument':44} {'lookup':>7} {'model':>7} {'MB':>6} {'twin':>6} {'total':>7}")
+    for slug in slugs:
+        if slug not in rows:
+            raise SystemExit(f"{slug} is not in the pinned ChemLab catalogue")
+        start = time.perf_counter()
+        glb = lookup(rev, rows[slug]["path"])
+        found = time.perf_counter()
+        size = 0
+        if glb:
+            url = f"https://huggingface.co/datasets/{REPO}/resolve/{rev}/{glb['path']}"
+            with urllib.request.urlopen(url, timeout=120) as response:
+                body = response.read()
+            if hashlib.sha256(body).hexdigest() != glb["lfs"]["oid"]:
+                raise SystemExit(f"{glb['path']} does not match the Hub's sha256")
+            path = cache / PREFIX / f"{slug}.glb"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+            size = len(body)
+        loaded = time.perf_counter()
+        entry(rows[slug])
+        done = time.perf_counter()
+        print(
+            f"{slug[:44]:44} {found - start:7.2f} {loaded - found:7.2f} {size / 1e6:6.1f} "
+            f"{done - loaded:6.3f} {done - start:7.2f}"
+            + ("" if glb else "  (no model: footprint only)")
+        )
+
+
 def upload(bucket, account):
     import boto3
 
@@ -133,9 +181,13 @@ def main(argv):
     u = sub.add_parser("upload")
     u.add_argument("bucket")
     u.add_argument("--account")
+    t = sub.add_parser("time")
+    t.add_argument("slugs", nargs="+")
     args = parser.parse_args(argv)
     if args.command == "manifest":
         manifest()
+    elif args.command == "time":
+        timed(args.slugs)
     elif args.command == "fetch":
         fetch(args.dest)
     else:

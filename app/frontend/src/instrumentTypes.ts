@@ -123,6 +123,8 @@ export type LibraryEntry = {
   attribution: string;
   size_m: [number, number, number];
   operations: Operation[];
+  /** Instrument lesson in Meet the instruments, when there is one. */
+  lesson?: "flex" | "ot2" | null;
 };
 export type LibraryResults = {
   size: number;

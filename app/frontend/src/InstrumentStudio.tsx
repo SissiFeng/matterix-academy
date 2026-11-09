@@ -37,6 +37,7 @@ import {
 import BriefPanel, { RoleBindings, applyBlocker } from "./BriefPanel";
 import s from "./InstrumentStudio.module.css";
 import LayoutPanel from "./LayoutPanel";
+import { LIBRARY_QUERY_KEY } from "./LessonSearch";
 import { conflicts, defaultLayout } from "./layoutGeometry";
 import TwinCard from "./TwinCard";
 
@@ -130,7 +131,16 @@ export default function InstrumentStudio({
   const [checking, setChecking] = useState(false);
   const [selectedMotion, setSelectedMotion] = useState(0);
   const [armFrame, setArmFrame] = useState(0);
-  const [query, setQuery] = useState("");
+  // A search started on Meet the instruments carries over once.
+  const [query, setQuery] = useState(() => {
+    try {
+      const carried = sessionStorage.getItem(LIBRARY_QUERY_KEY) ?? "";
+      sessionStorage.removeItem(LIBRARY_QUERY_KEY);
+      return carried;
+    } catch {
+      return "";
+    }
+  });
   const [library, setLibrary] = useState<LibraryResults | null>(null);
   const trackTwinDirty = useCallback((id: string, changed: boolean) => {
     if (changed) twinDirty.current.add(id);

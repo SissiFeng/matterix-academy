@@ -410,7 +410,7 @@ class Planner:
             return None
         return q
 
-    def candidates(self, position, rotation, ignore, prefer=None):
+    def candidates(self, position, rotation, ignore, prefer=None, enough=4):
         found, hits = [], []
         seeds = _seeds(self.base, position)
         for seed in [prefer, *seeds] if prefer else seeds:
@@ -425,7 +425,7 @@ class Planner:
                 hits.append(clear)
                 continue
             found.append(q)
-            if len(found) >= 4:
+            if len(found) >= enough:
                 break
         if prefer:
             found.sort(key=lambda f: _span(f, prefer))
@@ -519,12 +519,12 @@ class Planner:
             dense += self.edge(x, y)[0]
         return dense
 
-    def station(self, twin, ignore, prefer=None, site=None):
+    def station(self, twin, ignore, prefer=None, site=None, enough=4):
         """Collision-free configurations at a station's pre-grasp pose with a clear approach."""
         spec = twin["spec"]
         point, direction, rotation = access(spec, self.places[twin["id"]], site)
         pre = _add(point, direction, APPROACH)
-        found, blocked = self.candidates(pre, rotation, ignore, prefer)
+        found, blocked = self.candidates(pre, rotation, ignore, prefer, enough)
         reason = f"the {blocked[1]} would hit {blocked[2]}" if blocked else None
         if not found and not blocked:
             flange = _add(pre, rotation[2], -TOOL)
@@ -543,6 +543,8 @@ class Planner:
             joints, clear, _ = self.follow(q, _straight(pre, point, rotation), ignore)
             if joints:
                 options.append((q, joints, clear))
+                if len(options) >= enough:
+                    break
             else:
                 reason = (
                     f"the {clear[1]} would hit {clear[2]} on the way in"

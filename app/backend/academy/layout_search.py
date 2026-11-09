@@ -228,14 +228,20 @@ class Search:
 
     def slot_reach(self, layout, twin_id):
         """Slots of an instrument that some arm serving it reaches in this layout."""
-        arms = self.serving.get(twin_id) or self.arms
+        planners = [
+            Planner(self.twins, layout, self.twins[arm])
+            for arm in self.serving.get(twin_id) or self.arms
+        ]
         reached = []
         for key in site_keys(self.twins[twin_id]["spec"]):
-            for arm in arms:
-                planner = Planner(self.twins, layout, self.twins[arm])
+            for planner in planners:
                 try:
+                    # One clear approach is enough to call a slot reachable.
                     planner.station(
-                        self.twins[twin_id], {**planner.rest, GRIPPER: {twin_id}}, site=key
+                        self.twins[twin_id],
+                        {**planner.rest, GRIPPER: {twin_id}},
+                        site=key,
+                        enough=1,
                     )
                 except PlanError:
                     continue
