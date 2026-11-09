@@ -8,6 +8,7 @@ async function enter(page: Page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
   await page.getByRole("button", { name: "Learning lab", exact: true }).click();
+  await page.getByRole("link", { name: "Intermediate", exact: true }).click();
   await page
     .getByRole("button", { name: "Open workflow judgment course" })
     .click();

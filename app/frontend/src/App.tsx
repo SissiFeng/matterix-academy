@@ -46,6 +46,7 @@ import { FirstLessonCard } from "./FirstLessonCard";
 import { DiscoveryInvitation } from "./DiscoveryInvitation";
 import ThemeToggle from "./ThemeToggle";
 import InstrumentStories from "./InstrumentStories";
+import { latestCourseSession, learningLevelFromPath } from "./learningLevels";
 import {
   makeStudioExperiment,
   type Instrument,
@@ -56,6 +57,7 @@ const WorkflowStudio = lazy(() => import("./WorkflowStudio"));
 const SimulationLab = lazy(() => import("./SimulationLab"));
 const InstrumentStudio = lazy(() => import("./InstrumentStudio"));
 const WorkflowCourse = lazy(() => import("./WorkflowCourse"));
+const LearningPaths = lazy(() => import("./LearningPaths"));
 const LearningLab = lazy(() => import("./LearningLab"));
 const ConnectorExplorer = lazy(() => import("./ConnectorExplorer"));
 const ConnectorSetup = lazy(() => import("./ConnectorSetup"));
@@ -549,6 +551,9 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [connectorSessionId, setConnectorSessionId] = useState<string>();
   const [view, setView] = useState("overview");
+  const [learningLevel, setLearningLevel] = useState(() =>
+    learningLevelFromPath(window.location.hash),
+  );
   const [workspaceRouteRevision, setWorkspaceRouteRevision] = useState(0);
   const [discoverySeed, setDiscoverySeed] = useState<Workflow | undefined>();
   const [pendingStudio, setPendingStudio] = useState<StudioIntent | null>(
@@ -570,7 +575,7 @@ export default function App() {
   useEffect(() => {
     const routeChanged = (event: HashChangeEvent) => {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -580,6 +585,10 @@ export default function App() {
       navigationEpoch.current += 1;
       setSession(null);
       setView(route?.[1] ?? "overview");
+      if (route?.[1] === "learn")
+        setLearningLevel(learningLevelFromPath(window.location.hash));
+      if (route?.[1] === "discovery")
+        setDiscoverySeed(workflows.find((item) => item.id === route[2]));
       setWorkspaceRouteRevision((current) => current + 1);
     };
     window.addEventListener("hashchange", routeChanged);
@@ -604,6 +613,8 @@ export default function App() {
       );
       if (route) {
         setView(route[1]);
+        if (route[1] === "learn")
+          setLearningLevel(learningLevelFromPath(window.location.hash));
         if (route[1] === "discovery")
           setDiscoverySeed(workflows.find((w) => w.id === route[2]));
       }
@@ -668,6 +679,8 @@ export default function App() {
     if (leaveGuard.current && !leaveGuard.current()) return;
     navigationEpoch.current += 1;
     setView(target.split("/")[0]);
+    if (target.split("/")[0] === "learn")
+      setLearningLevel(learningLevelFromPath(target));
     setSession(null);
     window.history.replaceState(
       {},
@@ -953,8 +966,57 @@ export default function App() {
                 </p>
               }
             >
-              {view === "onboard" &&
-              /^#\/onboard\/case-[a-z0-9-]+$/.test(window.location.hash) ? (
+              {[
+                "instruments",
+                "sim",
+                "discovery",
+                "connector",
+                "marketplace",
+              ].includes(view) && (
+                <button
+                  className={s.textButton}
+                  onClick={() => nav(`learn/${learningLevel}`)}
+                >
+                  <ArrowLeft size={16} /> Back to learning lab
+                </button>
+              )}
+              {view === "learn" ? (
+                <LearningPaths
+                  level={learningLevel}
+                  courses={courses}
+                  sessions={sessions}
+                  busy={busy}
+                  onNavigate={nav}
+                  onFirstLesson={() => {
+                    if (busy) return;
+                    const existing = latestCourseSession(
+                      sessions,
+                      "flex-first-transfer",
+                    );
+                    if (existing) open(existing);
+                    else void create(true);
+                  }}
+                  onPractice={() => {
+                    if (busy) return;
+                    const existing = latestCourseSession(
+                      sessions,
+                      "flex-foundations",
+                    );
+                    if (existing) open(existing);
+                    else void create();
+                  }}
+                  onDesign={() => {
+                    if (busy) return;
+                    const existing = latestCourseSession(
+                      sessions,
+                      "workflow-sandbox",
+                    );
+                    if (existing) open(existing);
+                    else createStudio("flex", "transfer");
+                  }}
+                />
+              ) : view === "onboard" &&
+                /^#\/onboard\/case-[a-z0-9-]+$/.test(window.location.hash) ? (
                 <WorkcellCase
                   key={`case:${workspaceRouteRevision}`}
                   caseId={window.location.hash.split("/case-")[1]}
@@ -1026,7 +1088,7 @@ export default function App() {
                 />
               ) : view === "workflow-course" ? (
                 <WorkflowCourse
-                  onBack={() => nav("learn")}
+                  onBack={() => nav("learn/intermediate")}
                   registerLeaveGuard={registerLeaveGuard}
                 />
               ) : view === "connector" ? (
@@ -1046,7 +1108,7 @@ export default function App() {
                   key={session.id}
                   session={session}
                   onChange={updateSession}
-                  onBack={() => nav("learn")}
+                  onBack={() => nav("learn/beginner")}
                   onError={showError}
                   registerLeaveGuard={registerLeaveGuard}
                 />
@@ -1056,7 +1118,7 @@ export default function App() {
                   key={session.id}
                   session={session}
                   onChange={updateSession}
-                  onBack={() => nav("instruments")}
+                  onBack={() => nav("learn/beginner")}
                   onError={showError}
                   onConnect={() => {
                     setConnectorSessionId(session.id);
@@ -1069,7 +1131,7 @@ export default function App() {
                   key={session.id}
                   session={session}
                   onChange={updateSession}
-                  onBack={() => nav("learn")}
+                  onBack={() => nav("learn/beginner")}
                   onError={showError}
                   registerLeaveGuard={registerLeaveGuard}
                 />

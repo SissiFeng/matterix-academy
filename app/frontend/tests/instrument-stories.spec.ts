@@ -133,9 +133,15 @@ test("a selected OT-2 starter survives a refresh and opens once after onboarding
   expect(page.url()).toBe(savedUrl);
   expect(creations).toBe(1);
   await page
-    .getByRole("button", { name: "Instrument introductions", exact: true })
+    .getByRole("button", { name: "Back to learning lab", exact: true })
     .click();
   await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Your first workflow." }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Explore the instruments", exact: true })
+    .click();
   await expect(page.getByTestId("instrument-stories")).toBeVisible();
   expect(page.url()).toContain("#/instruments");
 });

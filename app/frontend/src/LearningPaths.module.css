@@ -1,0 +1,181 @@
+.page {
+  max-width: 1160px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 36px 35px 64px;
+}
+.header h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -1.4px;
+}
+.header p,
+.levelHeading p,
+.scope {
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 10px;
+}
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 30px 0;
+  border-bottom: 1px solid var(--line);
+}
+.levels a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 14px 20px;
+  border-bottom: 3px solid transparent;
+}
+.levels a[aria-current="page"] {
+  color: var(--ink);
+  border-color: var(--brand);
+  font-weight: 700;
+}
+.levels a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.levelHeading h2 {
+  font-size: clamp(25px, 3vw, 34px);
+  letter-spacing: -1px;
+}
+.scope {
+  margin-bottom: 20px;
+}
+.resource {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 18px;
+  align-items: start;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+.number {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding-top: 4px;
+}
+.resource h3,
+.finish h3,
+.planned h3 {
+  font-size: 20px;
+  line-height: 1.4;
+}
+.resource p,
+.finish p,
+.planned p,
+.code p,
+.code li,
+.shared p {
+  line-height: 1.65;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.resource button,
+.finish button,
+.shared button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 11px 15px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+}
+.resource button:hover,
+.shared button:hover {
+  background: var(--surface-1);
+}
+.status {
+  display: block;
+  font-size: 13px;
+  margin-top: 12px;
+  color: var(--muted);
+}
+.lesson {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 18px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+.code {
+  margin: 28px 0;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-width: 0;
+}
+.code summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.code pre {
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 18px;
+  background: var(--surface-0);
+  line-height: 1.6;
+  font-size: 13px;
+}
+.finish {
+  margin-top: 28px;
+  padding: 24px;
+  border-left: 3px solid var(--brand);
+  background: var(--surface-1);
+}
+.finish button {
+  margin-top: 18px;
+}
+.planned {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+.shared {
+  margin-top: 48px;
+  padding: 24px 16px 48px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.shared h2,
+.shared p {
+  flex-basis: 100%;
+}
+.shared h2 {
+  font-size: 21px;
+}
+@media (max-width: 700px) {
+  .page {
+    padding: 24px 16px 48px;
+  }
+  .levels a {
+    padding: 12px 10px;
+    font-size: 14px;
+  }
+  .resource {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .resource button {
+    grid-column: 2;
+    justify-self: start;
+    max-width: 100%;
+  }
+  .lesson {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .code,
+  .finish {
+    padding: 16px;
+  }
+}
