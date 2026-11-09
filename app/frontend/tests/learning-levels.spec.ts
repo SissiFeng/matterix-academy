@@ -14,6 +14,14 @@ test("levels live inside Learning lab; deep links and old entries keep records i
   page,
 }) => {
   await enter(page);
+  await page
+    .getByRole("button", { name: "Start an experiment", exact: true })
+    .click();
+  await expect(page.getByLabel("Experiment title")).toBeVisible();
+  const legacyUrl = page.url();
+  const before = await (await page.request.get("/api/sessions")).json();
+  expect(before).toHaveLength(1);
+  await page.getByRole("button", { name: "Learning lab", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Your first workflow." }),
   ).toBeVisible();
@@ -31,7 +39,9 @@ test("levels live inside Learning lab; deep links and old entries keep records i
     page.getByRole("heading", { name: "Understand the connected lab." }),
   ).toBeVisible();
   await expect(page.getByText(/Orchestration/).first()).toBeVisible();
-  expect(await (await page.request.get("/api/sessions")).json()).toEqual([]);
+  expect(await (await page.request.get("/api/sessions")).json()).toEqual(
+    before,
+  );
   await page.goto("/#/workflow-course");
   await expect(
     page.getByRole("heading", { name: "Can this workflow run?", exact: true }),
@@ -42,6 +52,14 @@ test("levels live inside Learning lab; deep links and old entries keep records i
   await expect(
     page.getByRole("heading", { name: "Your first workflow." }),
   ).toBeVisible();
+  await page.goto(legacyUrl);
+  await page.reload();
+  await expect(page.getByLabel("Experiment title")).toHaveValue(
+    before[0].experiment.title,
+  );
+  expect(await (await page.request.get("/api/sessions")).json()).toEqual(
+    before,
+  );
 });
 
 test("beginner lesson resumes existing progress without creating another session", async ({
