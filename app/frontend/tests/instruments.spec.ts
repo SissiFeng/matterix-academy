@@ -147,7 +147,7 @@ async function openInstruments(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
   await page
-    .getByRole("button", { name: "Plan workcell", exact: true })
+    .getByRole("button", { name: "Plan a layout", exact: true })
     .click();
   await page.getByRole("tab", { name: "2 · Instruments" }).click();
 }

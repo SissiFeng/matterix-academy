@@ -275,7 +275,9 @@ test("an invalid freeform sequence gives a model hint and can be corrected", asy
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Runs", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Teaching runs", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Previous attempts" }),
   ).toBeVisible();

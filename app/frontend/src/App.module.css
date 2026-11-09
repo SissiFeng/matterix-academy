@@ -2328,3 +2328,21 @@
   color: var(--muted);
   font-size: 14px;
 }
+.sidebar nav .navStep {
+  margin-left: auto;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.sidebar nav .activeNav .navStep {
+  color: inherit;
+}
+@media (max-width: 850px) {
+  .sidebar nav .navStep {
+    display: none;
+  }
+  .sidebar nav + .sidebarLabel + nav {
+    border-top: var(--hairline) solid var(--line);
+    padding-top: 8px;
+  }
+}

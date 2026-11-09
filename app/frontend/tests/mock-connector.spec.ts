@@ -30,7 +30,9 @@ test("offline mock SiLA2 connector steps, runs, survives refresh and resets a sa
   const session = await saved.json();
 
   const open = async () => {
-    await page.getByRole("button", { name: "Sim → Real", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Real-device readiness", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Connect an instrument", exact: true })
       .click();

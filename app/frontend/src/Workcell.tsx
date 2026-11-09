@@ -51,11 +51,38 @@ const steps = [
 ];
 const titles = {
   overview: "Your workcell",
-  onboard: "Onboard a device",
+  onboard: "Add a device",
   twin: "Teaching twin",
-  readiness: "Sim → Real",
+  readiness: "Real-device readiness",
   runs: "Teaching runs",
 };
+const purposes: Partial<Record<WorkspaceView, string>> = {
+  overview:
+    "Learn lab automation on a virtual Opentrons robot before you work on the real one. Nothing you do here moves a physical instrument.",
+  onboard:
+    "Record an instrument from your lab and pair it with a teaching twin, so you can practise its workflows before using the real device.",
+  twin: "A teaching twin is a software copy of your device. Practise on it and compare its state with what you expected.",
+  readiness:
+    "Check what stands between a practised workflow and a run on the real instrument.",
+};
+const startGuide = [
+  {
+    title: "Meet the robot",
+    detail: "Tour the Opentrons Flex and OT-2 and see what each part does.",
+  },
+  {
+    title: "Make your first transfer",
+    detail: "Move 100 µL between two wells, then go from beginner to advanced.",
+  },
+  {
+    title: "Run it in simulation",
+    detail: "Run a mixing experiment in the simulation lab.",
+  },
+  {
+    title: "Adapt a published workflow",
+    detail: "Browse workflows from papers and make one your own.",
+  },
+];
 const actionName = (action: Session["experiment"]["actions"][number]) =>
   `${capabilityLabels[action.kind]}${["aspirate", "dispense"].includes(action.kind) ? ` ${action.volume} µL · ${action.well}` : ""}`;
 const when = (value: string) =>
@@ -435,6 +462,7 @@ export default function Workcell({
               ? `Welcome to the lab, ${name}.`
               : titles[view]}
           </h1>
+          {purposes[view] && <p className={s.purpose}>{purposes[view]}</p>}
         </div>
         <button
           className={s.iconButton}
@@ -477,75 +505,67 @@ export default function Workcell({
         <>
           {view === "overview" ? (
             <>
+              <section
+                className={s.startGuide}
+                aria-labelledby="start-guide-title"
+              >
+                <h2 id="start-guide-title">Where to start</h2>
+                <ol>
+                  {startGuide.map((step, index) => (
+                    <li key={step.title}>
+                      <span className={s.stepNumber} aria-hidden="true">
+                        {index + 1}
+                      </span>
+                      <h3>{step.title}</h3>
+                      <p>{step.detail}</p>
+                      <div className={s.actions}>
+                        {index === 0 ? (
+                          <button
+                            className={s.secondary}
+                            onClick={() => onNavigate("instruments")}
+                          >
+                            See the instruments
+                          </button>
+                        ) : index === 1 ? (
+                          <>
+                            <button
+                              className={s.primary}
+                              onClick={onFirstLesson}
+                            >
+                              Start learning Flex <ArrowRight size={16} />
+                            </button>
+                            <button
+                              className={s.textButton}
+                              onClick={() => onNavigate("learn")}
+                            >
+                              Choose a level
+                            </button>
+                          </>
+                        ) : index === 2 ? (
+                          <button
+                            className={s.secondary}
+                            onClick={() => onNavigate("sim")}
+                          >
+                            Open the simulation lab
+                          </button>
+                        ) : (
+                          <button
+                            className={s.secondary}
+                            onClick={() => onNavigate("marketplace")}
+                          >
+                            Browse workflows
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
               <InstrumentStories
                 onDesign={onDesign}
                 busy={creationBusy}
                 compact
               />
-              <details className={s.setupDetails}>
-                <summary>Workcell setup and connection status</summary>
-                <section className={s.hero}>
-                  <div>
-                    <h2>Synthetic practice is available.</h2>
-                    <p>Physical execution is not connected.</p>
-                    <button
-                      className={s.primary}
-                      onClick={() => onNavigate("onboard")}
-                    >
-                      Onboard a device <ArrowRight size={16} />
-                    </button>
-                  </div>
-                  <div className={s.lifecycle}>
-                    {[
-                      "01 / ONBOARD",
-                      "02 / TWIN",
-                      "03 / VALIDATE",
-                      "04 / RUN & LEARN",
-                    ].map((label, i) => (
-                      <button
-                        key={label}
-                        onClick={() =>
-                          onNavigate(
-                            ["onboard", "twin", "readiness", "runs"][i],
-                          )
-                        }
-                      >
-                        <span>{label}</span>
-                        {i === 2 ? (
-                          <CircleAlert size={20} />
-                        ) : (
-                          <ArrowRight size={20} />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              </details>
-              <div className={s.metrics}>
-                <div>
-                  <span>Device records</span>
-                  <strong>{devices.length}</strong>
-                </div>
-                <div>
-                  <span>Synthetic teaching twins</span>
-                  <strong>{paired.length}</strong>
-                </div>
-                <div>
-                  <span>Teaching experiments</span>
-                  <strong>{sessions.length}</strong>
-                  <small>
-                    {
-                      sessions.filter(
-                        (item) =>
-                          item.status === "completed" &&
-                          item.assessment?.passed &&
-                          item.assessment.scope !== "model-checks",
-                      ).length
-                    }{" "}
-                    with a saved passing goal
-                  </small>
-                </div>
-              </div>
               <div className={s.sectionHeading}>
                 <h2>Your workcells</h2>
               </div>
@@ -598,27 +618,83 @@ export default function Workcell({
                   </button>
                 </div>
               )}
-              <section className={s.practice}>
-                <div>
-                  <h2>Learn a 100 µL transfer.</h2>
+              <details className={s.setupDetails}>
+                <summary>Workcell setup and connection status</summary>
+                <section className={s.hero}>
+                  <div>
+                    <h2>Synthetic practice is available.</h2>
+                    <p>Physical execution is not connected.</p>
+                    <button
+                      className={s.primary}
+                      onClick={() => onNavigate("onboard")}
+                    >
+                      Onboard a device <ArrowRight size={16} />
+                    </button>
+                  </div>
+                  <div className={s.lifecycle}>
+                    {[
+                      "01 / ADD A DEVICE",
+                      "02 / TEACHING TWIN",
+                      "03 / READINESS",
+                      "04 / TEACHING RUNS",
+                    ].map((label, i) => (
+                      <button
+                        key={label}
+                        onClick={() =>
+                          onNavigate(
+                            ["onboard", "twin", "readiness", "runs"][i],
+                          )
+                        }
+                      >
+                        <span>{label}</span>
+                        {i === 2 ? (
+                          <CircleAlert size={20} />
+                        ) : (
+                          <ArrowRight size={20} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <div className={s.metrics}>
+                  <div>
+                    <span>Device records</span>
+                    <strong>{devices.length}</strong>
+                  </div>
+                  <div>
+                    <span>Synthetic teaching twins</span>
+                    <strong>{paired.length}</strong>
+                  </div>
+                  <div>
+                    <span>Teaching experiments</span>
+                    <strong>{sessions.length}</strong>
+                    <small>
+                      {
+                        sessions.filter(
+                          (item) =>
+                            item.status === "completed" &&
+                            item.assessment?.passed &&
+                            item.assessment.scope !== "model-checks",
+                        ).length
+                      }{" "}
+                      with a saved passing goal
+                    </small>
+                  </div>
                 </div>
-                <div className={s.actions}>
-                  <button className={s.primary} onClick={onFirstLesson}>
-                    Start learning Flex <ArrowRight size={16} />
-                  </button>
-                  <button className={s.secondary} onClick={onCreate}>
-                    Start an experiment
-                  </button>
-                </div>
-              </section>
+              </details>
               <div className={s.sectionHeading}>
                 <h2>Recent teaching activity</h2>
-                <button
-                  className={s.textButton}
-                  onClick={() => onNavigate("runs")}
-                >
-                  View runs <ArrowRight size={14} />
-                </button>
+                <div className={s.actions}>
+                  <button className={s.textButton} onClick={onCreate}>
+                    Start an experiment
+                  </button>
+                  <button
+                    className={s.textButton}
+                    onClick={() => onNavigate("runs")}
+                  >
+                    View runs <ArrowRight size={14} />
+                  </button>
+                </div>
               </div>
               {sessions.slice(0, 4).map((item) => (
                 <button

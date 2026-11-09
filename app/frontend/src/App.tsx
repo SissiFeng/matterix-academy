@@ -31,6 +31,8 @@ import {
   Store,
   GitBranch,
   LayoutDashboard,
+  House,
+  ListChecks,
 } from "lucide-react";
 import { api, ApiError, configureAuth, json, signIn, signOut } from "./api";
 import type { Config, Course, Experiment, Profile, Session } from "./types";
@@ -89,6 +91,13 @@ function Brand({ small = false }: { small?: boolean }) {
 }
 
 type StudioIntent = { instrument: Instrument; starter: Starter };
+const learnLabels = {
+  overview: workspaceLabels.overview,
+  instruments: "Meet the instruments",
+  learn: "Learning lab",
+  sim: "Simulation lab",
+  marketplace: "Workflow marketplace",
+};
 const STUDIO_INTENT_KEY = "academy-studio-intent-v1";
 function readStudioIntent(): StudioIntent | null {
   try {
@@ -823,82 +832,43 @@ export default function App() {
         <div className={s.shell}>
           <aside className={s.sidebar}>
             <Brand small />
-            <div className={s.sidebarLabel}>YOUR WORKCELL</div>
-            <nav aria-label="Workcell navigation">
-              {workspaceViews.map((target, index) => {
-                const Icon = [LayoutGrid, Plus, Layers3, ShieldCheck, History][
-                  index
-                ];
-                return (
-                  <button
-                    key={target}
-                    className={view === target ? s.activeNav : ""}
-                    aria-current={view === target ? "page" : undefined}
-                    onClick={() => nav(target)}
-                  >
-                    <Icon size={18} />
-                    {workspaceLabels[target]}
-                  </button>
-                );
-              })}
-              <button
-                className={view === "plan" ? s.activeNav : ""}
-                aria-current={view === "plan" ? "page" : undefined}
-                onClick={() => nav("plan")}
-              >
-                <LayoutDashboard size={18} /> Plan workcell
-              </button>
-            </nav>
-            <div className={s.sidebarLabel}>LEARN & EXPLORE</div>
+            <div className={s.sidebarLabel}>LEARN</div>
             <nav aria-label="Learning navigation">
-              <button
-                className={
-                  view === "instruments" ||
-                  session?.experiment.course_id === "workflow-sandbox"
-                    ? s.activeNav
-                    : ""
-                }
-                aria-current={view === "instruments" ? "page" : undefined}
-                onClick={() => nav("instruments")}
-              >
-                <Pipette size={18} /> Meet the instruments
-              </button>
-              <button
-                className={view === "sim" ? s.activeNav : ""}
-                onClick={() => nav("sim")}
-              >
-                <FlaskConical size={18} /> Simulation lab
-              </button>
-              <button
-                className={
-                  view === "learn" || view === "workflow-course"
-                    ? s.activeNav
-                    : ""
-                }
-                onClick={() => nav("learn")}
-              >
-                <BookOpen size={18} /> Learning lab
-              </button>
-              <button
-                className={view === "discovery" ? s.activeNav : ""}
-                onClick={() => nav("discovery")}
-              >
-                <Compass size={18} /> Discovery studio
-              </button>
-              <button
-                className={view === "marketplace" ? s.activeNav : ""}
-                onClick={() => nav("marketplace")}
-              >
-                <Store size={18} /> Workflow marketplace
-              </button>
-              <button
-                className={view === "connector" ? s.activeNav : ""}
-                onClick={() => nav("connector")}
-              >
-                <GitBranch size={18} /> Connector explorer
-              </button>
+              {(
+                [
+                  ["overview", House, view === "overview"],
+                  [
+                    "instruments",
+                    Pipette,
+                    view === "instruments" ||
+                      session?.experiment.course_id === "workflow-sandbox",
+                  ],
+                  [
+                    "learn",
+                    BookOpen,
+                    view === "learn" || view === "workflow-course",
+                  ],
+                  ["sim", FlaskConical, view === "sim"],
+                  ["marketplace", Store, view === "marketplace"],
+                ] as const
+              ).map(([target, Icon, active], index) => (
+                <button
+                  key={target}
+                  className={active ? s.activeNav : ""}
+                  aria-current={view === target ? "page" : undefined}
+                  onClick={() => nav(target)}
+                >
+                  <Icon size={18} /> {learnLabels[target]}
+                  {index > 0 && (
+                    <small className={s.navStep} aria-hidden="true">
+                      {index}
+                    </small>
+                  )}
+                </button>
+              ))}
               <button
                 className={view === "history" ? s.activeNav : ""}
+                aria-current={view === "history" ? "page" : undefined}
                 onClick={() => nav("history")}
               >
                 <History size={18} /> My experiments{" "}
@@ -909,6 +879,49 @@ export default function App() {
                   <FlaskConical size={18} /> Current experiment
                 </button>
               )}
+            </nav>
+            <div className={s.sidebarLabel}>GO FURTHER</div>
+            <nav aria-label="Explore navigation">
+              <button
+                className={view === "discovery" ? s.activeNav : ""}
+                aria-current={view === "discovery" ? "page" : undefined}
+                onClick={() => nav("discovery")}
+              >
+                <Compass size={18} /> Discovery studio
+              </button>
+              <button
+                className={view === "connector" ? s.activeNav : ""}
+                aria-current={view === "connector" ? "page" : undefined}
+                onClick={() => nav("connector")}
+              >
+                <GitBranch size={18} /> Connector explorer
+              </button>
+            </nav>
+            <div className={s.sidebarLabel}>YOUR WORKCELL</div>
+            <nav aria-label="Workcell navigation">
+              {workspaceViews
+                .filter((target) => target !== "overview")
+                .map((target, index) => {
+                  const Icon = [Plus, Layers3, ShieldCheck, ListChecks][index];
+                  return (
+                    <button
+                      key={target}
+                      className={view === target ? s.activeNav : ""}
+                      aria-current={view === target ? "page" : undefined}
+                      onClick={() => nav(target)}
+                    >
+                      <Icon size={18} />
+                      {workspaceLabels[target]}
+                    </button>
+                  );
+                })}
+              <button
+                className={view === "plan" ? s.activeNav : ""}
+                aria-current={view === "plan" ? "page" : undefined}
+                onClick={() => nav("plan")}
+              >
+                <LayoutDashboard size={18} /> Plan a layout
+              </button>
             </nav>
             <div className={s.sidebarBottom}>
               <button className={s.helpButton} onClick={() => setHelp(true)}>
@@ -957,7 +970,7 @@ export default function App() {
                     (view === "instruments"
                       ? "Meet the instruments"
                       : view === "plan"
-                        ? "Plan your workcell"
+                        ? "Plan a layout"
                         : view === "lab"
                           ? session?.experiment.course_id === "workflow-sandbox"
                             ? "Workflow studio"

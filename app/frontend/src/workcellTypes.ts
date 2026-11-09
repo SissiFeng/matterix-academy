@@ -9,11 +9,11 @@ export const workspaceViews = [
 ] as const;
 export type WorkspaceView = (typeof workspaceViews)[number];
 export const workspaceLabels: Record<string, string> = {
-  overview: "Overview",
-  onboard: "Onboard",
-  twin: "Twin",
-  readiness: "Sim → Real",
-  runs: "Runs",
+  overview: "Start here",
+  onboard: "Add a device",
+  twin: "Teaching twin",
+  readiness: "Real-device readiness",
+  runs: "Teaching runs",
 };
 export const capabilityLabels: Record<string, string> = {
   pickup: "Pick up tip",
