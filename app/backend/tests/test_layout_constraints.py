@@ -1,3 +1,5 @@
+import itertools
+
 from academy.workcell_layout import access
 from test_instruments import add, confirm, plan
 from test_layout import BENCH, placed_cell, preview
@@ -110,6 +112,8 @@ def test_impossible_preferences_are_diagnosed(client):
     )
     found = search(client)
     assert found["candidates"] == []
+    # Closer than the footprints allow is rejected before any arrangement is tried.
+    assert (found["total"], found["next"]) == (0, None)
     kinds = [d["kind"] for d in found["diagnosis"]]
     assert "constraint" in kinds
     hint = next(d for d in found["diagnosis"] if d["kind"] == "constraint")["hint"]
@@ -121,6 +125,17 @@ def test_tiny_bench_points_at_room(client):
     found = search(client, bench={"width": 0.8, "depth": 0.6})
     assert found["diagnosis"][0]["kind"] in {"room", "reach"}
     assert "bench" in " ".join(d["hint"] for d in found["diagnosis"])
+
+
+def test_a_chunk_out_of_time_still_advances(client, monkeypatch):
+    from academy import layout_search
+
+    placed_cell(client)
+    # A runner too slow to finish one arrangement inside the chunk deadline.
+    clock = itertools.count(step=100)
+    monkeypatch.setattr(layout_search.time, "monotonic", lambda: next(clock))
+    found = search(client, bench={"width": 0.8, "depth": 0.6}, start=0)
+    assert found["next"] is None or found["next"] > 0
 
 
 def test_used_instrument_cannot_be_excluded(client):

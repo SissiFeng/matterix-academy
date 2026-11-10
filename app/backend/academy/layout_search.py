@@ -83,6 +83,11 @@ def _access_xz(twins, placement):
     return point[0], point[2]
 
 
+def _size(spec):
+    x0, x1, z0, z1 = footprint(spec)
+    return x1 - x0, z1 - z0
+
+
 def _centre(twins, placement):
     shape = corners(twins[placement["twin_id"]]["spec"], placement)
     return sum(x for x, _ in shape) / 4, sum(z for _, z in shape) / 4
@@ -156,19 +161,26 @@ class Search:
             if not self.preferred(p["twin_id"], p, list(self.fixed.values())):
                 name = twins[p["twin_id"]]["spec"]["name"]
                 raise PlanError("constraint", f"{name} is kept where your preferences rule out")
+        for message, want in self.impossible:
+            self.fail("constraint", message, want)
         arms = len(self.arm_grid(self.free_arms[0], [])) if self.free_arms else 1
-        self.starts = list(
-            itertools.product(
-                range(min(ARM_STARTS, arms) or 1),
-                range(len(RADII)),
-                range(len(SIDES)),
-                START_ANGLES,
+        self.starts = (
+            []
+            if self.impossible
+            else list(
+                itertools.product(
+                    range(min(ARM_STARTS, arms) or 1),
+                    range(len(RADII)),
+                    range(len(SIDES)),
+                    START_ANGLES,
+                )
             )
         )
 
     def read_constraints(self, constraints, used):
         name = lambda t: self.twins[t]["spec"]["name"]  # noqa: E731
         self.excluded, self.zones, self.pairs, self.slot_needs = set(), {}, [], {}
+        self.impossible = []
         for c in constraints:
             ids = [c["twin_id"], *([c["other_id"]] if c.get("other_id") else [])]
             if any(t not in self.twins for t in ids):
@@ -187,6 +199,13 @@ class Search:
                 self.zones[twin_id] = c["side"]
             elif c["kind"] in {"near", "apart"}:
                 self.pairs.append((c["kind"], twin_id, c["other_id"], c["metres"]))
+                # Centres cannot come closer than half of each footprint's narrow side.
+                closest = sum(min(_size(self.twins[t]["spec"])) / 2 for t in ids)
+                if c["kind"] == "near" and c["metres"] < closest:
+                    want = f"{name(twin_id)} and {name(c['other_id'])} within {c['metres']:g} m"
+                    self.impossible.append(
+                        (f"{want} would overlap them; they need at least {closest:.2f} m", want)
+                    )
             elif c["kind"] == "reach_slots":
                 keys = site_keys(self.twins[twin_id]["spec"])
                 if c["count"] > len(keys):
@@ -556,10 +575,14 @@ def search_layouts(
     seen = [list(placements) for placements in avoid]
     index = start
     while index < len(search.starts):
-        if time.monotonic() > deadline or search.plans >= CHUNK_PLANS:
+        # A chunk always finishes its first arrangement, so slow machines still advance.
+        later = index > start
+        if later and (time.monotonic() > deadline or search.plans >= CHUNK_PLANS):
             break
-        result = search.attempt(search.starts[index], deadline, CHUNK_PLANS - search.plans, seen)
-        if not result and time.monotonic() > deadline:
+        result = search.attempt(
+            search.starts[index], deadline if later else math.inf, CHUNK_PLANS - search.plans, seen
+        )
+        if not result and later and time.monotonic() > deadline:
             break  # cut short: the next chunk retries this arrangement
         index += 1
         if result:
