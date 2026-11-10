@@ -133,6 +133,9 @@ export default function WorkflowStudio({
     session.events.every((event) => event.state);
   const replayStep = canReplay ? replay : null;
   const replayEvent = replayStep ? session.events[replayStep - 1] : null;
+  // The caption shows the replayed step, or the latest one while live.
+  const captionEvent =
+    replayStep === null ? session.events.at(-1) : replayEvent;
   const shownState =
     replayStep === null
       ? session.state
@@ -523,7 +526,11 @@ export default function WorkflowStudio({
                 className={`${s.block} ${s[action.kind]} ${replayStep === null && session.status !== "draft" && index === session.cursor ? s.currentBlock : ""} ${index < session.cursor ? s.doneBlock : ""} ${replayStep === index + 1 ? s.replayBlock : ""}`}
                 data-testid={`workflow-step-${index + 1}`}
                 aria-current={
-                  session.status !== "draft" && index === session.cursor
+                  (
+                    replayStep === null
+                      ? session.status !== "draft" && index === session.cursor
+                      : replayStep === index + 1
+                  )
                     ? "step"
                     : undefined
                 }
@@ -834,7 +841,7 @@ export default function WorkflowStudio({
             <div className={s.deckFront}>FRONT / YOU</div>
             {canReplay && (
               <div
-                className={`${s.replay} ${replayEvent?.level === "error" ? s.replayFault : ""}`}
+                className={`${s.replay} ${captionEvent?.level === "error" ? s.replayFault : ""}`}
               >
                 <button
                   className={s.iconButton}
@@ -882,7 +889,7 @@ export default function WorkflowStudio({
                     "Before step 1"
                   ) : (
                     <>
-                      {replayEvent?.level === "error" && (
+                      {captionEvent?.level === "error" && (
                         <TriangleAlert size={13} />
                       )}
                       <strong>
@@ -891,7 +898,7 @@ export default function WorkflowStudio({
                           "0",
                         )}
                       </strong>{" "}
-                      {(replayEvent ?? session.events.at(-1))?.message}
+                      {captionEvent?.message}
                     </>
                   )}
                 </p>
@@ -1070,7 +1077,7 @@ export default function WorkflowStudio({
                     }
                   >
                     <span>{String(event.step).padStart(2, "0")}</span>
-                    <p>{event.message}</p>
+                    <span className={s.eventMessage}>{event.message}</span>
                     {event.level === "error" ? (
                       <TriangleAlert size={15} />
                     ) : (
