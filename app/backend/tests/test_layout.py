@@ -381,3 +381,22 @@ def test_layout_search_explains_why_nothing_fits(client):
     )
     response = client.post("/api/twins/layout/search", json={"bench": BENCH})
     assert response.status_code == 422 and "transfer step" in response.json()["detail"]["message"]
+
+
+def test_a_chunk_cut_short_keeps_its_reach_work_so_the_walk_ends(client):
+    """A slow host can spend a whole chunk on the first arrangement's reach checks."""
+    from academy import layout_search
+
+    placed_cell(client)
+    layout_search._reach_memo.clear()
+    cell = client.get("/api/twins").json()
+    twins = {t["id"]: t for t in cell["twins"]}
+    tiny, start = {"width": 0.8, "depth": 0.6}, 0
+    for _ in range(200):
+        chunk = layout_search.search_layouts(twins, tiny, cell["steps"], start=start, seconds=0.05)
+        if chunk["next"] is None:
+            break
+        start = chunk["next"]
+    else:
+        raise AssertionError("the search never finished")
+    assert chunk["candidates"] == [] and "fits on the bench" in chunk["failure"]

@@ -12,9 +12,10 @@ chunk stays under its time cap. Synthetic geometry only, as checked by the plann
 """
 
 import itertools
+import json
 import math
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
 
 from .arms import arm_for
 from .mock_contract import PlanError, execute_mock, site_keys
@@ -49,6 +50,11 @@ ATTEMPT_PLANS = 4  # full workflow checks one starting arrangement may spend
 CHUNK_PLANS = 16
 CHUNK_SECONDS = 6.0
 DISTINCT = 0.25  # metres one instrument must move for a layout to count as new
+# Whether an arm reaches a station depends only on their two specs, the side and the
+# radius, so the answer outlives one request. A chunk cut short by its time cap keeps
+# what it computed and the next chunk resumes instead of starting the IK work again.
+REACH_ENTRIES = 512
+_reach_memo = OrderedDict()
 
 
 def _base(twins, placement):
@@ -301,25 +307,39 @@ class Search:
         """
         key = (arm_id, station_id, side, radius)
         if key not in self.reach_cache:
-            arm = {"twin_id": arm_id, "x": 0.0, "z": 0.0, "yaw": 0, "access": "top"}
-            bx, bz = _base(self.twins, arm)
-            spec = self.twins[station_id]["spec"]
-            station = {"twin_id": station_id, **_pose(spec, side, (bx, bz + radius), (bx, bz))}
-            profile = self.profile(arm_id)
-            ok = _stretch(self.twins, arm, station) <= profile.reach - MARGIN
-            if not ok:
-                self.fail(
-                    "reach", f"{spec['name']} is beyond the {profile.name}'s reach at {radius} m"
-                )
-            else:
-                planner = Planner(self.twins, self.layout([arm, station]), self.twins[arm_id])
-                try:
-                    planner.station(self.twins[station_id], {**planner.rest, GRIPPER: {station_id}})
-                except PlanError as exc:
-                    ok = False
-                    self.fail("collision" if "hit" in str(exc) else "reach", str(exc))
+            memo = json.dumps(
+                [self.twins[arm_id]["spec"], self.twins[station_id]["spec"], side, radius],
+                sort_keys=True,
+            )
+            if memo not in _reach_memo:
+                _reach_memo[memo] = self.reach_alone(arm_id, station_id, side, radius)
+                if len(_reach_memo) > REACH_ENTRIES:
+                    _reach_memo.popitem(last=False)
+            _reach_memo.move_to_end(memo)
+            ok, failure = _reach_memo[memo]
+            if failure:
+                self.fail(*failure)
             self.reach_cache[key] = ok
         return self.reach_cache[key]
+
+    def reach_alone(self, arm_id, station_id, side, radius):
+        """(reachable, failure) for the arm at the origin and the station at this radius."""
+        arm = {"twin_id": arm_id, "x": 0.0, "z": 0.0, "yaw": 0, "access": "top"}
+        bx, bz = _base(self.twins, arm)
+        spec = self.twins[station_id]["spec"]
+        station = {"twin_id": station_id, **_pose(spec, side, (bx, bz + radius), (bx, bz))}
+        profile = self.profile(arm_id)
+        if _stretch(self.twins, arm, station) > profile.reach - MARGIN:
+            return False, (
+                "reach",
+                f"{spec['name']} is beyond the {profile.name}'s reach at {radius} m",
+            )
+        planner = Planner(self.twins, self.layout([arm, station]), self.twins[arm_id])
+        try:
+            planner.station(self.twins[station_id], {**planner.rest, GRIPPER: {station_id}})
+        except PlanError as exc:
+            return False, ("collision" if "hit" in str(exc) else "reach", str(exc))
+        return True, None
 
     def arm_grid(self, arm_id, placed):
         half = max(abs(v) for v in footprint(self.twins[arm_id]["spec"]))
