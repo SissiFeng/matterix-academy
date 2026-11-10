@@ -26,6 +26,8 @@ class Settings:
     pairing_enabled: bool = False
     real_enabled: bool = False
     operator_group: str = "lab-operators"
+    # When set, only this Cognito group may create study groups; anyone may join with a code.
+    instructor_group: str = ""
     local_operator: bool = False
     twin_region: str = ""
     twin_api_key: str = ""
@@ -99,6 +101,7 @@ class Settings:
             pairing_enabled=os.getenv("ACADEMY_PAIRING_ENABLED", "false").lower() == "true",
             real_enabled=os.getenv("ACADEMY_REAL_ENABLED", "false").lower() == "true",
             operator_group=os.getenv("ACADEMY_OPERATOR_GROUP", "lab-operators"),
+            instructor_group=os.getenv("ACADEMY_INSTRUCTOR_GROUP", ""),
             local_operator=os.getenv("ACADEMY_LOCAL_OPERATOR", "false").lower() == "true",
             twin_region=os.getenv("ACADEMY_TWIN_REGION", ""),
             twin_api_key=os.getenv("ACADEMY_TWIN_API_KEY", ""),

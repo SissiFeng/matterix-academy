@@ -17,6 +17,7 @@ import {
   Clock3,
   FlaskConical,
   History,
+  Users,
   LayoutGrid,
   LogOut,
   Maximize2,
@@ -66,6 +67,7 @@ const ConnectorExplorer = lazy(() => import("./ConnectorExplorer"));
 const ConnectorSetup = lazy(() => import("./ConnectorSetup"));
 const Workcell = lazy(() => import("./Workcell"));
 const InstrumentModules = lazy(() => import("./InstrumentModules"));
+const StudyGroups = lazy(() => import("./StudyGroups"));
 const WorkcellCase = lazy(() => import("./workcellCase/WorkcellCase"));
 const DilutionWorkspace = lazy(() => import("./DilutionWorkspace"));
 const WorkflowMarketplace = lazy(() =>
@@ -597,7 +599,7 @@ export default function App() {
     const routeChanged = (event: HashChangeEvent) => {
       if (movePlanLink()) return;
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|groups|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -632,7 +634,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|groups|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -875,6 +877,13 @@ export default function App() {
                 <History size={18} /> My experiments{" "}
                 <span>{sessions.length}</span>
               </button>
+              <button
+                className={view === "groups" ? s.activeNav : ""}
+                aria-current={view === "groups" ? "page" : undefined}
+                onClick={() => nav("groups")}
+              >
+                <Users size={18} /> Study groups
+              </button>
               {view === "lab" && (
                 <button className={s.activeNav}>
                   <FlaskConical size={18} /> Current experiment
@@ -978,15 +987,17 @@ export default function App() {
                             : "Flex foundations"
                           : view === "history"
                             ? "My experiments"
-                            : view === "discovery"
-                              ? "Discovery studio"
-                              : view === "marketplace"
-                                ? "Workflow marketplace"
-                                : view === "connector"
-                                  ? "Connector explorer"
-                                  : view === "sim"
-                                    ? "Simulation lab"
-                                    : "Learning lab"))}
+                            : view === "groups"
+                              ? "Study groups"
+                              : view === "discovery"
+                                ? "Discovery studio"
+                                : view === "marketplace"
+                                  ? "Workflow marketplace"
+                                  : view === "connector"
+                                    ? "Connector explorer"
+                                    : view === "sim"
+                                      ? "Simulation lab"
+                                      : "Learning lab"))}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -1106,6 +1117,19 @@ export default function App() {
                 </div>
               ) : view === "sim" ? (
                 <SimulationLab onOpenInstruments={() => nav("plan/workflow")} />
+              ) : view === "groups" ? (
+                <StudyGroups
+                  key={workspaceRouteRevision}
+                  initialGroupId={
+                    window.location.hash.match(/^#\/groups\/([a-f0-9-]+)$/)?.[1]
+                  }
+                  sessions={sessions}
+                  onCopied={(copy) => {
+                    setSessions((list) => [copy, ...list]);
+                    open(copy);
+                  }}
+                  onError={showError}
+                />
               ) : view === "marketplace" ? (
                 <WorkflowMarketplace
                   onAdapt={(item) => {

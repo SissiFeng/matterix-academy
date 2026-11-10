@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import sim2real_api
+from . import groups, sim2real_api
 from ._version import __version__
 from .auth import identify, local_signer
 from .connections import ConnectionService
@@ -610,6 +610,7 @@ def create_app(settings: Settings | None = None, store=None):
         return save(owner, control(session, command), data.version)
 
     sim2real_api.install(app, store=app.state.store, pairing=app.state.pairing)
+    groups.install(app, store=app.state.store)
     return app
 
 
