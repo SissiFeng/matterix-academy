@@ -6,6 +6,8 @@ import {
   ArrowUp,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Droplets,
   FlaskConical,
@@ -23,7 +25,7 @@ import {
   Unplug,
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
-import type { Action, Experiment, Session } from "./types";
+import type { Action, Experiment, Session, TeachingState } from "./types";
 import NativeStudioRun, { hasPendingNativeSubmission } from "./NativeStudioRun";
 import {
   ACTION_HINTS,
@@ -46,6 +48,26 @@ const slots = (instrument: Instrument) =>
   instrument === "flex"
     ? "ABCD".split("").flatMap((row) => [1, 2, 3].map((col) => `${row}${col}`))
     : [10, 11, 12, 7, 8, 9, 4, 5, 6, 1, 2, 3].map(String);
+
+const startingWells = (experiment: Experiment): TeachingState["wells"] => ({
+  stock: {
+    volume: experiment.source_volume,
+    solute: experiment.source_volume * 100,
+  },
+  ...Object.fromEntries(
+    ["A1", "A2", "A3"].map((well) => [
+      well,
+      { volume: experiment.diluent_volume, solute: 0 },
+    ]),
+  ),
+});
+const startingState = (experiment: Experiment): TeachingState => ({
+  wells: startingWells(experiment),
+  pipette: { volume: 0, solute: 0, tip: false, used: false },
+  tips_used: 0,
+  tips_discarded: 0,
+  waste_volume: 0,
+});
 
 function LiquidVessel({
   volume,
@@ -86,6 +108,8 @@ export default function WorkflowStudio({
   );
   const [selectedAsset, setSelectedAsset] = useState("tips");
   const [starter, setStarter] = useState<Starter>("transfer");
+  // Step whose recorded state is on display; null follows the live run.
+  const [replay, setReplay] = useState<number | null>(null);
   const mounted = useRef(true);
   const runControls = useRef<HTMLElement>(null);
   const nativeControls = useRef<HTMLDivElement>(null);
@@ -103,8 +127,24 @@ export default function WorkflowStudio({
   const dirty = JSON.stringify(draft) !== JSON.stringify(session.experiment);
   const empty = draft.actions.length === 0;
   const fault = session.events.find((event) => event.level === "error");
+  const canReplay =
+    !auto &&
+    session.events.length > 0 &&
+    session.events.every((event) => event.state);
+  const replayStep = canReplay ? replay : null;
+  const replayEvent = replayStep ? session.events[replayStep - 1] : null;
+  const shownState =
+    replayStep === null
+      ? session.state
+      : (replayEvent?.state ?? startingState(session.experiment));
   const activeStep =
-    session.status === "draft" ? null : draft.actions[session.cursor];
+    replayStep !== null
+      ? replayStep
+        ? session.experiment.actions[replayStep - 1]
+        : null
+      : session.status === "draft"
+        ? null
+        : draft.actions[session.cursor];
   const activeAsset = activeStep
     ? activeStep.kind === "pickup"
       ? "tips"
@@ -115,20 +155,7 @@ export default function WorkflowStudio({
           : "plate"
     : null;
   const wells =
-    session.status === "draft"
-      ? {
-          stock: {
-            volume: draft.source_volume,
-            solute: draft.source_volume * 100,
-          },
-          ...Object.fromEntries(
-            ["A1", "A2", "A3"].map((well) => [
-              well,
-              { volume: draft.diluent_volume, solute: 0 },
-            ]),
-          ),
-        }
-      : session.state.wells;
+    session.status === "draft" ? startingWells(draft) : shownState.wells;
 
   useEffect(() => {
     mounted.current = true;
@@ -136,6 +163,9 @@ export default function WorkflowStudio({
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    setReplay(null);
+  }, [session.id, session.version]);
   useEffect(() => {
     setDraft(structuredClone(session.experiment));
     setAuto(false);
@@ -490,7 +520,7 @@ export default function WorkflowStudio({
             {draft.actions.map((action, index) => (
               <li
                 key={index}
-                className={`${s.block} ${s[action.kind]} ${session.status !== "draft" && index === session.cursor ? s.currentBlock : ""} ${index < session.cursor ? s.doneBlock : ""}`}
+                className={`${s.block} ${s[action.kind]} ${replayStep === null && session.status !== "draft" && index === session.cursor ? s.currentBlock : ""} ${index < session.cursor ? s.doneBlock : ""} ${replayStep === index + 1 ? s.replayBlock : ""}`}
                 data-testid={`workflow-step-${index + 1}`}
                 aria-current={
                   session.status !== "draft" && index === session.cursor
@@ -732,10 +762,10 @@ export default function WorkflowStudio({
             </div>
             <div className={s.pipetteState}>
               <span>
-                Tip {session.state.pipette.tip ? "attached" : "not attached"}
+                Tip {shownState.pipette.tip ? "attached" : "not attached"}
               </span>
-              <strong>{format(session.state.pipette.volume)} µL in tip</strong>
-              <span>{session.state.tips_used} tips used</span>
+              <strong>{format(shownState.pipette.volume)} µL in tip</strong>
+              <span>{shownState.tips_used} tips used</span>
             </div>
           </section>
           <section
@@ -802,6 +832,71 @@ export default function WorkflowStudio({
               })}
             </div>
             <div className={s.deckFront}>FRONT / YOU</div>
+            {canReplay && (
+              <div
+                className={`${s.replay} ${replayEvent?.level === "error" ? s.replayFault : ""}`}
+              >
+                <button
+                  className={s.iconButton}
+                  aria-label="Previous step"
+                  disabled={(replayStep ?? session.events.length) === 0}
+                  onClick={() =>
+                    setReplay((replayStep ?? session.events.length) - 1)
+                  }
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <input
+                  type="range"
+                  aria-label="Replay step"
+                  aria-valuetext={
+                    replayStep === 0
+                      ? "Before step 1"
+                      : `Step ${replayStep ?? session.events.length}`
+                  }
+                  min={0}
+                  max={session.events.length}
+                  value={replayStep ?? session.events.length}
+                  onChange={(event) => {
+                    const step = Number(event.target.value);
+                    setReplay(step === session.events.length ? null : step);
+                  }}
+                />
+                <button
+                  className={s.iconButton}
+                  aria-label="Next step"
+                  disabled={replayStep === null}
+                  onClick={() =>
+                    setReplay(
+                      replayStep !== null &&
+                        replayStep + 1 < session.events.length
+                        ? replayStep + 1
+                        : null,
+                    )
+                  }
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <p data-testid="replay-caption">
+                  {replayStep === 0 ? (
+                    "Before step 1"
+                  ) : (
+                    <>
+                      {replayEvent?.level === "error" && (
+                        <TriangleAlert size={13} />
+                      )}
+                      <strong>
+                        {String(replayStep ?? session.events.length).padStart(
+                          2,
+                          "0",
+                        )}
+                      </strong>{" "}
+                      {(replayEvent ?? session.events.at(-1))?.message}
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
             <div className={s.placement}>
               <label>
                 Move labware
@@ -878,7 +973,9 @@ export default function WorkflowStudio({
               <span>
                 {session.status === "draft"
                   ? "STARTING PREVIEW"
-                  : "SAVED MODEL STATE"}
+                  : replayStep !== null
+                    ? `REPLAY · STEP ${replayStep}`
+                    : "SAVED MODEL STATE"}
               </span>
             </div>
             <div className={s.liquidGrid}>
@@ -957,13 +1054,29 @@ export default function WorkflowStudio({
             <ol>
               {session.events.map((event) => (
                 <li key={`${event.step}-${event.code}`}>
-                  <span>{String(event.step).padStart(2, "0")}</span>
-                  <p>{event.message}</p>
-                  {event.level === "error" ? (
-                    <TriangleAlert size={15} />
-                  ) : (
-                    <Check size={15} />
-                  )}
+                  <button
+                    disabled={!canReplay}
+                    aria-current={
+                      (replayStep ?? session.events.length) === event.step
+                        ? "step"
+                        : undefined
+                    }
+                    onClick={() =>
+                      setReplay(
+                        event.step === session.events.length
+                          ? null
+                          : event.step,
+                      )
+                    }
+                  >
+                    <span>{String(event.step).padStart(2, "0")}</span>
+                    <p>{event.message}</p>
+                    {event.level === "error" ? (
+                      <TriangleAlert size={15} />
+                    ) : (
+                      <Check size={15} />
+                    )}
+                  </button>
                 </li>
               ))}
             </ol>

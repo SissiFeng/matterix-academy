@@ -259,7 +259,11 @@ test("an invalid freeform sequence gives a model hint and can be corrected", asy
     }),
   ).toBeVisible();
   await expect(page.getByTestId("liquid-stock")).toContainText("1,000 µL");
+  await expect(page.getByTestId("replay-caption")).toHaveText(
+    "01 The pipette has no tip.",
+  );
   await page.getByRole("button", { name: "Reset & edit", exact: true }).click();
+  await expect(page.getByLabel("Replay step")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Add pick up tip block", exact: true })
     .click();
@@ -405,4 +409,54 @@ test("a stale editor reloads the saved version instead of overwriting a newer wo
   expect((await persisted.json()).experiment.title).toBe(
     "Saved in another window",
   );
+});
+
+test("a finished run replays the recorded deck state at any step without changing the run", async ({
+  page,
+}) => {
+  await onboard(page);
+  await design(page, "Flex");
+  await finish(page);
+  const replay = page.getByLabel("Replay step");
+  const caption = page.getByTestId("replay-caption");
+  await expect(replay).toHaveValue("4");
+  await expect(caption).toHaveText("04 Tip discarded");
+
+  await replay.focus();
+  await page.keyboard.press("Home");
+  await expect(caption).toHaveText("Before step 1");
+  await expect(page.getByTestId("liquid-stock")).toContainText("1,000 µL");
+  await expect(page.getByTestId("liquid-A1")).toContainText("0 µL");
+  await expect(
+    page.getByText("Tip not attached", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("REPLAY · STEP 0", { exact: true }),
+  ).toBeVisible();
+
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(caption).toHaveText("02 100 µL · stock");
+  await expect(page.getByTestId("liquid-stock")).toContainText("900 µL");
+  await expect(page.getByTestId("liquid-A1")).toContainText("0 µL");
+  await expect(page.getByText("100 µL in tip", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("workflow-step-2")).toHaveClass(/replayBlock/);
+
+  await page.getByRole("button", { name: "Next step", exact: true }).click();
+  await expect(caption).toHaveText("03 100 µL · A1");
+  await expect(page.getByTestId("liquid-A1")).toContainText("100 µL");
+
+  await page.getByText("Step timeline", { exact: false }).click();
+  await page.getByRole("button", { name: /^01 Fresh tip attached/ }).click();
+  await expect(caption).toHaveText("01 Fresh tip attached");
+  await expect(page.getByText("0 µL in tip", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /^04 Tip discarded/ }).click();
+  await expect(replay).toHaveValue("4");
+  await expect(
+    page.getByText("SAVED MODEL STATE", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("liquid-A1")).toContainText("100 µL");
+  await expect(page.getByTestId("liquid-stock")).toContainText("900 µL");
 });
