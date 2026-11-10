@@ -8,7 +8,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import groups, sim2real_api
 from ._version import __version__
-from .auth import identify, local_signer
+from .auth import identify, local_signer, may_plan_layouts, require_layout_planner
 from .connections import ConnectionService
 from .connector_api import router as connector_router
 from .connector_catalog import approved_release
@@ -202,6 +202,10 @@ def create_app(settings: Settings | None = None, store=None):
             "onboarded": False,
         }
 
+    @app.get("/api/access")
+    def access(request: Request, owner: str = Depends(identify)):
+        return {"plan_layouts": may_plan_layouts(request)}
+
     @app.put("/api/me")
     def update_profile(data: Profile, owner: str = Depends(identify)):
         old = app.state.store.get(owner, "profile")
@@ -288,11 +292,11 @@ def create_app(settings: Settings | None = None, store=None):
     def preview_instrument_layout(data: LayoutDraft, owner: str = Depends(identify)):
         return app.state.twins.preview_layout(owner, data)
 
-    @app.put("/api/twins/layout/constraints")
+    @app.put("/api/twins/layout/constraints", dependencies=[Depends(require_layout_planner)])
     def save_layout_constraints(data: SaveConstraints, owner: str = Depends(identify)):
         return app.state.twins.save_constraints(owner, data)
 
-    @app.post("/api/twins/layout/search")
+    @app.post("/api/twins/layout/search", dependencies=[Depends(require_layout_planner)])
     def search_instrument_layouts(data: SearchLayouts, owner: str = Depends(identify)):
         return app.state.twins.search_layout(owner, data)
 

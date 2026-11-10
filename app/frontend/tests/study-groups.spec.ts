@@ -99,3 +99,51 @@ test("study groups fit a phone screen", async ({ browser }) => {
     ),
   ).toBe(true);
 });
+
+test("a saved bench layout is shared with the group and discussed", async ({
+  browser,
+}) => {
+  const page = await learner(browser, "Ada");
+  await openGroups(page);
+  await page.getByLabel("Group name").fill("Cell design");
+  await page.getByRole("button", { name: "Create" }).click();
+  // Nothing to share until a layout is saved.
+  await page.getByRole("button", { name: "Share my bench layout" }).click();
+  await expect(
+    page.getByText("Save a bench layout in Plan a layout first"),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", { name: "Plan a layout", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "2 · Instruments" }).click();
+  for (const name of ["Heating station", "Plate reader", "Transfer robot"])
+    await page.getByRole("button", { name, exact: true }).click();
+  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  for (let i = 3; i > 0; i--) {
+    await confirm.first().click();
+    await expect(confirm).toHaveCount(i - 1);
+  }
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+
+  await openGroups(page);
+  await page.getByRole("button", { name: /Cell design/ }).click();
+  await page.getByRole("button", { name: "Share my bench layout" }).click();
+  const card = page
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Ada's bench" }) });
+  await expect(
+    card.getByRole("img", { name: /Top view of the bench layout by Ada/ }),
+  ).toBeVisible();
+  await expect(card.getByText("3 instruments")).toBeVisible();
+  await card.getByText("Discussion").click();
+  await card
+    .getByRole("textbox", { name: "Comment on bench layout by Ada" })
+    .fill("Reader could sit closer");
+  await card.getByRole("button", { name: "Post" }).click();
+  await expect(card.getByText("Reader could sit closer")).toBeVisible();
+});

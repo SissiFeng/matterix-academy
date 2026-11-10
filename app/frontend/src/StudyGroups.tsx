@@ -11,11 +11,20 @@ type Share = {
   member_id: string;
   author: string;
   shared_at: string;
-  experiment: Experiment;
   evidence: "synthetic";
+  comments: { author: string; text: string; at: string }[];
+};
+type ExperimentShare = Share & {
+  experiment: Experiment;
   status: Session["status"];
   passed: boolean | null;
-  comments: { author: string; text: string; at: string }[];
+};
+type LayoutShare = Share & {
+  layout: {
+    bench: { width: number; depth: number };
+    instruments: { name: string; arm: boolean; corners: [number, number][] }[];
+    transfers: { from: string; to: string }[];
+  };
 };
 type Group = {
   id: string;
@@ -24,7 +33,7 @@ type Group = {
   code: string | null;
   you: Member & { id: string };
   members: Member[];
-  shares: Share[];
+  shares: (ExperimentShare | LayoutShare)[];
 };
 type Listing = {
   groups: { id: string; name: string; members: number; shares: number }[];
@@ -39,7 +48,7 @@ const statusText: Record<Session["status"], string> = {
   completed: "Completed",
 };
 
-function outcome(share: Share) {
+function outcome(share: ExperimentShare) {
   if (share.status !== "completed") return statusText[share.status];
   return share.passed ? "Teaching run passed" : "Teaching run needs work";
 }
@@ -213,9 +222,32 @@ function GroupPage({
   const [compare, setCompare] = useState<string[]>([]);
   const reload = async () => onChange(await api<Group>(`/groups/${group.id}`));
   const base = `/groups/${group.id}/shares`;
+  const experiments = group.shares.filter(
+    (share): share is ExperimentShare => "experiment" in share,
+  );
+  const layouts = group.shares.filter(
+    (share): share is LayoutShare => "layout" in share,
+  );
   const compared = compare
-    .map((id) => group.shares.find((share) => share.id === id))
-    .filter((share): share is Share => Boolean(share));
+    .map((id) => experiments.find((share) => share.id === id))
+    .filter((share): share is ExperimentShare => Boolean(share));
+  const canRemove = (share: Share) =>
+    share.member_id === group.you.id || group.you.role === "facilitator";
+  const remove = (share: Share) =>
+    run(async () => {
+      await api(`${base}/${share.id}/remove`, json({ version: share.version }));
+      setCompare((current) => current.filter((id) => id !== share.id));
+      await reload();
+    });
+  const comment = (share: Share, text: string) =>
+    run(async () => {
+      await api(
+        `${base}/${share.id}/comments`,
+        json({ version: share.version, text }),
+      );
+      await reload();
+      return true;
+    });
 
   return (
     <div className={s.page}>
@@ -283,21 +315,18 @@ function GroupPage({
 
       <section aria-labelledby="shared-title">
         <h2 id="shared-title">Shared experiments</h2>
-        {group.shares.length === 0 ? (
+        {experiments.length === 0 ? (
           <p className={s.empty}>
             Nothing shared yet. Each member builds their own version, shares it
             here, and the group compares them.
           </p>
         ) : (
           <ul className={s.shares}>
-            {group.shares.map((share) => (
+            {experiments.map((share) => (
               <ShareCard
                 key={share.id}
                 share={share}
-                canRemove={
-                  share.member_id === group.you.id ||
-                  group.you.role === "facilitator"
-                }
+                canRemove={canRemove(share)}
                 selected={compare.includes(share.id)}
                 busy={busy}
                 onSelect={(on) =>
@@ -319,28 +348,40 @@ function GroupPage({
                     ),
                   )
                 }
-                onRemove={() =>
-                  run(async () => {
-                    await api(
-                      `${base}/${share.id}/remove`,
-                      json({ version: share.version }),
-                    );
-                    setCompare((current) =>
-                      current.filter((id) => id !== share.id),
-                    );
-                    await reload();
-                  })
-                }
-                onComment={(text) =>
-                  run(async () => {
-                    await api(
-                      `${base}/${share.id}/comments`,
-                      json({ version: share.version, text }),
-                    );
-                    await reload();
-                    return true;
-                  })
-                }
+                onRemove={() => remove(share)}
+                onComment={(text) => comment(share, text)}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="layouts-title">
+        <div className={s.sectionTop}>
+          <h2 id="layouts-title">Shared bench layouts</h2>
+          <button
+            className={s.secondary}
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                await api(`/groups/${group.id}/layout`, { method: "POST" });
+                await reload();
+              })
+            }
+          >
+            Share my bench layout
+          </button>
+        </div>
+        {layouts.length > 0 && (
+          <ul className={s.shares}>
+            {layouts.map((share) => (
+              <LayoutCard
+                key={share.id}
+                share={share}
+                canRemove={canRemove(share)}
+                busy={busy}
+                onRemove={() => remove(share)}
+                onComment={(text) => comment(share, text)}
               />
             ))}
           </ul>
@@ -360,7 +401,7 @@ function ShareCard({
   onRemove,
   onComment,
 }: {
-  share: Share;
+  share: ExperimentShare;
   canRemove: boolean;
   selected: boolean;
   busy: boolean;
@@ -369,7 +410,6 @@ function ShareCard({
   onRemove: () => void;
   onComment: (text: string) => Promise<boolean | undefined>;
 }) {
-  const [draft, setDraft] = useState("");
   const { experiment } = share;
   const title = `${experiment.title} by ${share.author}`;
   return (
@@ -408,35 +448,123 @@ function ShareCard({
           </button>
         )}
       </div>
-      <details className={s.discussion}>
-        <summary>
-          Discussion{share.comments.length > 0 && ` (${share.comments.length})`}
-        </summary>
-        <ul>
-          {share.comments.map((comment, index) => (
-            <li key={index}>
-              <strong>{comment.author}</strong> {comment.text}
-            </li>
-          ))}
-        </ul>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void onComment(draft).then((ok) => ok && setDraft(""));
-          }}
-        >
-          <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            maxLength={500}
-            required
-            aria-label={`Comment on ${title}`}
-          />
-          <button className={s.secondary} disabled={busy}>
-            Post
+      <Discussion share={share} title={title} busy={busy} onPost={onComment} />
+    </li>
+  );
+}
+
+function Discussion({
+  share,
+  title,
+  busy,
+  onPost,
+}: {
+  share: Share;
+  title: string;
+  busy: boolean;
+  onPost: (text: string) => Promise<boolean | undefined>;
+}) {
+  const [draft, setDraft] = useState("");
+  return (
+    <details className={s.discussion}>
+      <summary>
+        Discussion{share.comments.length > 0 && ` (${share.comments.length})`}
+      </summary>
+      <ul>
+        {share.comments.map((comment, index) => (
+          <li key={index}>
+            <strong>{comment.author}</strong> {comment.text}
+          </li>
+        ))}
+      </ul>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void onPost(draft).then((ok) => ok && setDraft(""));
+        }}
+      >
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          maxLength={500}
+          required
+          aria-label={`Comment on ${title}`}
+        />
+        <button className={s.secondary} disabled={busy}>
+          Post
+        </button>
+      </form>
+    </details>
+  );
+}
+
+function LayoutCard({
+  share,
+  canRemove,
+  busy,
+  onRemove,
+  onComment,
+}: {
+  share: LayoutShare;
+  canRemove: boolean;
+  busy: boolean;
+  onRemove: () => void;
+  onComment: (text: string) => Promise<boolean | undefined>;
+}) {
+  const { bench, instruments, transfers } = share.layout;
+  const title = `bench layout by ${share.author}`;
+  return (
+    <li>
+      <div className={s.shareTop}>
+        <div>
+          <h3>{share.author}'s bench</h3>
+          <p>
+            {bench.width} × {bench.depth} m · {instruments.length} instruments
+          </p>
+        </div>
+        {canRemove && (
+          <button
+            className={s.icon}
+            disabled={busy}
+            aria-label={`Remove ${title}`}
+            onClick={onRemove}
+          >
+            <Trash2 size={15} />
           </button>
-        </form>
-      </details>
+        )}
+      </div>
+      <svg
+        className={s.bench}
+        viewBox={`${-bench.width / 2} ${-bench.depth / 2} ${bench.width} ${bench.depth}`}
+        role="img"
+        aria-label={`Top view of the ${title}: ${instruments.map((i) => i.name).join(", ")}`}
+      >
+        {instruments.map((item, index) => {
+          const cx = item.corners.reduce((sum, c) => sum + c[0], 0) / 4;
+          const cz = item.corners.reduce((sum, c) => sum + c[1], 0) / 4;
+          return (
+            <g key={index} className={item.arm ? s.arm : ""}>
+              <polygon
+                points={item.corners.map((c) => c.join(",")).join(" ")}
+              />
+              <text x={cx} y={cz}>
+                {index + 1}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <ol className={s.legend}>
+        {instruments.map((item, index) => (
+          <li key={index}>{item.name}</li>
+        ))}
+      </ol>
+      {transfers.length > 0 && (
+        <p className={s.outcome}>
+          {transfers.map((t) => `${t.from} → ${t.to}`).join(" · ")}
+        </p>
+      )}
+      <Discussion share={share} title={title} busy={busy} onPost={onComment} />
     </li>
   );
 }
@@ -452,7 +580,7 @@ function step(action: Experiment["actions"][number] | undefined) {
 const instrument = (experiment: Experiment) =>
   experiment.instrument === "ot2" ? "OT-2" : "Flex";
 
-function Comparison({ shares }: { shares: Share[] }) {
+function Comparison({ shares }: { shares: ExperimentShare[] }) {
   const [a, b] = shares.map((share) => share.experiment);
   const labware = [
     ...new Set([...Object.keys(a.layout), ...Object.keys(b.layout)]),

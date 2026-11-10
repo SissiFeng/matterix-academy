@@ -62,6 +62,16 @@ def in_cognito_group(request: Request, group: str) -> bool:
     return isinstance(groups, list) and group in groups
 
 
+def may_plan_layouts(request: Request) -> bool:
+    group = request.app.state.settings.researcher_group
+    return not group or in_cognito_group(request, group)
+
+
+def require_layout_planner(request: Request):
+    if not may_plan_layouts(request):
+        raise HTTPException(403, "Layout planning is open to researchers. Ask for access.")
+
+
 def operator_claims(request: Request) -> bool:
     """Operators are Cognito group members (AWS) or the explicit loopback demo operator."""
     settings = request.app.state.settings

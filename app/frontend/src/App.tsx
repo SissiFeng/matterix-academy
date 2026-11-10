@@ -569,6 +569,7 @@ function movePlanLink() {
 export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [canPlan, setCanPlan] = useState(true);
   const [courses, setCourses] = useState<Course[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [session, setSession] = useState<Session | null>(null);
@@ -625,6 +626,9 @@ export default function App() {
       api<Course[]>("/courses"),
       api<Session[]>("/sessions"),
     ]);
+    // Asked once signed in, so a visitor's bootstrap probes stay the same.
+    const access = await api<{ plan_layouts: boolean }>("/access");
+    setCanPlan(access.plan_layouts);
     setProfile(p);
     setCourses(c);
     setSessions(r);
@@ -925,13 +929,15 @@ export default function App() {
                     </button>
                   );
                 })}
-              <button
-                className={view === "plan" ? s.activeNav : ""}
-                aria-current={view === "plan" ? "page" : undefined}
-                onClick={() => nav("plan")}
-              >
-                <LayoutDashboard size={18} /> Plan a layout
-              </button>
+              {canPlan && (
+                <button
+                  className={view === "plan" ? s.activeNav : ""}
+                  aria-current={view === "plan" ? "page" : undefined}
+                  onClick={() => nav("plan")}
+                >
+                  <LayoutDashboard size={18} /> Plan a layout
+                </button>
+              )}
             </nav>
             <div className={s.sidebarBottom}>
               <button className={s.helpButton} onClick={() => setHelp(true)}>
@@ -1111,6 +1117,11 @@ export default function App() {
                     <ArrowRight size={18} />
                   </button>
                 </div>
+              ) : view === "plan" && !canPlan ? (
+                <p className={s.restricted} role="status">
+                  Layout planning is open to researchers. Ask your instructor
+                  for access.
+                </p>
               ) : view === "plan" ? (
                 <div className={s.instrumentPage}>
                   <InstrumentStudio registerLeaveGuard={registerLeaveGuard} />
