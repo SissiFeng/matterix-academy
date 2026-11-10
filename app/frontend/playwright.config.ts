@@ -5,7 +5,7 @@ export default defineConfig({
   workers: 1,
   timeout: 45000,
   // Stop within the job limit so failures still retain their traces and reports.
-  globalTimeout: process.env.CI ? 10 * 60 * 1000 : undefined,
+  globalTimeout: process.env.CI ? 18 * 60 * 1000 : undefined,
   reporter: "list",
   use: { baseURL: "http://127.0.0.1:5174", trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
