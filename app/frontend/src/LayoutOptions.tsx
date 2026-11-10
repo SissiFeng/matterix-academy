@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Square, Wand2 } from "lucide-react";
+import { api, json } from "./api";
 import type {
   Consolidation,
   Constraint,
@@ -17,7 +18,15 @@ import s from "./LayoutPanel.module.css";
 const LIMIT = 60;
 const SHOWN = 6;
 
-type Key = keyof Omit<LayoutMetrics, "arm_s">;
+/** Share of small placement errors the workflow survives; unset until stress tested. */
+type Scored = LayoutMetrics & { holds?: number };
+type Stress = {
+  tolerance_m: number;
+  total: number;
+  next: number | null;
+  results: { ok: boolean }[];
+};
+type Key = keyof Omit<LayoutMetrics, "arm_s"> | "holds";
 const METRICS: {
   key: Key;
   label: string;
@@ -60,12 +69,22 @@ const METRICS: {
     better: "low",
     show: (v) => `${v.toFixed(2)} m² bench`,
   },
+  {
+    key: "holds",
+    label: "Placement tolerance",
+    better: "high",
+    show: (v) => `holds ${Math.round(v * 100)}% of 2 cm misplacements`,
+  },
 ];
-const cost = (c: LayoutMetrics, key: Key) =>
-  METRICS.find((m) => m.key === key)!.better === "low" ? c[key] : -c[key];
+// An untested layout ranks below every tested one on placement tolerance.
+const value = (c: Scored, key: Key) => c[key] ?? -1;
+const cost = (c: Scored, key: Key) =>
+  METRICS.find((m) => m.key === key)!.better === "low"
+    ? value(c, key)
+    : -value(c, key);
 
 /** No other layout is at least as good on every metric and better on one. */
-export function tradeOffs<T extends LayoutMetrics>(all: T[]) {
+export function tradeOffs<T extends Scored>(all: T[]) {
   return all.filter(
     (a) =>
       !all.some(
@@ -113,6 +132,8 @@ export default function LayoutOptions({
   const [sortBy, setSortBy] = useState<Key>("run_s");
   const [onlyBest, setOnlyBest] = useState(true);
   const [all, setAll] = useState(false);
+  const [holds, setHolds] = useState<Record<number, number>>({});
+  const [testing, setTesting] = useState(false);
   const runId = useRef(0);
 
   // Results answer one bench, one set of kept instruments and one set of preferences.
@@ -125,6 +146,8 @@ export default function LayoutOptions({
     setDiagnosis([]);
     setFewer([]);
     setRunning(false);
+    setHolds({});
+    setTesting(false);
   }, [inputs]);
 
   const search = async () => {
@@ -135,6 +158,8 @@ export default function LayoutOptions({
     let all: LayoutCandidate[] = [];
     let start: number | null = 0;
     setFound([]);
+    setHolds({});
+    setTesting(false);
     try {
       while (start !== null && runId.current === id && all.length < LIMIT) {
         const chunk = await onSearch(
@@ -158,11 +183,44 @@ export default function LayoutOptions({
     }
   };
 
-  const numbered = found.map((c, i) => ({ ...c, n: i + 1 }));
+  const numbered = found.map((c, i) => ({
+    ...c,
+    n: i + 1,
+    holds: holds[i + 1],
+  }));
   const listed = (onlyBest ? tradeOffs(numbered) : numbered).sort(
     (a, b) => cost(a, sortBy) - cost(b, sortBy) || a.n - b.n,
   );
   const shown = all ? listed : listed.slice(0, SHOWN);
+
+  // Replans each listed layout with every instrument 2 cm off its spot.
+  const stress = async () => {
+    const id = ++runId.current;
+    setTesting(true);
+    setError("");
+    try {
+      for (const c of shown.filter((c) => c.holds === undefined)) {
+        let start: number | null = 0;
+        let ok = 0;
+        let total = 0;
+        while (start !== null) {
+          const chunk: Stress = await api<Stress>(
+            "/twins/layout/robustness",
+            json({ ...c.layout, start }),
+          );
+          if (runId.current !== id) return;
+          ok += chunk.results.filter((r) => r.ok).length;
+          total = chunk.total;
+          start = chunk.next;
+        }
+        setHolds((current) => ({ ...current, [c.n]: ok / total }));
+      }
+    } catch (e) {
+      if (runId.current === id) setError((e as Error).message);
+    } finally {
+      if (runId.current === id) setTesting(false);
+    }
+  };
 
   return (
     <div className={s.options} aria-live="polite">
@@ -276,6 +334,25 @@ export default function LayoutOptions({
               />
               Best trade-offs only
             </label>
+            {testing ? (
+              <button
+                className={studio.secondary}
+                onClick={() => {
+                  runId.current += 1;
+                  setTesting(false);
+                }}
+              >
+                <Square size={12} /> Stop test
+              </button>
+            ) : (
+              <button
+                className={studio.secondary}
+                disabled={running || shown.every((c) => c.holds !== undefined)}
+                onClick={stress}
+              >
+                Stress test
+              </button>
+            )}
           </div>
           <ol className={s.optionList}>
             {shown.map((c) => (
@@ -287,12 +364,12 @@ export default function LayoutOptions({
                 >
                   <span>Layout {c.n}</span>
                   <small>
-                    {METRICS.map((m) => (
+                    {METRICS.filter((m) => c[m.key] !== undefined).map((m) => (
                       <span
                         key={m.key}
                         className={m.key === sortBy ? s.sorted : ""}
                       >
-                        {m.show(c[m.key])}
+                        {m.show(c[m.key]!)}
                       </span>
                     ))}
                     {Object.entries(c.slots ?? {}).map(([id, keys]) => (

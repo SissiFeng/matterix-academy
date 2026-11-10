@@ -527,7 +527,7 @@ test("layout search keeps pinned instruments and compares measured options", asy
   page,
 }) => {
   // Each search chunk runs up to 6 s of planning; CI runners are slower than laptops.
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await enterInstruments(page);
@@ -575,6 +575,17 @@ test("layout search keeps pinned instruments and compares measured options", asy
   // Every metric can order the list; dominated layouts are hidden by default.
   await page.getByLabel("Sort by").selectOption("clearance_m");
   await expect(page.getByLabel("Best trade-offs only")).toBeChecked();
+  // Replanning with every instrument 2 cm off scores how forgiving a layout is.
+  await page.getByRole("button", { name: "Stress test" }).click();
+  await expect(
+    page.getByText(/holds \d+% of 2 cm misplacements/).first(),
+  ).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("button", { name: "Stop test" }).click();
+  await expect(
+    page.getByLabel("Sort by").getByRole("option", {
+      name: "Placement tolerance",
+    }),
+  ).toBeAttached();
   const option = page.getByRole("button", { name: /^Layout \d+/ }).first();
   await option.click();
   await expect(option).toHaveAttribute("aria-pressed", "true");

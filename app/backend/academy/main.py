@@ -38,6 +38,7 @@ from .simple_twins import (
     SavePlan,
     SearchLayouts,
     SimpleTwinService,
+    StressLayout,
 )
 from .simple_twins import Revision as TwinRevision
 from .store import Conflict, DynamoStore, SQLiteStore
@@ -299,6 +300,10 @@ def create_app(settings: Settings | None = None, store=None):
     @app.post("/api/twins/layout/search", dependencies=[Depends(require_layout_planner)])
     def search_instrument_layouts(data: SearchLayouts, owner: str = Depends(identify)):
         return app.state.twins.search_layout(owner, data)
+
+    @app.post("/api/twins/layout/robustness", dependencies=[Depends(require_layout_planner)])
+    def stress_instrument_layout(data: StressLayout, owner: str = Depends(identify)):
+        return app.state.twins.stress_layout(owner, data)
 
     @app.post("/api/twins")
     def create_instrument(data: CreateTwin, owner: str = Depends(identify)):
