@@ -575,13 +575,12 @@ def search_layouts(
     seen = [list(placements) for placements in avoid]
     index = start
     while index < len(search.starts):
-        # A chunk always finishes its first arrangement, so slow machines still advance.
+        # A chunk always moves past its first arrangement, even one cut short by the
+        # deadline, so slow machines still advance and each request stays bounded.
         later = index > start
         if later and (time.monotonic() > deadline or search.plans >= CHUNK_PLANS):
             break
-        result = search.attempt(
-            search.starts[index], deadline if later else math.inf, CHUNK_PLANS - search.plans, seen
-        )
+        result = search.attempt(search.starts[index], deadline, CHUNK_PLANS - search.plans, seen)
         if not result and later and time.monotonic() > deadline:
             break  # cut short: the next chunk retries this arrangement
         index += 1
