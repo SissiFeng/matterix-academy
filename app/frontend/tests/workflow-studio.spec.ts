@@ -262,6 +262,11 @@ test("an invalid freeform sequence gives a model hint and can be corrected", asy
   await expect(page.getByTestId("replay-caption")).toHaveText(
     "01 The pipette has no tip.",
   );
+  // The live caption of a faulted run reads as an error, not a neutral step.
+  await expect(page.getByTestId("replay-caption").locator("..")).toHaveClass(
+    /replayFault/,
+  );
+  await expect(page.getByTestId("replay-caption").locator("svg")).toBeVisible();
   await page.getByRole("button", { name: "Reset & edit", exact: true }).click();
   await expect(page.getByLabel("Replay step")).toHaveCount(0);
   await page
@@ -417,6 +422,16 @@ test("a finished run replays the recorded deck state at any step without changin
   await onboard(page);
   await design(page, "Flex");
   await finish(page);
+  const id = page.url().split("/lab/")[1];
+  const RUN = ["status", "cursor", "events", "attempts", "version", "state"];
+  const run = async () => {
+    const response = await page.request.get(`/api/sessions/${id}`);
+    expect(response.ok()).toBe(true);
+    const session = await response.json();
+    return Object.fromEntries(RUN.map((key) => [key, session[key]]));
+  };
+  const before = await run();
+  expect(before.status).toBe("completed");
   const replay = page.getByLabel("Replay step");
   const caption = page.getByTestId("replay-caption");
   await expect(replay).toHaveValue("4");
@@ -441,6 +456,14 @@ test("a finished run replays the recorded deck state at any step without changin
   await expect(page.getByTestId("liquid-A1")).toContainText("0 µL");
   await expect(page.getByText("100 µL in tip", { exact: true })).toBeVisible();
   await expect(page.getByTestId("workflow-step-2")).toHaveClass(/replayBlock/);
+  // Assistive technology announces the replayed step, not the run's cursor.
+  await expect(page.getByTestId("workflow-step-2")).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await expect(
+    page.locator('[data-testid^="workflow-step-"][aria-current]'),
+  ).toHaveCount(1);
 
   await page.getByRole("button", { name: "Next step", exact: true }).click();
   await expect(caption).toHaveText("03 100 µL · A1");
@@ -456,7 +479,9 @@ test("a finished run replays the recorded deck state at any step without changin
   await expect(
     page.getByText("SAVED MODEL STATE", { exact: true }),
   ).toBeVisible();
+  expect(await run()).toEqual(before);
   await page.reload();
   await expect(page.getByTestId("liquid-A1")).toContainText("100 µL");
   await expect(page.getByTestId("liquid-stock")).toContainText("900 µL");
+  expect(await run()).toEqual(before);
 });
