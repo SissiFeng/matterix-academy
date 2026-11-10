@@ -6,9 +6,9 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import groups, sim2real_api
+from . import groups, opentrons_check, sim2real_api
 from ._version import __version__
-from .auth import identify, local_signer
+from .auth import identify, local_signer, may_plan_layouts, require_layout_planner
 from .connections import ConnectionService
 from .connector_api import router as connector_router
 from .connector_catalog import approved_release
@@ -38,6 +38,7 @@ from .simple_twins import (
     SavePlan,
     SearchLayouts,
     SimpleTwinService,
+    StressLayout,
 )
 from .simple_twins import Revision as TwinRevision
 from .store import Conflict, DynamoStore, SQLiteStore
@@ -202,6 +203,10 @@ def create_app(settings: Settings | None = None, store=None):
             "onboarded": False,
         }
 
+    @app.get("/api/access")
+    def access(request: Request, owner: str = Depends(identify)):
+        return {"plan_layouts": may_plan_layouts(request)}
+
     @app.put("/api/me")
     def update_profile(data: Profile, owner: str = Depends(identify)):
         old = app.state.store.get(owner, "profile")
@@ -288,13 +293,17 @@ def create_app(settings: Settings | None = None, store=None):
     def preview_instrument_layout(data: LayoutDraft, owner: str = Depends(identify)):
         return app.state.twins.preview_layout(owner, data)
 
-    @app.put("/api/twins/layout/constraints")
+    @app.put("/api/twins/layout/constraints", dependencies=[Depends(require_layout_planner)])
     def save_layout_constraints(data: SaveConstraints, owner: str = Depends(identify)):
         return app.state.twins.save_constraints(owner, data)
 
-    @app.post("/api/twins/layout/search")
+    @app.post("/api/twins/layout/search", dependencies=[Depends(require_layout_planner)])
     def search_instrument_layouts(data: SearchLayouts, owner: str = Depends(identify)):
         return app.state.twins.search_layout(owner, data)
+
+    @app.post("/api/twins/layout/robustness", dependencies=[Depends(require_layout_planner)])
+    def stress_instrument_layout(data: StressLayout, owner: str = Depends(identify)):
+        return app.state.twins.stress_layout(owner, data)
 
     @app.post("/api/twins")
     def create_instrument(data: CreateTwin, owner: str = Depends(identify)):
@@ -545,6 +554,24 @@ def create_app(settings: Settings | None = None, store=None):
     @app.get("/api/sessions/{session_id}")
     def session_detail(session_id: UUID, owner: str = Depends(identify)):
         return present(get_session(owner, session_id))
+
+    @app.get("/api/sessions/{session_id}/opentrons-check")
+    def opentrons_check_session(session_id: UUID, owner: str = Depends(identify)):
+        session = get_session(owner, session_id)
+        require_teaching(session)
+        return opentrons_check.check(session["experiment"])
+
+    @app.get("/api/sessions/{session_id}/opentrons-protocol")
+    def opentrons_protocol(session_id: UUID, owner: str = Depends(identify)):
+        session = get_session(owner, session_id)
+        require_teaching(session)
+        if opentrons_check.check(session["experiment"])["stops"]:
+            raise HTTPException(409, "Fix the steps Opentrons would stop at first")
+        return Response(
+            opentrons_check.protocol(session["experiment"]),
+            media_type="text/x-python",
+            headers={"Content-Disposition": 'attachment; filename="academy_protocol.py"'},
+        )
 
     @app.put("/api/sessions/{session_id}")
     def update_session(session_id: UUID, data: UpdateExperiment, owner: str = Depends(identify)):

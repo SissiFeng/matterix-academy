@@ -35,6 +35,7 @@ import {
   STARTERS,
 } from "./studioContent";
 import type { Instrument, Starter } from "./studioContent";
+import OpentronsCheck from "./OpentronsCheck";
 import s from "./WorkflowStudio.module.css";
 
 const format = (value: number) => Number(value.toFixed(2)).toLocaleString();
@@ -1111,6 +1112,12 @@ export default function WorkflowStudio({
           </details>
         )}
       </section>
+      <OpentronsCheck
+        key={`${session.id}-${session.version}`}
+        sessionId={session.id}
+        dirty={dirty}
+        onError={onError}
+      />
       <p className={s.boundary}>
         A simplified 300 µL pipette, ideal mixing and fresh-tip rules on both
         instrument layouts. Deck placement is schematic. Results are synthetic;

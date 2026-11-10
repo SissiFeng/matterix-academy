@@ -415,3 +415,38 @@ def test_a_start_that_runs_out_of_poses_ends_the_search(client):
     # A bench with room still walks on from the first start.
     roomy = layout_search.search_layouts(twins, BENCH, cell["steps"], seconds=60)
     assert roomy["candidates"] and roomy["next"] is not None
+
+
+def stress(client, rows, bench=BENCH):
+    results, start = [], 0
+    while start is not None:
+        response = client.post(
+            "/api/twins/layout/robustness",
+            json={"bench": bench, "placements": rows, "start": start},
+        )
+        assert response.status_code == 200, response.text
+        chunk = response.json()
+        results += chunk["results"]
+        start = chunk["next"]
+    return chunk, results
+
+
+def test_a_layout_is_replanned_with_every_instrument_slightly_misplaced(client):
+    reader, heater, arm, _, _ = placed_cell(client)
+    rows = placements(reader, heater, arm)
+    chunk, results = stress(client, rows)
+    assert chunk["total"] == len(results) == 12 and chunk["tolerance_m"] == 0.02
+    assert [r["trial"] for r in results] == list(range(12))
+    # This cell works as placed, but 2 cm the wrong way and the forearm hits the arm base.
+    failed = [r for r in results if not r["ok"]]
+    assert 0 < len(failed) < 12 and all("would hit" in r["message"] for r in failed)
+    assert all(r["message"] is None for r in results if r["ok"])
+    # The same layout always meets the same misplacements.
+    assert stress(client, rows)[1] == results
+
+    # A layout that does not work as placed is refused rather than scored.
+    broken = placements(reader, heater, arm, **{heater: {"x": -1.3, "z": 0.1, "yaw": 0}})
+    response = client.post(
+        "/api/twins/layout/robustness", json={"bench": BENCH, "placements": broken}
+    )
+    assert response.status_code == 422

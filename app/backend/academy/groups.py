@@ -17,6 +17,7 @@ from .models import Experiment, StrictModel
 from .recipes import MIXING
 from .store import Conflict, Write
 from .teaching import new_session
+from .workcell_layout import corners
 
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 MAX_MEMBERS = 40
@@ -200,11 +201,62 @@ def install(app, *, store):
             "member_id": member["id"],
             "author": member["name"],
             "shared_at": now(),
+            "kind": "experiment",
             "experiment": experiment,
             # Teaching outcomes stay synthetic; nothing here claims physical validation.
             "evidence": "synthetic",
             "status": session["status"],
             "passed": assessment.get("passed") if assessment else None,
+            "comments": existing["comments"] if existing else [],
+        }
+        store.put(f"group#{group_id}", key, share, existing["version"] if existing else None)
+        return share
+
+    @app.post("/api/groups/{group_id}/layout", status_code=201)
+    def share_layout(group_id: UUID, request: Request, owner: str = Depends(identify)):
+        """One bench layout per member, for the group to discuss rather than copy."""
+        _, member = membership(owner, group_id)
+        record = request.app.state.twins.get(owner)
+        if not record.get("layout"):
+            raise HTTPException(409, "Save a bench layout in Plan a layout first")
+        twins = {t["id"]: t for t in record["twins"]}
+        arms = {s["device_id"] for s in record["steps"] if s["operation"] == "transfer"}
+        share_id = f"{member['id']}_layout"
+        key = f"share#{share_id}"
+        existing = store.get(f"group#{group_id}", key)
+        if existing is None and len(shares(group_id)) >= MAX_SHARES:
+            raise HTTPException(409, "This study group has reached its shared experiment limit")
+        share = {
+            "id": share_id,
+            "version": (existing["version"] if existing else 0) + 1,
+            "member_id": member["id"],
+            "author": member["name"],
+            "shared_at": now(),
+            "kind": "layout",
+            # A planning sketch: nothing here claims a measured or validated cell.
+            "evidence": "synthetic",
+            "layout": {
+                "bench": record["layout"]["bench"],
+                "instruments": [
+                    {
+                        "name": twins[p["twin_id"]]["spec"]["name"],
+                        "arm": p["twin_id"] in arms,
+                        "corners": [
+                            [round(x, 3), round(z, 3)]
+                            for x, z in corners(twins[p["twin_id"]]["spec"], p)
+                        ],
+                    }
+                    for p in record["layout"]["placements"]
+                ],
+                "transfers": [
+                    {
+                        "from": twins[s["source_id"]]["spec"]["name"],
+                        "to": twins[s["target_id"]]["spec"]["name"],
+                    }
+                    for s in record["steps"]
+                    if s["operation"] == "transfer"
+                ],
+            },
             "comments": existing["comments"] if existing else [],
         }
         store.put(f"group#{group_id}", key, share, existing["version"] if existing else None)
@@ -242,6 +294,8 @@ def install(app, *, store):
     def copy_share(group_id: UUID, share_id: str, owner: str = Depends(identify)):
         membership(owner, group_id)
         share = get_share(group_id, share_id)
+        if "experiment" not in share:
+            raise HTTPException(409, "A shared layout is discussed here, not copied")
         title = f"{share['experiment']['title']} · {share['author']}"[:80]
         experiment = Experiment.model_validate({**share["experiment"], "title": title})
         session = new_session(experiment)

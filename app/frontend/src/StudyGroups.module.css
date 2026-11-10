@@ -224,6 +224,47 @@
   display: flex;
   gap: 8px;
 }
+.sectionTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sectionTop h2 {
+  margin: 0;
+}
+.bench {
+  width: 100%;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+}
+.bench polygon {
+  fill: var(--surface-1);
+  stroke: var(--line-strong);
+  stroke-width: 0.008;
+}
+.bench .arm polygon {
+  fill: var(--brand-soft);
+  stroke: var(--brand);
+}
+.bench text {
+  fill: var(--ink);
+  font-size: 0.09px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
 .discussion summary {
   color: var(--ink-2);
   font-size: 13px;

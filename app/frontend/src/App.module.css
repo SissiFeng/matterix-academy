@@ -259,6 +259,11 @@
 .planLink:hover {
   border-color: var(--brand);
 }
+.restricted {
+  margin: 0;
+  padding: 60px 4.3%;
+  color: var(--muted);
+}
 .instrumentPage {
   width: 100%;
   max-width: 1440px;

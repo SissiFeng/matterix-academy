@@ -49,6 +49,8 @@ MARGIN = 0.02  # reach kept in reserve so a pose is not at full stretch
 ATTEMPT_PLANS = 4  # full workflow checks one starting arrangement may spend
 CHUNK_PLANS = 16
 CHUNK_SECONDS = 6.0
+TOLERANCE = 0.02  # metres an instrument may sit off its planned spot
+SHIFTS = 12  # misplacements one layout is tried against
 DISTINCT = 0.25  # metres one instrument must move for a layout to count as new
 # Whether an arm reaches a station depends only on their two specs, the side and the
 # radius, so the answer outlives one request. A chunk cut short by its time cap keeps
@@ -626,4 +628,43 @@ def search_layouts(
         "checked": search.plans,
         "failure": search.failure,
         "diagnosis": search.diagnosis(),
+    }
+
+
+def misplaced(layout, trial):
+    """The layout with every instrument moved TOLERANCE off its spot, each a different way.
+
+    The directions are fixed, so the same layout always meets the same misplacements.
+    """
+    placements = []
+    for index, p in enumerate(layout["placements"]):
+        angle = math.radians(45 * ((trial * (index + 1) + 3 * index) % 8))
+        placements.append(
+            {
+                **p,
+                "x": round(p["x"] + TOLERANCE * math.sin(angle), 4),
+                "z": round(p["z"] + TOLERANCE * math.cos(angle), 4),
+            }
+        )
+    return {**layout, "placements": placements}
+
+
+def robustness(twins, layout, steps, start=0, seconds=CHUNK_SECONDS):
+    """One chunk of replanning the workflow with the instruments slightly misplaced."""
+    plan_workflow(twins, layout, steps)  # the layout itself has to work first
+    deadline = time.monotonic() + seconds
+    results = []
+    trial = start
+    while trial < SHIFTS and (trial == start or time.monotonic() < deadline):
+        try:
+            plan_workflow(twins, misplaced(layout, trial), steps)
+            results.append({"trial": trial, "ok": True, "message": None})
+        except PlanError as exc:
+            results.append({"trial": trial, "ok": False, "message": str(exc)})
+        trial += 1
+    return {
+        "tolerance_m": TOLERANCE,
+        "total": SHIFTS,
+        "next": trial if trial < SHIFTS else None,
+        "results": results,
     }

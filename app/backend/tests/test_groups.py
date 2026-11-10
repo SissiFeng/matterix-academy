@@ -101,3 +101,46 @@ def test_instructor_group_limits_who_creates(app):
     ada = learner(app, "Ada")
     assert ada.get("/api/groups").json()["can_create"] is False
     assert ada.post("/api/groups", json={"name": "x"}).status_code == 403
+
+
+def test_a_bench_layout_is_shared_for_discussion_not_copied(app):
+    from tests.test_layout import placed_cell, placements, save_layout
+
+    ada, grace = learner(app, "Ada"), learner(app, "Grace")
+    group = ada.post("/api/groups", json={"name": "Cell"}).json()
+    grace.post("/api/groups/join", json={"code": group["code"]})
+    path = f"/api/groups/{group['id']}"
+    assert ada.post(f"{path}/layout").status_code == 409  # nothing saved yet
+
+    reader, heater, arm, _, catalog = placed_cell(ada)
+    rows = placements(reader, heater, arm)
+    assert save_layout(ada, catalog["version"], rows).status_code == 200
+    shared = ada.post(f"{path}/layout")
+    assert shared.status_code == 201
+    share = shared.json()
+    assert share["kind"] == "layout" and share["evidence"] == "synthetic"
+    assert len(share["layout"]["instruments"]) == 3
+    assert sum(i["arm"] for i in share["layout"]["instruments"]) == 1
+    assert len(share["layout"]["transfers"]) == 1
+    assert str(arm) not in str(share)  # twin ids stay with their owner
+
+    # Everyone discusses the same layout; sharing again keeps the thread.
+    talked = grace.post(
+        f"{path}/shares/{share['id']}/comments",
+        json={"version": share["version"], "text": "Reader is far from the arm"},
+    ).json()
+    assert grace.post(f"{path}/shares/{share['id']}/copy").status_code == 409
+    again = ada.post(f"{path}/layout").json()
+    assert again["id"] == share["id"] and again["comments"] == talked["comments"]
+    assert len(grace.get(path).json()["shares"]) == 1
+
+
+def test_researcher_group_limits_layout_planning(app):
+    ada = learner(app, "Ada")
+    assert ada.get("/api/access").json() == {"plan_layouts": True}
+    app.state.settings = replace(app.state.settings, researcher_group="researchers")
+    assert ada.get("/api/access").json() == {"plan_layouts": False}
+    search = ada.post("/api/twins/layout/search", json={"bench": {"width": 2, "depth": 1}})
+    assert search.status_code == 403
+    saved = ada.put("/api/twins/layout/constraints", json={"expected_version": 0})
+    assert saved.status_code == 403
