@@ -138,6 +138,17 @@ def test_a_chunk_out_of_time_still_advances(client, monkeypatch):
     assert found["next"] is None or found["next"] > 0
 
 
+def test_reach_checks_carry_between_chunks(client, monkeypatch):
+    from academy import layout_search
+
+    placed_cell(client)
+    tiny = {"width": 0.8, "depth": 0.6}
+    first = search(client, bench=tiny)
+    # A later chunk reuses the verdicts: another planner call here would raise.
+    monkeypatch.setattr(layout_search, "Planner", None)
+    assert search(client, bench=tiny)["diagnosis"] == first["diagnosis"]
+
+
 def test_used_instrument_cannot_be_excluded(client):
     reader, heater, arm, _, catalog = placed_cell(client)
     constrain(client, catalog["version"], [{"kind": "exclude", "twin_id": reader}])
