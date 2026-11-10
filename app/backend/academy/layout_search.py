@@ -15,7 +15,7 @@ import itertools
 import json
 import math
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
 
 from .arms import arm_for
 from .mock_contract import PlanError, execute_mock, site_keys
@@ -50,10 +50,11 @@ ATTEMPT_PLANS = 4  # full workflow checks one starting arrangement may spend
 CHUNK_PLANS = 16
 CHUNK_SECONDS = 6.0
 DISTINCT = 0.25  # metres one instrument must move for a layout to count as new
-# Reach verdicts outlive a chunk: each is a planner call, and a slow machine that
-# repeated them in every chunk would spend its whole deadline before placing anything.
-REACH_MEMO = {}
-REACH_MEMO_SIZE = 512
+# Whether an arm reaches a station depends only on their two specs, the side and the
+# radius, so the answer outlives one request. A chunk cut short by its time cap keeps
+# what it computed and the next chunk resumes instead of starting the IK work again.
+REACH_ENTRIES = 512
+_reach_memo = OrderedDict()
 
 
 def _base(twins, placement):
@@ -159,6 +160,7 @@ class Search:
         # The mock books one second per transfer; the arm estimate replaces it.
         self.device_s = trace[-1]["elapsed_s"] - len(self.transfers)
         self.plans = 0
+        self.exhausted = False
         self.failure = None
         self.reach_cache = {}
         validate_layout(twins, self.layout(self.fixed.values()))
@@ -326,35 +328,38 @@ class Search:
         key = (arm_id, station_id, side, radius)
         if key not in self.reach_cache:
             memo = json.dumps(
-                [self.twins[arm_id], self.twins[station_id], self.bench, side, radius],
+                [self.twins[arm_id]["spec"], self.twins[station_id]["spec"], side, radius],
                 sort_keys=True,
-                default=str,
             )
-            if memo not in REACH_MEMO:
-                if len(REACH_MEMO) >= REACH_MEMO_SIZE:
-                    REACH_MEMO.clear()
-                REACH_MEMO[memo] = self.reach(arm_id, station_id, side, radius)
-            failure = REACH_MEMO[memo]
+            if memo not in _reach_memo:
+                _reach_memo[memo] = self.reach_alone(arm_id, station_id, side, radius)
+                if len(_reach_memo) > REACH_ENTRIES:
+                    _reach_memo.popitem(last=False)
+            _reach_memo.move_to_end(memo)
+            ok, failure = _reach_memo[memo]
             if failure:
                 self.fail(*failure)
-            self.reach_cache[key] = not failure
+            self.reach_cache[key] = ok
         return self.reach_cache[key]
 
-    def reach(self, arm_id, station_id, side, radius):
-        """Why the arm cannot reach the station there, as a failure kind and message."""
+    def reach_alone(self, arm_id, station_id, side, radius):
+        """(reachable, failure) for the arm at the origin and the station at this radius."""
         arm = {"twin_id": arm_id, "x": 0.0, "z": 0.0, "yaw": 0, "access": "top"}
         bx, bz = _base(self.twins, arm)
         spec = self.twins[station_id]["spec"]
         station = {"twin_id": station_id, **_pose(spec, side, (bx, bz + radius), (bx, bz))}
         profile = self.profile(arm_id)
         if _stretch(self.twins, arm, station) > profile.reach - MARGIN:
-            return "reach", f"{spec['name']} is beyond the {profile.name}'s reach at {radius} m"
+            return False, (
+                "reach",
+                f"{spec['name']} is beyond the {profile.name}'s reach at {radius} m",
+            )
         planner = Planner(self.twins, self.layout([arm, station]), self.twins[arm_id])
         try:
             planner.station(self.twins[station_id], {**planner.rest, GRIPPER: {station_id}})
         except PlanError as exc:
-            return "collision" if "hit" in str(exc) else "reach", str(exc)
-        return None
+            return False, ("collision" if "hit" in str(exc) else "reach", str(exc))
+        return True, None
 
     def arm_grid(self, arm_id, placed):
         half = max(abs(v) for v in footprint(self.twins[arm_id]["spec"]))
@@ -512,9 +517,12 @@ class Search:
             "sides": SIDES[side_shift:] + SIDES[:side_shift],
         }
         budget = [min(ATTEMPT_PLANS, plans_left)]
+        cut = [False]
 
         def place(placed, arms, stations):
-            if time.monotonic() > deadline or not budget[0]:
+            if time.monotonic() > deadline:
+                cut[0] = True
+            if cut[0] or not budget[0]:
                 return None
             if arms:
                 poses = self.arm_grid(arms[0], placed)
@@ -573,7 +581,11 @@ class Search:
                 "motions": motions,
             }
 
-        return place(list(self.fixed.values()), self.free_arms, self.stations)
+        found = place(list(self.fixed.values()), self.free_arms, self.stations)
+        # Every start walks the same poses in a different order, so one that ran out of
+        # poses with time and checks to spare shows the others have nothing new either.
+        self.exhausted = not found and not cut[0] and budget[0] > 0
+        return found
 
 
 def search_layouts(
@@ -597,6 +609,9 @@ def search_layouts(
         if later and (time.monotonic() > deadline or search.plans >= CHUNK_PLANS):
             break
         result = search.attempt(search.starts[index], deadline, CHUNK_PLANS - search.plans, seen)
+        if search.exhausted:
+            index = len(search.starts)
+            break
         if not result and later and time.monotonic() > deadline:
             break  # cut short: the next chunk retries this arrangement
         index += 1

@@ -402,6 +402,8 @@ test("an instrument missing from the library points to photo and templates", asy
 test("bench layout plans a collision-checked arm path for each transfer", async ({
   page,
 }) => {
+  // A long journey of planned paths; CI runners take about twice a laptop's time.
+  test.setTimeout(120_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await enterInstruments(page);

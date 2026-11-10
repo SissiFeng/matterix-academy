@@ -65,6 +65,7 @@ const LearningLab = lazy(() => import("./LearningLab"));
 const ConnectorExplorer = lazy(() => import("./ConnectorExplorer"));
 const ConnectorSetup = lazy(() => import("./ConnectorSetup"));
 const Workcell = lazy(() => import("./Workcell"));
+const InstrumentModules = lazy(() => import("./InstrumentModules"));
 const WorkcellCase = lazy(() => import("./workcellCase/WorkcellCase"));
 const DilutionWorkspace = lazy(() => import("./DilutionWorkspace"));
 const WorkflowMarketplace = lazy(() =>
@@ -1087,6 +1088,7 @@ export default function App() {
               ) : view === "instruments" ? (
                 <div className={s.instrumentPage}>
                   <InstrumentStories onDesign={createStudio} busy={busy} />
+                  <InstrumentModules onDesign={createStudio} busy={busy} />
                   <button className={s.planLink} onClick={() => nav("plan")}>
                     <span>
                       <strong>Bring your own instruments</strong>
