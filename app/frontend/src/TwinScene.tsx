@@ -1,17 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ArmFrame, Layout, Twin, Vec } from "./instrumentTypes";
-import { ARM_RADII } from "./layoutGeometry";
+import { armModel, fitted, instrumentModel } from "./instrumentModels";
+import { ARM_RADII, armReach, isArm, mountMatrix } from "./layoutGeometry";
+import { HOME } from "./workcellCase/cell";
 import s from "./InstrumentStudio.module.css";
 
 const GAP = 0.25;
 const UP = new THREE.Vector3(0, 1, 0);
+const REST = HOME.map((d) => (d * Math.PI) / 180);
+const OPEN = 0.15; // finger joint of the 2F-140 drawn half open
+type Robot = Awaited<ReturnType<typeof armModel>>;
 
 /**
- * Draws confirmed and draft twins; only validated box primitives are drawn. Without a
- * layout the twins sit side by side; with one they sit where they are placed and the
- * planned arm (capsules from server-computed joint points) is drawn on top.
+ * Draws confirmed and draft twins. A twin with a registered model is drawn as that model,
+ * fitted to its planning box; otherwise only validated box primitives are drawn. Every
+ * transfer arm is drawn as the UR5e the planner uses, posed from server-computed joint
+ * angles (capsules from joint points until the model has loaded). Without a layout the
+ * twins sit side by side; with one they sit where they are placed.
  */
 export default function TwinScene({
   twins,
@@ -19,27 +26,38 @@ export default function TwinScene({
   sample,
   layout,
   arm,
+  armJoints,
+  armActor,
   path,
   blocked,
 }: {
-  twins: Pick<Twin, "id" | "spec" | "confirmed">[];
+  twins: (Pick<Twin, "id" | "spec" | "confirmed"> &
+    Partial<Pick<Twin, "asset">>)[];
   active?: string | null;
   sample?: string | null;
   layout?: Layout | null;
   arm?: ArmFrame | null;
+  armJoints?: number[] | null;
+  armActor?: string | null;
   path?: Vec[] | null;
   blocked?: string | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const overlay = useRef<THREE.Group | null>(null);
+  const robots = useRef(new Map<string, Robot>());
+  const [loaded, setLoaded] = useState(0);
   const key =
-    JSON.stringify([twins.map((t) => [t.id, t.spec]), layout]) +
+    JSON.stringify([
+      twins.map((t) => [t.id, t.spec, t.asset?.mesh ?? null]),
+      layout,
+    ]) +
     active +
     sample +
     blocked;
   useEffect(() => {
     const el = host.current;
     if (!el) return;
+    let alive = true;
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -52,16 +70,22 @@ export default function TwinScene({
       return () => fallback.remove();
     }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     scene.add(new THREE.HemisphereLight(0xffffff, 0x445544, 2.2));
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
     sun.position.set(2, 4, 3);
     scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+    fill.position.set(-2, 1.5, -1);
+    scene.add(fill);
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 50);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     const disposables: { dispose: () => void }[] = [];
+    const owned: THREE.Object3D[] = [];
+    robots.current.clear();
 
     const placed = new Map(layout?.placements.map((p) => [p.twin_id, p]));
     const shown = twins.filter((t) => t.spec && (!layout || placed.has(t.id)));
@@ -74,16 +98,20 @@ export default function TwinScene({
       widths.reduce((a, w) => a + w, 0) + GAP * Math.max(0, shown.length - 1);
     let x = -total / 2;
     shown.forEach((twin, i) => {
+      const spec = twin.spec!;
       const group = new THREE.Group();
-      const placement = placed.get(twin.id);
-      if (placement) {
-        group.position.set(placement.x, 0, placement.z);
-        group.rotation.y = (placement.yaw * Math.PI) / 180;
-      } else group.position.x = x + widths[i] / 2;
+      const placement = placed.get(twin.id) ?? {
+        x: x + widths[i] / 2,
+        z: 0,
+        yaw: 0,
+      };
+      group.position.set(placement.x, 0, placement.z);
+      group.rotation.y = (placement.yaw * Math.PI) / 180;
       x += widths[i] + GAP;
       const glow =
         twin.id === blocked ? "#d0402a" : twin.id === active ? "#b94825" : null;
-      for (const part of twin.spec!.parts) {
+      const boxes: THREE.Mesh[] = [];
+      for (const part of spec.parts) {
         const geometry = new THREE.BoxGeometry(...part.size);
         const material = new THREE.MeshStandardMaterial({
           color: part.color,
@@ -96,11 +124,48 @@ export default function TwinScene({
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(...part.position);
         group.add(mesh);
+        boxes.push(mesh);
         disposables.push(geometry, material);
       }
+      const mesh = twin.asset?.mesh;
+      if (mesh && mesh.kind !== "ur5e")
+        instrumentModel(mesh)
+          .then((template) => {
+            if (!alive) return;
+            boxes.forEach((b) => (b.visible = false));
+            group.add(fitted(template, spec));
+            if (glow) {
+              const helper = new THREE.Box3Helper(
+                new THREE.Box3().setFromObject(group),
+                new THREE.Color(glow),
+              );
+              scene.add(helper);
+              owned.push(helper);
+            }
+          })
+          // The planning box stays when a model is missing or does not verify.
+          .catch((e) => console.warn((e as Error).message));
+      // Only the UR5e has a drawn model; other arm profiles are drawn as capsules.
+      if (isArm(twin) && (spec.arm ?? "ur5e") === "ur5e")
+        armModel()
+          .then((robot) => {
+            if (!alive) return dispose(robot.group);
+            robot.group.matrixAutoUpdate = false;
+            robot.group.matrix.set(
+              ...(mountMatrix(spec, placement) as Parameters<
+                THREE.Matrix4["set"]
+              >),
+            );
+            robot.pose(REST, OPEN);
+            scene.add(robot.group);
+            owned.push(robot.group);
+            robots.current.set(twin.id, robot);
+            setLoaded((n) => n + 1);
+          })
+          .catch((e) => console.warn((e as Error).message));
       if (twin.id === sample) {
-        const top = Math.max(
-          ...twin.spec!.parts.map((p) => p.position[1] + p.size[1] / 2),
+        const height = Math.max(
+          ...spec.parts.map((p) => p.position[1] + p.size[1] / 2),
         );
         const geometry = new THREE.SphereGeometry(0.035, 20, 14);
         const material = new THREE.MeshStandardMaterial({
@@ -109,7 +174,7 @@ export default function TwinScene({
           emissiveIntensity: 0.5,
         });
         const marker = new THREE.Mesh(geometry, material);
-        marker.position.set(0, top + 0.06, 0);
+        marker.position.set(0, height + 0.06, 0);
         group.add(marker);
         disposables.push(geometry, material);
       }
@@ -137,7 +202,7 @@ export default function TwinScene({
         new THREE.Vector3(0.5, 0.5, 0.5),
       );
     // Leave headroom for the arm above its pedestal.
-    if (layout) bounds.max.y = Math.max(bounds.max.y, 1.3);
+    if (layout || shown.some(isArm)) bounds.max.y = Math.max(bounds.max.y, 1.3);
     const center = bounds.getCenter(new THREE.Vector3());
     const radius = Math.max(
       0.5,
@@ -186,11 +251,18 @@ export default function TwinScene({
     };
     tick();
     return () => {
+      alive = false;
       cancelAnimationFrame(frame);
       observer.disconnect();
       controls.dispose();
       clear(group);
       overlay.current = null;
+      robots.current.clear();
+      // Instrument models share their cached template's buffers; only owned arms are freed.
+      owned.forEach((o) => {
+        o.parent?.remove(o);
+        dispose(o);
+      });
       disposables.forEach((d) => d.dispose());
       renderer.dispose();
       renderer.domElement.remove();
@@ -199,22 +271,28 @@ export default function TwinScene({
   }, [key]);
 
   // The arm changes every animation frame, so it lives in its own group.
-  const armKey = JSON.stringify([arm, path]);
+  const armKey = JSON.stringify([arm, armJoints, armActor, path]);
   useEffect(() => {
     const group = overlay.current;
     if (!group) return;
     clear(group);
+    for (const [id, robot] of robots.current)
+      robot.pose(id === armActor && armJoints ? armJoints : REST, OPEN);
     const metal = new THREE.MeshStandardMaterial({
       color: blocked ? "#e6a08a" : "#d8dde3",
       roughness: 0.35,
       metalness: 0.4,
     });
-    if (arm) {
+    // Capsules stand in for the arm until its model has loaded, or when it has none.
+    const drawn = !!armActor && robots.current.has(armActor) && !!armJoints;
+    const actorSpec = twins.find((t) => t.id === armActor)?.spec;
+    const armScale = actorSpec ? armReach(actorSpec) / 0.85 : 1;
+    if (arm && !drawn) {
       arm.slice(0, -1).forEach((a, i) => {
         const from = new THREE.Vector3(...a);
         const to = new THREE.Vector3(...arm[i + 1]);
         const length = from.distanceTo(to);
-        const r = ARM_RADII[i];
+        const r = ARM_RADII[i] * armScale;
         const joint = new THREE.Mesh(
           new THREE.SphereGeometry(r, 18, 12),
           metal,
@@ -247,7 +325,7 @@ export default function TwinScene({
       clear(group);
       metal.dispose();
     };
-  }, [armKey, key, blocked]);
+  }, [armKey, key, blocked, loaded]);
 
   return (
     <div
@@ -275,4 +353,16 @@ function clear(group: THREE.Group) {
     // Shared arm material is disposed by its effect.
     if (material && child.type === "Line") material.dispose();
   }
+}
+
+function dispose(root: THREE.Object3D) {
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const material = mesh.material as
+      THREE.Material | THREE.Material[] | undefined;
+    (Array.isArray(material) ? material : material ? [material] : []).forEach(
+      (m) => m.dispose(),
+    );
+  });
 }

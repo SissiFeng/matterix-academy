@@ -247,7 +247,15 @@ def execute_step(session: dict) -> dict:
         code, message, hint = problem
         result["status"] = "faulted"
         result["events"].append(
-            {"step": index + 1, "level": "error", "code": code, "message": message, "hint": hint}
+            {
+                "step": index + 1,
+                "level": "error",
+                "code": code,
+                "message": message,
+                "hint": hint,
+                # A refused step changes nothing; replay shows the state it met.
+                "state": deepcopy(state),
+            }
         )
     else:
         result["cursor"] += 1
@@ -259,7 +267,14 @@ def execute_step(session: dict) -> dict:
             else "Tip discarded"
         )
         result["events"].append(
-            {"step": index + 1, "level": "success", "code": kind, "message": detail, "hint": ""}
+            {
+                "step": index + 1,
+                "level": "success",
+                "code": kind,
+                "message": detail,
+                "hint": "",
+                "state": deepcopy(state),
+            }
         )
         if result["cursor"] == len(result["experiment"]["actions"]):
             result["status"] = "completed"

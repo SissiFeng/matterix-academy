@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowUpRight, Check, Pause, Play, RotateCcw } from "lucide-react";
 import InstrumentIllustration from "./InstrumentIllustration";
+import LessonSearch from "./LessonSearch";
 import {
   STORY_DURATION,
   storyCaption,
@@ -117,6 +118,7 @@ export default function InstrumentStories({
           <br />
           <span>Then make it yours.</span>
         </Heading>
+        {!compact && <LessonSearch onLesson={selectInstrument} />}
       </header>
 
       <div

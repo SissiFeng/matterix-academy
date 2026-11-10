@@ -26,22 +26,29 @@ import {
   type LibraryEntry,
   type LibraryResults,
   type LayoutPreview,
+  type LayoutSearchChunk,
+  type BriefRole,
   type Operation,
   type Step,
   type Twin,
+  DEFAULT_SAMPLE,
+  siteKeys,
 } from "./instrumentTypes";
+import BriefPanel, { RoleBindings, applyBlocker } from "./BriefPanel";
 import s from "./InstrumentStudio.module.css";
 import LayoutPanel from "./LayoutPanel";
+import { LIBRARY_QUERY_KEY } from "./LessonSearch";
 import { conflicts, defaultLayout } from "./layoutGeometry";
 import TwinCard from "./TwinCard";
 
 const TwinScene = lazy(() => import("./TwinScene"));
-type Tab = "instruments" | "layout" | "workflow" | "connectors";
+type Tab = "describe" | "instruments" | "workflow" | "layout" | "connectors";
 const tabs: { id: Tab; label: string }[] = [
-  { id: "instruments", label: "1 · Instruments" },
-  { id: "layout", label: "2 · Layout" },
+  { id: "describe", label: "1 · Describe" },
+  { id: "instruments", label: "2 · Instruments" },
   { id: "workflow", label: "3 · Workflow" },
-  { id: "connectors", label: "4 · Connectors" },
+  { id: "layout", label: "4 · Layout" },
+  { id: "connectors", label: "5 · Connectors" },
 ];
 const templateLabels: Record<string, string> = {
   "liquid-handler": "Liquid handler",
@@ -49,6 +56,11 @@ const templateLabels: Record<string, string> = {
   reader: "Plate reader",
   "transfer-arm": "Transfer robot",
 };
+const collectionLabels = {
+  workcell: "Workcell model",
+  chemlab: "ChemLab · NC",
+  simready: "SimReady",
+} as const;
 const units: Partial<Record<Operation, [string, string]>> = {
   load: ["volume", "µL"],
   heat: ["temperature", "°C"],
@@ -99,12 +111,10 @@ export default function InstrumentStudio({
   const [catalog, setCatalog] = useState<InstrumentCatalog | null>(null);
   const [tab, setTab] = useState<Tab>(() => {
     const section = window.location.hash.split("/")[2];
-    return section === "layout" ||
-      section === "workflow" ||
-      section === "connectors"
-      ? section
-      : "instruments";
+    return tabs.find((t) => t.id === section)?.id ?? "describe";
   });
+  /** The drafted role the next added instrument is chosen for. */
+  const [finding, setFinding] = useState<string | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -121,7 +131,16 @@ export default function InstrumentStudio({
   const [checking, setChecking] = useState(false);
   const [selectedMotion, setSelectedMotion] = useState(0);
   const [armFrame, setArmFrame] = useState(0);
-  const [query, setQuery] = useState("");
+  // A search started on Meet the instruments carries over once.
+  const [query, setQuery] = useState(() => {
+    try {
+      const carried = sessionStorage.getItem(LIBRARY_QUERY_KEY) ?? "";
+      sessionStorage.removeItem(LIBRARY_QUERY_KEY);
+      return carried;
+    } catch {
+      return "";
+    }
+  });
   const [library, setLibrary] = useState<LibraryResults | null>(null);
   const trackTwinDirty = useCallback((id: string, changed: boolean) => {
     if (changed) twinDirty.current.add(id);
@@ -165,6 +184,19 @@ export default function InstrumentStudio({
     load().catch((e) => setError((e as Error).message));
   }, [load]);
 
+  /** Adds a twin and, when a drafted role is being filled, chooses it for that role. */
+  const addTwin = async (id: string, source: object) => {
+    const added = await mutate("/twins", { id, ...source });
+    if (added && finding) {
+      await mutate(
+        "/twins/workflow/brief/bind",
+        { role: finding, twin_id: id },
+        "PUT",
+      );
+      setFinding(null);
+    }
+    return added;
+  };
   const mutate = async (path: string, body: object, method = "POST") => {
     setBusy(true);
     setError("");
@@ -205,9 +237,8 @@ export default function InstrumentStudio({
   }, [query]);
   const addFromLibrary = async (entry: LibraryEntry) => {
     const id = crypto.randomUUID();
-    const added = await mutate("/twins", {
-      id,
-      [entry.collection === "chemlab" ? "chemlab_id" : "simready_id"]: entry.id,
+    const added = await addTwin(id, {
+      [`${entry.collection}_id`]: entry.id,
     });
     // The draft lands below the library; bring it into view for review.
     if (added)
@@ -219,6 +250,25 @@ export default function InstrumentStudio({
   };
 
   const generating = catalog?.twins.find((t) => t.status === "generating");
+  const drafting = catalog?.brief?.status === "generating";
+  useEffect(() => {
+    if (!drafting) return;
+    const timer = window.setInterval(async () => {
+      try {
+        accept(
+          await api<InstrumentCatalog>(
+            "/twins/workflow/brief/poll",
+            json({ expected_version: version.current }),
+          ),
+        );
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 409)
+          load().catch(() => undefined);
+        else setError((e as Error).message);
+      }
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [drafting, accept, load]);
   useEffect(() => {
     if (!generating) return;
     const timer = window.setInterval(async () => {
@@ -295,13 +345,13 @@ export default function InstrumentStudio({
       window.clearTimeout(timer);
     };
   }, [draftKey, localConflict, catalog?.version]);
-  const motionFrames =
+  const selected =
     tab === "layout" && preview
-      ? ([
-          ...preview.motions.map((m) => m.frames),
-          ...(preview.blocked ? [preview.blocked.frames] : []),
-        ][selectedMotion] ?? null)
+      ? ([...preview.motions, ...(preview.blocked ? [preview.blocked] : [])][
+          selectedMotion
+        ] ?? null)
       : null;
+  const motionFrames = selected?.frames ?? null;
   useEffect(() => {
     setArmFrame(0);
     if (!motionFrames?.length) return;
@@ -326,7 +376,12 @@ export default function InstrumentStudio({
 
   const stations = confirmed.filter((t) => t.spec!.operations.includes("load"));
   const replayTwins = run?.twins.every((t) => t.spec)
-    ? run.twins.map((t) => ({ id: t.id, spec: t.spec!, confirmed: true }))
+    ? run.twins.map((t) => ({
+        id: t.id,
+        spec: t.spec!,
+        confirmed: true,
+        asset: catalog.twins.find((c) => c.id === t.id)?.asset,
+      }))
     : confirmed;
   const savedPlaced = new Set(catalog.layout?.placements.map((p) => p.twin_id));
   const savedLayout = (shown: { id: string }[]) =>
@@ -371,6 +426,20 @@ export default function InstrumentStudio({
               : 1,
     };
   };
+  const go = (next: Tab) => {
+    setTab(next);
+    window.history.replaceState({}, "", `/#/plan/${next}`);
+  };
+  const findFor = (role: BriefRole) => {
+    setFinding((current) => (current === role.key ? null : role.key));
+    setQuery(role.query);
+    requestAnimationFrame(() =>
+      document
+        .querySelector('[aria-label="Asset library"]')
+        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  };
+  const fillBlocker = applyBlocker(catalog.brief, catalog.twins);
   const trace =
     run && frame >= 0 ? run.trace[Math.min(frame, run.trace.length - 1)] : null;
 
@@ -378,23 +447,16 @@ export default function InstrumentStudio({
     <section className={s.page} aria-labelledby="byo-instrument">
       <div className={s.heading}>
         <div>
-          <span className={s.eyebrow}>BRING YOUR OWN INSTRUMENT</span>
-          <h2 id="byo-instrument">Find your instrument. Run it as a twin.</h2>
+          <h2 id="byo-instrument">Plan your workcell</h2>
           <p>
-            Search the asset library for your instrument to start from its
-            catalogued footprint. Not sure of the model? Upload a photo: GPT-6
-            Astra on Amazon Bedrock matches it against the library and sketches
-            a draft twin if nothing fits. Or start from a generic template.
-            Confirm the instruments you will use, design a workflow across them,
-            then run it through the mock command contract. Export runnable SiLA
-            2 connectors for local testing.
+            Describe the workflow, choose each instrument, then find a bench
+            layout that runs it.
           </p>
         </div>
       </div>
       <p className={s.notice}>
-        Teaching twins are minimum sufficient models: volume, slots, coarse
-        geometry, vessel, consumables, state and limits. Runs are synthetic and
-        are not Isaac/GPU, physical robot or chemical validation.
+        Synthetic teaching twins: runs and arm paths are not Isaac/GPU, physical
+        robot or chemical validation.
       </p>
       {error && (
         <div className={s.alert} role="alert">
@@ -418,8 +480,7 @@ export default function InstrumentStudio({
                 )
               )
                 return;
-              setTab(t.id);
-              window.history.replaceState({}, "", `/#/instruments/${t.id}`);
+              go(t.id);
             }}
           >
             {t.label}
@@ -443,7 +504,7 @@ export default function InstrumentStudio({
           <Suspense fallback={<div className={s.scene} />}>
             <TwinScene
               twins={
-                tab === "instruments"
+                tab === "instruments" || tab === "describe"
                   ? catalog.twins
                   : tab === "workflow"
                     ? replayTwins
@@ -465,6 +526,14 @@ export default function InstrumentStudio({
                   ? motionFrames[Math.min(armFrame, motionFrames.length - 1)]
                   : null
               }
+              armJoints={
+                selected?.joints?.length
+                  ? selected.joints[
+                      Math.min(armFrame, selected.joints.length - 1)
+                    ]
+                  : null
+              }
+              armActor={selected?.actor_id ?? null}
               path={motionFrames?.map((f) => f[f.length - 1]) ?? null}
               blocked={showingBlocked ? blockedTwin : null}
             />
@@ -506,8 +575,47 @@ export default function InstrumentStudio({
         </section>
 
         <aside className={s.panel}>
+          {tab === "describe" && (
+            <BriefPanel
+              catalog={catalog}
+              busy={busy}
+              onDescribe={(text) => mutate("/twins/workflow/brief", { text })}
+              onImport={(name, draft) =>
+                mutate("/twins/workflow/brief/import", { name, draft })
+              }
+              onSchema={async () => {
+                try {
+                  const doc = await apiText("/twins/workflow/brief/schema");
+                  saveBlob(
+                    "academy-workflow-draft.schema.json",
+                    new Blob([doc], { type: "application/json" }),
+                  );
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+              onNext={() => go("instruments")}
+            />
+          )}
+
           {tab === "instruments" && (
             <>
+              {catalog.brief?.draft && (
+                <RoleBindings
+                  brief={catalog.brief}
+                  twins={catalog.twins}
+                  busy={busy}
+                  finding={finding}
+                  onBind={(role, twinId) =>
+                    mutate(
+                      "/twins/workflow/brief/bind",
+                      { role, twin_id: twinId },
+                      "PUT",
+                    )
+                  }
+                  onFind={findFor}
+                />
+              )}
               <h2>Add an instrument</h2>
               <section className={s.library} aria-label="Asset library">
                 <label className={s.search}>
@@ -550,9 +658,7 @@ export default function InstrumentStudio({
                           className={s.source}
                           data-collection={entry.collection}
                         >
-                          {entry.collection === "chemlab"
-                            ? "ChemLab · NC"
-                            : "SimReady"}
+                          {collectionLabels[entry.collection]}
                         </span>
                         <Plus size={14} aria-hidden />
                       </button>
@@ -566,10 +672,11 @@ export default function InstrumentStudio({
                   </p>
                 )}
                 <p className={s.footnote}>
-                  Footprint only: operations, volume and limits are teaching
-                  defaults to correct before confirming. ChemLab-Assets entries
-                  are CC-BY-NC-4.0, non-commercial use only; SimReady entries
-                  are CC-BY-4.0.
+                  Workcell and ChemLab entries are drawn with their 3D model;
+                  SimReady entries show their footprint. Operations, volume and
+                  limits are teaching defaults to correct before confirming.
+                  ChemLab-Assets entries are CC-BY-NC-4.0, non-commercial use
+                  only.
                 </p>
               </section>
               <h3 className={s.fallbackTitle}>
@@ -596,8 +703,7 @@ export default function InstrumentStudio({
                     e.target.value = "";
                     if (!file) return;
                     try {
-                      await mutate("/twins", {
-                        id: crypto.randomUUID(),
+                      await addTwin(crypto.randomUUID(), {
                         image: await encodePhoto(file),
                         mime: "image/jpeg",
                       });
@@ -614,10 +720,7 @@ export default function InstrumentStudio({
                     className={s.secondary}
                     disabled={busy}
                     onClick={() =>
-                      mutate("/twins", {
-                        id: crypto.randomUUID(),
-                        template_id: id,
-                      })
+                      addTwin(crypto.randomUUID(), { template_id: id })
                     }
                   >
                     <Plus size={14} /> {templateLabels[id] ?? id}
@@ -706,6 +809,21 @@ export default function InstrumentStudio({
                       }
                     : undefined
                 }
+                onSearch={(fixed, start, avoid) =>
+                  api<LayoutSearchChunk>(
+                    "/twins/layout/search",
+                    json({ bench: draft.bench, fixed, start, avoid }),
+                  )
+                }
+                constraints={catalog.constraints ?? []}
+                onConstraints={(next) =>
+                  mutate(
+                    "/twins/layout/constraints",
+                    { constraints: next },
+                    "PUT",
+                  )
+                }
+                busy={busy}
                 onSave={async () => {
                   const submitted = layoutRevision.current;
                   if (await mutate("/twins/layout", draft, "PUT"))
@@ -724,19 +842,67 @@ export default function InstrumentStudio({
                 </p>
               ) : (
                 <>
+                  {catalog.brief?.draft && (
+                    <div className={s.fill}>
+                      <button
+                        className={s.secondary}
+                        disabled={busy || !!fillBlocker}
+                        onClick={() => {
+                          if (
+                            (dirty.current || catalog.steps.length > 0) &&
+                            !window.confirm(
+                              "Replace the current steps with the drafted ones?",
+                            )
+                          )
+                            return;
+                          dirty.current = false;
+                          mutate("/twins/workflow/brief/apply", {}, "PUT");
+                        }}
+                      >
+                        Use drafted steps
+                      </button>
+                      {fillBlocker && <small>{fillBlocker}</small>}
+                    </div>
+                  )}
                   <p className={s.muted}>
-                    One sample moves through your instruments. Load it once,
-                    transfer it between stations, and act on it where it is.
+                    Load each plate once, transfer it between stations, and act
+                    on it where it is.
                     {catalog.layout &&
                       " Transfers must also have a collision-free arm path on the saved bench layout."}
                   </p>
+                  <datalist id="workflow-samples">
+                    {[
+                      ...new Set([
+                        DEFAULT_SAMPLE,
+                        ...steps.map((x) => x.sample ?? DEFAULT_SAMPLE),
+                      ]),
+                    ].map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                   <ol className={s.steps}>
                     {steps.map((step, i) => {
                       const device = confirmed.find(
                         (t) => t.id === step.device_id,
                       );
                       const replace = (next: Step) =>
-                        editSteps(steps.map((x, j) => (j === i ? next : x)));
+                        editSteps(
+                          steps.map((x, j) =>
+                            j === i
+                              ? { ...next, sample: next.sample ?? step.sample }
+                              : x,
+                          ),
+                        );
+                      // A slot is worth choosing only where there is more than one.
+                      const slotTwin =
+                        step.operation === "load"
+                          ? device
+                          : step.operation === "transfer"
+                            ? confirmed.find((t) => t.id === step.target_id)
+                            : undefined;
+                      const slots = slotTwin ? siteKeys(slotTwin.spec!) : [];
+                      const slotField =
+                        step.operation === "load" ? "site" : "target_site";
                       return (
                         <li
                           key={i}
@@ -810,6 +976,44 @@ export default function InstrumentStudio({
                                   </select>
                                 ),
                               )}
+                            {step.operation !== "wait" && (
+                              <input
+                                className={s.sample}
+                                list="workflow-samples"
+                                aria-label={`Step ${i + 1} sample`}
+                                value={step.sample ?? DEFAULT_SAMPLE}
+                                maxLength={24}
+                                onChange={(e) =>
+                                  replace({
+                                    ...step,
+                                    sample:
+                                      e.target.value
+                                        .toLowerCase()
+                                        .replace(/[^a-z0-9-]/g, "-") ||
+                                      DEFAULT_SAMPLE,
+                                  })
+                                }
+                              />
+                            )}
+                            {slots.length > 1 && (
+                              <select
+                                aria-label={`Step ${i + 1} slot`}
+                                value={step[slotField] ?? ""}
+                                onChange={(e) =>
+                                  replace({
+                                    ...step,
+                                    [slotField]: e.target.value,
+                                  })
+                                }
+                              >
+                                <option value="">Any free slot</option>
+                                {slots.map((key) => (
+                                  <option key={key} value={key}>
+                                    Slot {key}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                             {step.operation in units && (
                               <label className={s.inline}>
                                 <input

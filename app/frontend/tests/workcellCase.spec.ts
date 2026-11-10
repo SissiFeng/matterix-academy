@@ -11,7 +11,7 @@ test("the synthesis workcell case loads registered assets and runs end to end", 
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
-  await page.getByRole("button", { name: "Onboard", exact: true }).click();
+  await page.getByRole("button", { name: "Add a device", exact: true }).click();
   await page
     .getByRole("button", { name: /Multi-device case: synthesis workcell/ })
     .click();

@@ -137,7 +137,7 @@ test("late response from another experiment cannot replace the active workspace"
   await expect(
     page.getByRole("button", { name: "Save changes", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Start here", exact: true }).click();
   await page.getByRole("button", { name: "Start an experiment" }).click();
   await page.getByLabel("Experiment title").fill("Experiment B");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();

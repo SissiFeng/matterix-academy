@@ -7,6 +7,7 @@ manufacturer specifications. All listed datasets are CC-BY-4.0, so attribution t
 with the twin and its exports.
 """
 
+from .decks import deck_sites
 from .simple_twins import Consumable, Container, Limits, Part, Resource, TwinSpec
 
 LICENSE = "CC-BY-4.0"
@@ -29,6 +30,7 @@ def footprint_spec(size_zup, color, spec, assumptions):
             max_duration_s=600,
         ),
         assumptions=assumptions,
+        sites=deck_sites(spec["deck"]) if spec.get("deck") else [],
     ).model_dump(mode="json")
 
 

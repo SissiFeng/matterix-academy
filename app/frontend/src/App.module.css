@@ -229,6 +229,36 @@
   border-left: 3px solid var(--brand);
   padding-left: 14px;
 }
+.planLink {
+  width: 100%;
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface-1);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.planLink span {
+  display: grid;
+  gap: 4px;
+}
+.planLink strong {
+  font-size: 17px;
+}
+.planLink small {
+  color: var(--muted);
+  font-size: 13px;
+}
+.planLink:hover {
+  border-color: var(--brand);
+}
 .instrumentPage {
   width: 100%;
   max-width: 1440px;
@@ -2297,4 +2327,22 @@
   padding: 48px 24px;
   color: var(--muted);
   font-size: 14px;
+}
+.sidebar nav .navStep {
+  margin-left: auto;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.sidebar nav .activeNav .navStep {
+  color: inherit;
+}
+@media (max-width: 850px) {
+  .sidebar nav .navStep {
+    display: none;
+  }
+  .sidebar nav + .sidebarLabel + nav {
+    border-top: var(--hairline) solid var(--line);
+    padding-top: 8px;
+  }
 }

@@ -268,22 +268,53 @@
   max-width: 530px;
   margin: 12px auto 20px;
 }
-.practice {
-  margin: 36px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  padding: 26px 0;
-  border-block: var(--hairline) solid var(--line);
+.purpose {
+  max-width: 620px;
+  margin: 10px 0 0;
 }
-.practice h2 {
+.startGuide {
+  margin-bottom: 40px;
+}
+.startGuide > h2 {
+  margin: 0 0 18px;
+}
+.startGuide ol {
+  list-style: none;
   margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
 }
-.practice .actions {
-  flex-shrink: 0;
+.startGuide li {
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
+  border: var(--hairline) solid var(--line);
+  background: var(--surface);
+  border-radius: 7px;
+  padding: 20px;
+}
+.startGuide li:nth-child(2) {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+.stepNumber {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.startGuide h3 {
+  margin: 10px 0 6px;
+}
+.startGuide li p {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.startGuide .actions {
+  margin-top: auto;
+  flex-wrap: wrap;
 }
 .muted {
   color: var(--muted);
@@ -937,6 +968,9 @@
   font-size: 12px;
 }
 @media (max-width: 1200px) {
+  .startGuide ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .wizard {
     grid-template-columns: minmax(0, 1fr) 215px;
   }
@@ -998,12 +1032,8 @@
     font-size: 9px;
     padding: 12px 2px;
   }
-  .practice {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .practice .actions {
-    align-items: flex-start;
+  .startGuide ol {
+    grid-template-columns: 1fr;
   }
   .pair {
     padding: 20px;

@@ -13,7 +13,9 @@ async function enter(page: Page) {
 }
 
 async function connect(page: Page) {
-  await page.getByRole("button", { name: "Sim → Real", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Real-device readiness", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Connect an instrument", exact: true })
     .click();

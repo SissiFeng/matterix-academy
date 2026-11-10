@@ -30,6 +30,9 @@ import {
   Compass,
   Store,
   GitBranch,
+  LayoutDashboard,
+  House,
+  ListChecks,
 } from "lucide-react";
 import { api, ApiError, configureAuth, json, signIn, signOut } from "./api";
 import type { Config, Course, Experiment, Profile, Session } from "./types";
@@ -88,6 +91,13 @@ function Brand({ small = false }: { small?: boolean }) {
 }
 
 type StudioIntent = { instrument: Instrument; starter: Starter };
+const learnLabels = {
+  overview: workspaceLabels.overview,
+  instruments: "Meet the instruments",
+  learn: "Learning lab",
+  sim: "Simulation lab",
+  marketplace: "Workflow marketplace",
+};
 const STUDIO_INTENT_KEY = "academy-studio-intent-v1";
 function readStudioIntent(): StudioIntent | null {
   try {
@@ -543,6 +553,16 @@ function Dashboard({
   );
 }
 
+/** The studio moved from the instruments page; keep its old tab links working. */
+function movePlanLink() {
+  const tab = window.location.hash.match(
+    /^#\/instruments\/(describe|instruments|workflow|layout|connectors)$/,
+  )?.[1];
+  if (!tab) return false;
+  window.location.replace(`/#/plan/${tab}`);
+  return true;
+}
+
 export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -574,8 +594,9 @@ export default function App() {
   }, []);
   useEffect(() => {
     const routeChanged = (event: HashChangeEvent) => {
+      if (movePlanLink()) return;
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -595,6 +616,7 @@ export default function App() {
     return () => window.removeEventListener("hashchange", routeChanged);
   }, []);
   const refresh = useCallback(async () => {
+    movePlanLink();
     const [p, c, r] = await Promise.all([
       api<Profile>("/me"),
       api<Course[]>("/courses"),
@@ -609,7 +631,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -810,75 +832,43 @@ export default function App() {
         <div className={s.shell}>
           <aside className={s.sidebar}>
             <Brand small />
-            <div className={s.sidebarLabel}>YOUR WORKCELL</div>
-            <nav aria-label="Workcell navigation">
-              {workspaceViews.map((target, index) => {
-                const Icon = [LayoutGrid, Plus, Layers3, ShieldCheck, History][
-                  index
-                ];
-                return (
-                  <button
-                    key={target}
-                    className={view === target ? s.activeNav : ""}
-                    aria-current={view === target ? "page" : undefined}
-                    onClick={() => nav(target)}
-                  >
-                    <Icon size={18} />
-                    {workspaceLabels[target]}
-                  </button>
-                );
-              })}
-            </nav>
-            <div className={s.sidebarLabel}>LEARN & EXPLORE</div>
+            <div className={s.sidebarLabel}>LEARN</div>
             <nav aria-label="Learning navigation">
-              <button
-                className={
-                  view === "instruments" ||
-                  session?.experiment.course_id === "workflow-sandbox"
-                    ? s.activeNav
-                    : ""
-                }
-                aria-current={view === "instruments" ? "page" : undefined}
-                onClick={() => nav("instruments")}
-              >
-                <Pipette size={18} /> Meet the instruments
-              </button>
-              <button
-                className={view === "sim" ? s.activeNav : ""}
-                onClick={() => nav("sim")}
-              >
-                <FlaskConical size={18} /> Simulation lab
-              </button>
-              <button
-                className={
-                  view === "learn" || view === "workflow-course"
-                    ? s.activeNav
-                    : ""
-                }
-                onClick={() => nav("learn")}
-              >
-                <BookOpen size={18} /> Learning lab
-              </button>
-              <button
-                className={view === "discovery" ? s.activeNav : ""}
-                onClick={() => nav("discovery")}
-              >
-                <Compass size={18} /> Discovery studio
-              </button>
-              <button
-                className={view === "marketplace" ? s.activeNav : ""}
-                onClick={() => nav("marketplace")}
-              >
-                <Store size={18} /> Workflow marketplace
-              </button>
-              <button
-                className={view === "connector" ? s.activeNav : ""}
-                onClick={() => nav("connector")}
-              >
-                <GitBranch size={18} /> Connector explorer
-              </button>
+              {(
+                [
+                  ["overview", House, view === "overview"],
+                  [
+                    "instruments",
+                    Pipette,
+                    view === "instruments" ||
+                      session?.experiment.course_id === "workflow-sandbox",
+                  ],
+                  [
+                    "learn",
+                    BookOpen,
+                    view === "learn" || view === "workflow-course",
+                  ],
+                  ["sim", FlaskConical, view === "sim"],
+                  ["marketplace", Store, view === "marketplace"],
+                ] as const
+              ).map(([target, Icon, active], index) => (
+                <button
+                  key={target}
+                  className={active ? s.activeNav : ""}
+                  aria-current={view === target ? "page" : undefined}
+                  onClick={() => nav(target)}
+                >
+                  <Icon size={18} /> {learnLabels[target]}
+                  {index > 0 && (
+                    <small className={s.navStep} aria-hidden="true">
+                      {index}
+                    </small>
+                  )}
+                </button>
+              ))}
               <button
                 className={view === "history" ? s.activeNav : ""}
+                aria-current={view === "history" ? "page" : undefined}
                 onClick={() => nav("history")}
               >
                 <History size={18} /> My experiments{" "}
@@ -889,6 +879,49 @@ export default function App() {
                   <FlaskConical size={18} /> Current experiment
                 </button>
               )}
+            </nav>
+            <div className={s.sidebarLabel}>GO FURTHER</div>
+            <nav aria-label="Explore navigation">
+              <button
+                className={view === "discovery" ? s.activeNav : ""}
+                aria-current={view === "discovery" ? "page" : undefined}
+                onClick={() => nav("discovery")}
+              >
+                <Compass size={18} /> Discovery studio
+              </button>
+              <button
+                className={view === "connector" ? s.activeNav : ""}
+                aria-current={view === "connector" ? "page" : undefined}
+                onClick={() => nav("connector")}
+              >
+                <GitBranch size={18} /> Connector explorer
+              </button>
+            </nav>
+            <div className={s.sidebarLabel}>YOUR WORKCELL</div>
+            <nav aria-label="Workcell navigation">
+              {workspaceViews
+                .filter((target) => target !== "overview")
+                .map((target, index) => {
+                  const Icon = [Plus, Layers3, ShieldCheck, ListChecks][index];
+                  return (
+                    <button
+                      key={target}
+                      className={view === target ? s.activeNav : ""}
+                      aria-current={view === target ? "page" : undefined}
+                      onClick={() => nav(target)}
+                    >
+                      <Icon size={18} />
+                      {workspaceLabels[target]}
+                    </button>
+                  );
+                })}
+              <button
+                className={view === "plan" ? s.activeNav : ""}
+                aria-current={view === "plan" ? "page" : undefined}
+                onClick={() => nav("plan")}
+              >
+                <LayoutDashboard size={18} /> Plan a layout
+              </button>
             </nav>
             <div className={s.sidebarBottom}>
               <button className={s.helpButton} onClick={() => setHelp(true)}>
@@ -936,21 +969,23 @@ export default function App() {
                   : (workspaceLabels[view] ??
                     (view === "instruments"
                       ? "Meet the instruments"
-                      : view === "lab"
-                        ? session?.experiment.course_id === "workflow-sandbox"
-                          ? "Workflow studio"
-                          : "Flex foundations"
-                        : view === "history"
-                          ? "My experiments"
-                          : view === "discovery"
-                            ? "Discovery studio"
-                            : view === "marketplace"
-                              ? "Workflow marketplace"
-                              : view === "connector"
-                                ? "Connector explorer"
-                                : view === "sim"
-                                  ? "Simulation lab"
-                                  : "Learning lab"))}
+                      : view === "plan"
+                        ? "Plan a layout"
+                        : view === "lab"
+                          ? session?.experiment.course_id === "workflow-sandbox"
+                            ? "Workflow studio"
+                            : "Flex foundations"
+                          : view === "history"
+                            ? "My experiments"
+                            : view === "discovery"
+                              ? "Discovery studio"
+                              : view === "marketplace"
+                                ? "Workflow marketplace"
+                                : view === "connector"
+                                  ? "Connector explorer"
+                                  : view === "sim"
+                                    ? "Simulation lab"
+                                    : "Learning lab"))}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -1052,14 +1087,23 @@ export default function App() {
               ) : view === "instruments" ? (
                 <div className={s.instrumentPage}>
                   <InstrumentStories onDesign={createStudio} busy={busy} />
-                  <Suspense fallback={null}>
-                    <InstrumentStudio registerLeaveGuard={registerLeaveGuard} />
-                  </Suspense>
+                  <button className={s.planLink} onClick={() => nav("plan")}>
+                    <span>
+                      <strong>Bring your own instruments</strong>
+                      <small>
+                        Describe a workflow, choose the instruments and find a
+                        bench layout.
+                      </small>
+                    </span>
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
+              ) : view === "plan" ? (
+                <div className={s.instrumentPage}>
+                  <InstrumentStudio registerLeaveGuard={registerLeaveGuard} />
                 </div>
               ) : view === "sim" ? (
-                <SimulationLab
-                  onOpenInstruments={() => nav("instruments/workflow")}
-                />
+                <SimulationLab onOpenInstruments={() => nav("plan/workflow")} />
               ) : view === "marketplace" ? (
                 <WorkflowMarketplace
                   onAdapt={(item) => {
@@ -1093,7 +1137,7 @@ export default function App() {
                 />
               ) : view === "connector" ? (
                 <ConnectorExplorer
-                  onOpenInstruments={() => nav("instruments/connectors")}
+                  onOpenInstruments={() => nav("plan/connectors")}
                 />
               ) : view === "connect" ? (
                 <ConnectorSetup

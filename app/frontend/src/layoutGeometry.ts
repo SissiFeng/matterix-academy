@@ -1,8 +1,16 @@
-import type { Layout, Placement, Twin, TwinSpec } from "./instrumentTypes";
+import {
+  armProfiles,
+  type Layout,
+  type Placement,
+  type Twin,
+  type TwinSpec,
+} from "./instrumentTypes";
 
 /** Mirrors workcell_layout.py; the server's check is authoritative. */
 export const ARM_RADII = [0.075, 0.065, 0.055, 0.048, 0.048, 0.048, 0.06];
 export const REACH = 0.85;
+/** ANSI/SLAS plate footprint, drawn for each deck slot. */
+export const SLOT: Point = [0.128, 0.086];
 export type Point = [number, number];
 
 export function rotate(yawDeg: number, x: number, z: number): Point {
@@ -18,6 +26,41 @@ export function footprint(spec: TwinSpec) {
   const hi = (axis: 0 | 2) =>
     Math.max(...spec.parts.map((p) => p.position[axis] + p.size[axis] / 2));
   return { x0: lo(0), x1: hi(0), z0: lo(2), z1: hi(2) };
+}
+
+export function top(spec: TwinSpec) {
+  return Math.max(...spec.parts.map((p) => p.position[1] + p.size[1] / 2));
+}
+
+/** Mirrors workcell_layout.mount: the arm base frame (Z up) on top of its pedestal, as a Y-up world matrix. */
+export function mountMatrix(
+  spec: TwinSpec,
+  p: Pick<Placement, "x" | "z" | "yaw">,
+) {
+  const { x0, x1, z0, z1 } = footprint(spec);
+  const [rx, rz] = rotate(p.yaw, (x0 + x1) / 2, (z0 + z1) / 2);
+  const r = (p.yaw * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  // Row-major, as Matrix4.set takes it.
+  return [
+    c,
+    -s,
+    0,
+    p.x + rx,
+    0,
+    0,
+    1,
+    top(spec),
+    -s,
+    -c,
+    0,
+    p.z + rz,
+    0,
+    0,
+    0,
+    1,
+  ];
 }
 
 export function corners(spec: TwinSpec, p: Placement): Point[] {
@@ -120,4 +163,16 @@ export function defaultLayout(twins: Twin[]): Layout {
     });
   });
   return { bench: { width: 2.4, depth: 1.6 }, placements };
+}
+
+/** Reach of the arm profile a transfer twin carries (UR5e unless it names another). */
+export const armReach = (spec: TwinSpec) =>
+  armProfiles.find((a) => a.key === (spec.arm ?? "ur5e"))!.reach;
+
+/** World x/z of each drawn deck slot. */
+export function siteCentres(spec: TwinSpec, p: Placement) {
+  return (spec.sites ?? []).map((site) => {
+    const [rx, rz] = rotate(p.yaw, site.x, site.z);
+    return { key: site.key, at: [p.x + rx, p.z + rz] as Point };
+  });
 }

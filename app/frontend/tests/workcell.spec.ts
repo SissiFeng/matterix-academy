@@ -15,7 +15,7 @@ async function enter(page: Page) {
 }
 
 async function identify(page: Page) {
-  await page.getByRole("button", { name: "Onboard", exact: true }).click();
+  await page.getByRole("button", { name: "Add a device", exact: true }).click();
   await page.getByLabel("Device name", { exact: true }).fill("Flex 01");
   await page.getByLabel("Workcell name").fill("Liquid handling");
   await page.getByRole("button", { name: "Save and continue" }).click();
@@ -90,7 +90,9 @@ test("device onboarding persists, pairs a trial, and closes the teaching evidenc
   await expect(
     page.getByText("You reached the learning goal.", { exact: true }),
   ).toBeVisible({ timeout: 25000 });
-  await page.getByRole("button", { name: "Runs", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Teaching runs", exact: true })
+    .click();
   await expect(page.getByRole("table")).toContainText(
     "Teaching ↔ physical run comparison",
   );
@@ -180,10 +182,10 @@ test("conflicting device edits reload the winning revision and unsaved edits are
   expect(records[0].version).toBe(2);
   await page.getByRole("checkbox", { name: /^Aspirate/ }).check();
   page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Start here", exact: true }).click();
   await expect(page.getByRole("checkbox", { name: /^Aspirate/ })).toBeChecked();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await page.getByRole("button", { name: "Start here", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Liquid handling", exact: true }),
   ).toBeVisible();
@@ -198,9 +200,14 @@ test("workspace pages fit a phone and preserve device selection on reload", asyn
   await pair(page);
   await page.getByRole("button", { name: "Open twin", exact: true }).click();
   const twinUrl = page.url();
-  for (const name of ["Twin", "Sim → Real", "Runs", "Overview"]) {
+  for (const [nav, name] of [
+    ["Workcell navigation", "Teaching twin"],
+    ["Workcell navigation", "Real-device readiness"],
+    ["Workcell navigation", "Teaching runs"],
+    ["Learning navigation", "Start here"],
+  ]) {
     await page
-      .getByRole("navigation", { name: "Workcell navigation" })
+      .getByRole("navigation", { name: nav })
       .getByRole("button", { name, exact: true })
       .click();
     await expect(
@@ -243,7 +250,9 @@ test("edited declarations cannot skip saving and paired trials survive the recen
   await page.getByRole("button", { name: "Review validation" }).click();
   await expect(page.getByText("Not declared: dispense.")).toBeVisible();
   await page.route("**/api/sessions", (route) => route.fulfill({ json: [] }));
-  await page.getByRole("button", { name: "Runs", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Teaching runs", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", {
       name: "Flex 01 · teaching trial",

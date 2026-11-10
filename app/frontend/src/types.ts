@@ -39,6 +39,15 @@ export type RunEvent = {
   code: string;
   message: string;
   hint: string;
+  /** State after the step; absent on events saved before replay existed. */
+  state?: TeachingState;
+};
+export type TeachingState = {
+  wells: Record<string, { volume: number; solute: number }>;
+  pipette: { volume: number; solute: number; tip: boolean; used: boolean };
+  tips_used: number;
+  tips_discarded: number;
+  waste_volume: number;
 };
 export type Session = {
   remote_active_run?: string | null;
@@ -50,13 +59,7 @@ export type Session = {
   evidence: "synthetic";
   status: "draft" | "running" | "paused" | "faulted" | "completed";
   cursor: number;
-  state: {
-    wells: Record<string, { volume: number; solute: number }>;
-    pipette: { volume: number; solute: number; tip: boolean; used: boolean };
-    tips_used: number;
-    tips_discarded: number;
-    waste_volume: number;
-  };
+  state: TeachingState;
   events: RunEvent[];
   assessment: Assessment | null;
   attempts: {

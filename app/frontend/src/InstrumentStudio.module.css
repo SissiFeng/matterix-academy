@@ -262,6 +262,10 @@
   border: var(--hairline) solid var(--line-strong);
   color: var(--ink-2);
 }
+.source[data-collection="workcell"] {
+  background: var(--brand-soft, var(--surface-2));
+  border-color: var(--brand);
+}
 .source[data-collection="chemlab"] {
   background: var(--warn-soft);
   border-color: var(--warn);
@@ -511,6 +515,16 @@
 .stepFields select {
   width: 100%;
 }
+.sample {
+  padding: 7px 9px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--surface-0);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  min-width: 0;
+}
 .stepTools {
   display: flex;
   flex-direction: column;
@@ -703,4 +717,15 @@
 .residualForm {
   display: grid;
   gap: 8px;
+}
+.fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+.fill small {
+  color: var(--muted);
+  font-size: 12px;
 }

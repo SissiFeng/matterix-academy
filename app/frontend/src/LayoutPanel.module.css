@@ -176,3 +176,141 @@
   color: var(--muted);
   font-size: 12px;
 }
+.kept polygon {
+  stroke-width: 2.5px;
+  stroke-dasharray: none;
+}
+.options {
+  display: grid;
+  gap: 8px;
+}
+.optionBar,
+.optionControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.scope {
+  display: flex;
+  gap: 12px;
+}
+.scope label,
+.inlineCheck {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.optionControls > label:first-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.optionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+.optionList small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+.more {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.sorted {
+  color: var(--ink);
+  font-weight: 600;
+}
+.selectedFields .keep {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.slot {
+  fill: color-mix(in srgb, var(--surface-0) 70%, transparent);
+  stroke: var(--ink);
+  stroke-width: 0.5px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.slotReached {
+  fill: color-mix(in srgb, var(--info) 45%, transparent);
+  stroke: var(--info);
+}
+.preferences {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.preferences summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.preferenceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.preferenceList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.preferenceList button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+}
+.preferenceForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.preferenceForm select,
+.preferenceForm input {
+  min-width: 0;
+  max-width: 100%;
+  font: inherit;
+  font-size: 13px;
+}
+.preferenceForm input[type="number"] {
+  width: 70px;
+}
+.diagnosis {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.fewer {
+  font-size: 13px;
+}
+.fewer summary {
+  cursor: pointer;
+}
+.fewer ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}

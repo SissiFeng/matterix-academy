@@ -215,7 +215,20 @@ def test_faulting_block_preserves_liquids_and_cursor(client, instrument, actions
     assert session["state"] == before["state"]
     assert session["cursor"] == before["cursor"]
     assert session["events"][-1]["code"] == code
+    assert session["events"][-1]["state"] == before["state"]
     assert session["assessment"] is None
+
+
+@pytest.mark.parametrize("instrument", ["flex", "ot2"])
+def test_each_event_records_the_state_it_left_for_replay(client, instrument):
+    session = command(client, create(client, design(instrument)), "start")
+    states = []
+    while session["status"] == "running":
+        session = command(client, session, "advance")
+        states.append(session["state"])
+    assert session["status"] == "completed"
+    assert [event["state"] for event in session["events"]] == states
+    assert command(client, session, "reset")["events"] == []
 
 
 @pytest.mark.parametrize("instrument", ["flex", "ot2"])

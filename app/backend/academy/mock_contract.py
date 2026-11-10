@@ -1,4 +1,11 @@
-"""Pure, deterministic teaching command contract shared by web and SiLA transports."""
+"""Pure, deterministic teaching command contract shared by web and SiLA transports.
+
+A workflow tracks one or more named samples (plates, tubes, vials). Each one is loaded
+once onto a slot of an instrument that can hold it; transfers move it between slots.
+Steps without a `sample` act on the single default sample, as before.
+"""
+
+DEFAULT_SAMPLE = "sample"
 
 
 class PlanError(ValueError):
@@ -7,13 +14,16 @@ class PlanError(ValueError):
         self.layer = layer
 
 
+def site_keys(spec):
+    """Slot names of an instrument: its drawn sites, else numbered slots."""
+    keys = [s["key"] for s in spec.get("sites", [])]
+    return keys or [str(i + 1) for i in range(spec["resource"]["slots"])]
+
+
 def execute_mock(twins, steps):
     """Same bounded command contract described by the exported SiLA mock."""
-    location = None
-    vessel = None
-    volume = 0.0
-    temperature = 20.0
-    mixed = False
+    samples = {}  # key -> location, site, vessel, volume, temperature, mixed
+    occupied = {}  # device id -> {site: sample key}
     elapsed = 0.0
     stock = {
         t["id"]: {c["name"]: c["stock"] for c in t["spec"]["consumables"]}
@@ -28,44 +38,96 @@ def execute_mock(twins, steps):
             raise PlanError("state", f"{label}: select a confirmed mock device")
         return device
 
-    def accepts(device, label):
+    def accepts(device, sample, label):
         container = device["spec"]["container"]
         if "load" not in device["spec"]["operations"]:
             raise PlanError("container", f"{label}: {device['spec']['name']} cannot hold a sample")
-        if container["vessel"] != vessel:
+        if container["vessel"] != sample["vessel"]:
             raise PlanError(
                 "container",
-                f"{label}: {device['spec']['name']} accepts a {container['vessel']}, not a {vessel}",
+                f"{label}: {device['spec']['name']} accepts a {container['vessel']}, "
+                f"not a {sample['vessel']}",
             )
-        if volume > container["max_volume_ul"]:
+        if sample["volume"] > container["max_volume_ul"]:
             raise PlanError(
                 "volume",
-                f"{label}: {volume:g} µL exceeds {device['spec']['name']}'s {container['max_volume_ul']:g} µL limit",
+                f"{label}: {sample['volume']:g} µL exceeds {device['spec']['name']}'s "
+                f"{container['max_volume_ul']:g} µL limit",
             )
+
+    def seat(device, wanted, key, label):
+        """The slot a sample takes on a device: the one asked for, else the first free one."""
+        keys = site_keys(device["spec"])
+        taken = occupied.setdefault(device["id"], {})
+        name = device["spec"]["name"]
+        if wanted:
+            if wanted not in keys:
+                raise PlanError("resource", f"{label}: {name} has no slot {wanted}")
+            if wanted in taken:
+                raise PlanError(
+                    "resource", f"{label}: slot {wanted} on {name} already holds {taken[wanted]}"
+                )
+            site = wanted
+        else:
+            site = next((k for k in keys if k not in taken), None)
+            if site is None:
+                raise PlanError(
+                    "resource",
+                    f"{label}: {name} has no free slot for {key}; its {len(keys)} "
+                    f"slot{'s' if len(keys) != 1 else ''} are in use",
+                )
+        taken[site] = key
+        return site
 
     for index, step in enumerate(steps):
         label = f"Step {index + 1}"
         actor = station(step["device_id"], label)
         spec = actor["spec"]
         operation = step["operation"]
+        key = step.get("sample") or DEFAULT_SAMPLE
         if operation not in spec["operations"]:
             raise PlanError("state", f"{label}: {spec['name']} does not support {operation}")
+        sample = samples.get(key)
+        source_site = None
         if operation == "load":
-            if location is not None:
+            if sample is not None:
                 raise PlanError(
-                    "state", f"{label}: this workflow tracks one sample; load it only once"
+                    "state",
+                    f"{label}: this workflow tracks one sample; load it only once"
+                    if key == DEFAULT_SAMPLE
+                    else f"{label}: {key} is already loaded; load each sample once",
                 )
-            location, vessel, volume = actor["id"], spec["container"]["vessel"], step["value"]
-            accepts(actor, label)
+            sample = {
+                "location": actor["id"],
+                "site": None,
+                "vessel": spec["container"]["vessel"],
+                "volume": step["value"],
+                "temperature": 20.0,
+                "mixed": False,
+            }
+            accepts(actor, sample, label)
+            sample["site"] = seat(actor, step.get("site"), key, label)
+            samples[key] = sample
         elif operation == "transfer":
             source = station(step["source_id"], label)
             target = station(step["target_id"], label)
-            if location != source["id"]:
-                raise PlanError("state", f"{label}: the sample is not at {source['spec']['name']}")
-            accepts(target, label)
-            location = target["id"]
-        elif operation != "wait" and location != actor["id"]:
-            raise PlanError("state", f"{label}: transfer the sample to {spec['name']} first")
+            if sample is None or sample["location"] != source["id"]:
+                what = "the sample" if key == DEFAULT_SAMPLE else key
+                raise PlanError("state", f"{label}: {what} is not at {source['spec']['name']}")
+            if step.get("source_site") and step["source_site"] != sample["site"]:
+                raise PlanError(
+                    "resource",
+                    f"{label}: {key} is in slot {sample['site']} of {source['spec']['name']}, "
+                    f"not slot {step['source_site']}",
+                )
+            accepts(target, sample, label)
+            source_site = sample["site"]
+            occupied[source["id"]].pop(source_site)
+            sample["site"] = seat(target, step.get("target_site"), key, label)
+            sample["location"] = target["id"]
+        elif operation != "wait" and (sample is None or sample["location"] != actor["id"]):
+            what = "the sample" if key == DEFAULT_SAMPLE else key
+            raise PlanError("state", f"{label}: transfer {what} to {spec['name']} first")
         limits = spec["limits"]
         if (
             operation == "heat"
@@ -89,30 +151,60 @@ def execute_mock(twins, steps):
                     )
                 stock[actor["id"]][item["name"]] = left
         if operation == "mix":
-            mixed = True
+            sample["mixed"] = True
         if operation == "heat":
-            temperature = step["value"]
+            sample["temperature"] = step["value"]
         elapsed += step["value"] if operation in {"wait", "mix"} else 1
+        state = sample or {
+            "location": None,
+            "site": None,
+            "vessel": None,
+            "volume": 0.0,
+            "temperature": 20.0,
+            "mixed": False,
+        }
         trace.append(
             {
                 "step": index + 1,
                 "device_id": actor["id"],
                 "operation": operation,
-                "location": location,
-                "vessel": vessel,
-                "volume_ul": volume,
-                "temperature_c": temperature,
-                "mixed": mixed,
+                "sample": key,
+                "location": state["location"],
+                "site": state["site"],
+                "source_site": source_site,
+                "vessel": state["vessel"],
+                "volume_ul": state["volume"],
+                "temperature_c": state["temperature"],
+                "mixed": state["mixed"],
                 "elapsed_s": elapsed,
                 "consumables": {d: dict(items) for d, items in stock.items() if items},
+                "samples": {
+                    k: {
+                        "location": s["location"],
+                        "site": s["site"],
+                        "volume_ul": s["volume"],
+                        "temperature_c": s["temperature"],
+                        "mixed": s["mixed"],
+                    }
+                    for k, s in samples.items()
+                },
                 "measurement": {
                     "kind": "synthetic_state_readout",
-                    "temperature_c": temperature,
-                    "volume_ul": volume,
-                    "mixed": mixed,
+                    "temperature_c": state["temperature"],
+                    "volume_ul": state["volume"],
+                    "mixed": state["mixed"],
                 }
                 if operation == "read"
                 else None,
             }
         )
     return trace
+
+
+def transfer_sites(twins, steps):
+    """Source and target slot of every transfer, keyed by step number."""
+    out = {}
+    for entry in execute_mock(twins, steps):
+        if entry["operation"] == "transfer":
+            out[entry["step"]] = (entry["source_site"], entry["site"])
+    return out

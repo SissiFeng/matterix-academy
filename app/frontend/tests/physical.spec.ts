@@ -10,7 +10,7 @@ async function enter(page: Page) {
 }
 
 async function onboard(page: Page) {
-  await page.getByRole("button", { name: "Onboard", exact: true }).click();
+  await page.getByRole("button", { name: "Add a device", exact: true }).click();
   await page.getByLabel("Device name", { exact: true }).fill("Flex 01");
   await page.getByLabel("Workcell name").fill("Liquid handling");
   await page.getByRole("button", { name: "Save and continue" }).click();
@@ -105,7 +105,7 @@ test("an operator approves a linked instrument's run only after confirming the s
   await linked(page, approvals);
   await page
     .getByRole("navigation", { name: "Workcell navigation" })
-    .getByRole("button", { name: "Sim → Real", exact: true })
+    .getByRole("button", { name: "Real-device readiness", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "03 / Physical runs · flex-a" }),
@@ -147,7 +147,7 @@ test("an unlinked declaration keeps physical execution unavailable and fits a ph
   await onboard(page);
   await page
     .getByRole("navigation", { name: "Workcell navigation" })
-    .getByRole("button", { name: "Sim → Real", exact: true })
+    .getByRole("button", { name: "Real-device readiness", exact: true })
     .click();
   await expect(
     page.getByText(/No physical instrument is linked to this declaration/),

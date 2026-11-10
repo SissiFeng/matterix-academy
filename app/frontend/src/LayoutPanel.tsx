@@ -2,22 +2,28 @@ import { useRef, useState } from "react";
 import { Download, RotateCw, Trash2 } from "lucide-react";
 import type {
   Access,
+  Constraint,
   Layout,
   LayoutPreview,
+  LayoutSearchChunk,
   Placement,
   Twin,
   TwinSpec,
 } from "./instrumentTypes";
 import {
-  REACH,
+  SLOT,
+  armReach,
   centre,
   conflicts,
   corners,
   frontFace,
   isArm,
+  siteCentres,
   type Point,
 } from "./layoutGeometry";
 import studio from "./InstrumentStudio.module.css";
+import LayoutOptions from "./LayoutOptions";
+import LayoutPreferences from "./LayoutPreferences";
 import s from "./LayoutPanel.module.css";
 
 const PAD = 0.12;
@@ -37,6 +43,10 @@ export default function LayoutPanel({
   onSave,
   saveDisabled,
   onExport,
+  onSearch,
+  constraints,
+  onConstraints,
+  busy,
 }: {
   twins: Twin[];
   layout: Layout;
@@ -49,8 +59,24 @@ export default function LayoutPanel({
   saveDisabled: boolean;
   /** Present only while the previewed layout is the saved one. */
   onExport?: (step: number, speed: number) => void;
+  /** One chunk of the layout search for the saved workflow. */
+  onSearch: (
+    fixed: Placement[],
+    start: number,
+    avoid: Placement[][],
+  ) => Promise<LayoutSearchChunk>;
+  constraints: Constraint[];
+  onConstraints: (next: Constraint[]) => void;
+  busy: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  // Slots the arm reaches in the layout last taken from the search list.
+  const [reached, setReached] = useState<{
+    layout: string;
+    slots: Record<string, string[]>;
+  } | null>(null);
+  const reachedNow =
+    reached?.layout === JSON.stringify(layout.placements) ? reached.slots : {};
   const [speed, setSpeed] = useState(20);
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<{ id: string; dx: number; dz: number } | null>(null);
@@ -62,7 +88,6 @@ export default function LayoutPanel({
   const placed = new Set(layout.placements.map((p) => p.twin_id));
   const current = layout.placements.find((p) => p.twin_id === selected);
   const { width, depth } = layout.bench;
-
   const update = (id: string, patch: Partial<Placement>) =>
     onChange({
       ...layout,
@@ -106,10 +131,9 @@ export default function LayoutPanel({
     <>
       <h2>Lay out the bench</h2>
       <p className={studio.muted}>
-        Drag instruments to where they stand, or select one and use the arrow
-        keys (Shift for 10 cm, R to rotate). Each transfer robot is a{" "}
-        {preview?.arm ?? "UR5e"} on its own pedestal; every transfer in the
-        saved workflow is checked for link collisions.
+        Search for layouts, or drag instruments into place and keep the ones
+        that cannot move. Arrow keys nudge the selection (Shift for 10 cm, R to
+        rotate).
       </p>
       <svg
         ref={svg}
@@ -165,7 +189,7 @@ export default function LayoutPanel({
               className={s.reach}
               cx={cx}
               cy={cz}
-              r={preview?.reach_m ?? REACH}
+              r={armReach(spec)}
             />
           );
         })}
@@ -180,6 +204,7 @@ export default function LayoutPanel({
             s.footprint,
             arm ? s.arm : "",
             p.twin_id === selected ? s.selected : "",
+            p.kept ? s.kept : "",
             bad.has(p.twin_id) || preview?.blocked?.blocked_by === spec.name
               ? s.conflict
               : "",
@@ -218,11 +243,25 @@ export default function LayoutPanel({
                 points={shape.map((c) => c.join(",")).join(" ")}
                 style={{ fill: spec.parts[0].color }}
               />
+              {p.access === "top" &&
+                siteCentres(spec, p).map(({ key, at }) => (
+                  <rect
+                    key={key}
+                    className={`${s.slot} ${reachedNow[p.twin_id]?.includes(key) ? s.slotReached : ""}`}
+                    x={at[0] - SLOT[0] / 2}
+                    y={at[1] - SLOT[1] / 2}
+                    width={SLOT[0]}
+                    height={SLOT[1]}
+                    transform={`rotate(${-p.yaw} ${at[0]} ${at[1]})`}
+                  />
+                ))}
               {!arm &&
                 (p.access === "front" ? (
                   <circle className={s.access} cx={fx} cy={fz} r={0.025} />
                 ) : (
-                  <circle className={s.access} cx={cx} cy={cz} r={0.025} />
+                  !spec.sites?.length && (
+                    <circle className={s.access} cx={cx} cy={cz} r={0.025} />
+                  )
                 ))}
               <text x={cx} y={cz - 0.05} className={s.label}>
                 {spec.name}
@@ -252,6 +291,23 @@ export default function LayoutPanel({
         ))}
       </div>
 
+      <LayoutPreferences
+        twins={twins}
+        constraints={constraints}
+        onSave={onConstraints}
+        busy={busy}
+      />
+      <LayoutOptions
+        layout={layout}
+        constraints={constraints}
+        name={name}
+        onApply={(next, slots) => {
+          setReached({ layout: JSON.stringify(next.placements), slots });
+          onChange(next);
+        }}
+        onSearch={onSearch}
+      />
+
       {current ? (
         <fieldset className={s.selectedFields}>
           <legend>{name(current.twin_id)}</legend>
@@ -280,6 +336,16 @@ export default function LayoutPanel({
                 update(current.twin_id, { yaw: Number(e.target.value) })
               }
             />
+          </label>
+          <label className={s.keep}>
+            <input
+              type="checkbox"
+              checked={!!current.kept}
+              onChange={(e) =>
+                update(current.twin_id, { kept: e.target.checked })
+              }
+            />
+            Keep here when searching
           </label>
           {!isArm({ spec: specs.get(current.twin_id)! }) && (
             <label>
