@@ -400,3 +400,18 @@ def test_a_chunk_cut_short_keeps_its_reach_work_so_the_walk_ends(client):
     else:
         raise AssertionError("the search never finished")
     assert chunk["candidates"] == [] and "fits on the bench" in chunk["failure"]
+
+
+def test_a_start_that_runs_out_of_poses_ends_the_search(client):
+    """Other starts only reorder the same poses, so they are not walked one by one."""
+    from academy import layout_search
+
+    placed_cell(client)
+    cell = client.get("/api/twins").json()
+    twins = {t["id"]: t for t in cell["twins"]}
+    chunk = layout_search.search_layouts(twins, {"width": 0.8, "depth": 0.6}, cell["steps"])
+    assert chunk["next"] is None and chunk["candidates"] == []
+    assert "fits on the bench" in chunk["failure"]
+    # A bench with room still walks on from the first start.
+    roomy = layout_search.search_layouts(twins, BENCH, cell["steps"], seconds=60)
+    assert roomy["candidates"] and roomy["next"] is not None

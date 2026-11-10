@@ -160,6 +160,7 @@ class Search:
         # The mock books one second per transfer; the arm estimate replaces it.
         self.device_s = trace[-1]["elapsed_s"] - len(self.transfers)
         self.plans = 0
+        self.exhausted = False
         self.failure = None
         self.reach_cache = {}
         validate_layout(twins, self.layout(self.fixed.values()))
@@ -516,9 +517,12 @@ class Search:
             "sides": SIDES[side_shift:] + SIDES[:side_shift],
         }
         budget = [min(ATTEMPT_PLANS, plans_left)]
+        cut = [False]
 
         def place(placed, arms, stations):
-            if time.monotonic() > deadline or not budget[0]:
+            if time.monotonic() > deadline:
+                cut[0] = True
+            if cut[0] or not budget[0]:
                 return None
             if arms:
                 poses = self.arm_grid(arms[0], placed)
@@ -577,7 +581,11 @@ class Search:
                 "motions": motions,
             }
 
-        return place(list(self.fixed.values()), self.free_arms, self.stations)
+        found = place(list(self.fixed.values()), self.free_arms, self.stations)
+        # Every start walks the same poses in a different order, so one that ran out of
+        # poses with time and checks to spare shows the others have nothing new either.
+        self.exhausted = not found and not cut[0] and budget[0] > 0
+        return found
 
 
 def search_layouts(
@@ -601,6 +609,9 @@ def search_layouts(
         if later and (time.monotonic() > deadline or search.plans >= CHUNK_PLANS):
             break
         result = search.attempt(search.starts[index], deadline, CHUNK_PLANS - search.plans, seen)
+        if search.exhausted:
+            index = len(search.starts)
+            break
         if not result and later and time.monotonic() > deadline:
             break  # cut short: the next chunk retries this arrangement
         index += 1
