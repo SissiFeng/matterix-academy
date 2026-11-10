@@ -1,0 +1,76 @@
+.section {
+  margin-top: 35px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line-strong);
+}
+.heading {
+  composes: sectionHeading from "./WorkflowStudio.module.css";
+}
+.secondary {
+  composes: secondary from "./WorkflowStudio.module.css";
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.reason {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.result {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-1);
+}
+.result h3 {
+  margin: 0 0 10px;
+  font:
+    600 15px Manrope,
+    sans-serif;
+  letter-spacing: -0.03em;
+}
+.result .ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--brand-text);
+}
+.result ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.result li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.result li > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--warn, var(--muted));
+}
+.result summary {
+  color: var(--ink-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.result details p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}

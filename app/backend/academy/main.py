@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import groups, sim2real_api
+from . import groups, opentrons_check, sim2real_api
 from ._version import __version__
 from .auth import identify, local_signer, may_plan_layouts, require_layout_planner
 from .connections import ConnectionService
@@ -549,6 +549,24 @@ def create_app(settings: Settings | None = None, store=None):
     @app.get("/api/sessions/{session_id}")
     def session_detail(session_id: UUID, owner: str = Depends(identify)):
         return present(get_session(owner, session_id))
+
+    @app.get("/api/sessions/{session_id}/opentrons-check")
+    def opentrons_check_session(session_id: UUID, owner: str = Depends(identify)):
+        session = get_session(owner, session_id)
+        require_teaching(session)
+        return opentrons_check.check(session["experiment"])
+
+    @app.get("/api/sessions/{session_id}/opentrons-protocol")
+    def opentrons_protocol(session_id: UUID, owner: str = Depends(identify)):
+        session = get_session(owner, session_id)
+        require_teaching(session)
+        if opentrons_check.check(session["experiment"])["stops"]:
+            raise HTTPException(409, "Fix the steps Opentrons would stop at first")
+        return Response(
+            opentrons_check.protocol(session["experiment"]),
+            media_type="text/x-python",
+            headers={"Content-Disposition": 'attachment; filename="academy_protocol.py"'},
+        )
 
     @app.put("/api/sessions/{session_id}")
     def update_session(session_id: UUID, data: UpdateExperiment, owner: str = Depends(identify)):
