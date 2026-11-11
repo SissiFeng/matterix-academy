@@ -12,16 +12,24 @@ if target.exists():
     shutil.rmtree(target)
 target.mkdir()
 PY
-uv pip install --python-version 3.12 --python-platform x86_64-manylinux2014 --only-binary :all: --target build/lambda -r build/requirements.txt
+# The python3.12 runtime is Amazon Linux 2023 (glibc 2.34); MuJoCo's wheels need glibc 2.28.
+uv pip install --python-version 3.12 --python-platform x86_64-manylinux_2_28 --only-binary :all: --target build/lambda -r build/requirements.txt
 python3 - <<'PY'
 from pathlib import Path
 import shutil, zipfile
+# MuJoCo runs headless here: its window and OpenGL bindings would push the archive past
+# Lambda's 50 MB upload limit.
+for unused in ('OpenGL', 'glfw'):
+    shutil.rmtree(f'build/lambda/{unused}')
 for package in ('academy', 'labtwin'):
     shutil.copytree(f'app/backend/{package}', f'build/lambda/{package}', ignore=shutil.ignore_patterns('__pycache__'), dirs_exist_ok=True)
 with zipfile.ZipFile('build/lambda.zip','w',zipfile.ZIP_DEFLATED) as archive:
     for file in sorted(Path('build/lambda').rglob('*')):
         if file.is_file() and '__pycache__' not in file.parts:
             archive.write(file,file.relative_to('build/lambda'))
+size = Path('build/lambda.zip').stat().st_size
+if size > 50_000_000:
+    raise SystemExit(f'build/lambda.zip is {size / 1e6:.1f} MB; Lambda accepts 50 MB uploads')
 print('Built build/lambda.zip for Python 3.12 / Linux x86_64')
 # Stable archive metadata prevents an unchanged policy from producing Terraform drift.
 with zipfile.ZipFile('build/cognito-signup.zip', 'w') as archive:

@@ -109,8 +109,11 @@ def verify_live_release(http, app_url, release):
     http.get(app_url + "/").raise_for_status()
     response = http.get(app_url + "/api/health")
     response.raise_for_status()
-    if response.json() != {"status": "ok", "version": release["version"]}:
+    health = response.json()
+    if (health.get("status"), health.get("version")) != ("ok", release["version"]):
         raise RuntimeError("Live API version does not match this build")
+    if health.get("simulation") != "mujoco":
+        raise RuntimeError("Live API cannot load MuJoCo, so arm paths are not simulated")
     response = http.get(app_url + "/version.json")
     response.raise_for_status()
     if response.json() != release:
