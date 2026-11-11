@@ -18,6 +18,8 @@ artifacts/
 *.tfplan
 *.tfvars
 !*.tfvars.example
+# Committed per-environment values; they hold no secrets.
+!/platform/vars/*.tfvars
 build/
 .DS_Store
 

@@ -293,7 +293,9 @@ def test_power_fence_exceeds_all_callers_hard_lifetimes():
     from academy.gpu_lifecycle import OPERATION_SECONDS
 
     root = Path(__file__).resolve().parents[3]
-    configuration = (root / "infra/main.tf").read_text() + (root / "infra/workers.tf").read_text()
+    configuration = (root / "platform/main.tf").read_text() + (
+        root / "platform/workers.tf"
+    ).read_text()
     assert OPERATION_SECONDS > max(
         int(x) for x in re.findall(r"timeout\s*=\s*(\d+)", configuration)
     )

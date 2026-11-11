@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = { source = "hashicorp/aws", version = "~> 6.0" }
   }
-  # Deliberately local and separate from infra/. Configure remote state only after approval.
+  # Deliberately local and separate from the main stack in platform/. Configure remote state only after approval.
 }
 
 provider "aws" {

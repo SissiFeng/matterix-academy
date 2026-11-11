@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 spec = importlib.util.spec_from_file_location(
-    "pre_signup", Path(__file__).resolve().parents[3] / "infra/cognito/pre_signup.py"
+    "pre_signup", Path(__file__).resolve().parents[3] / "platform/cognito/pre_signup.py"
 )
 signup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(signup)

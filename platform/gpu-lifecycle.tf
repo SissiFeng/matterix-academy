@@ -5,7 +5,7 @@ variable "gpu_region" {
   default     = ""
   validation {
     condition     = var.gpu_region == "" || contains(["ca-central-1", "us-east-1", "us-east-2"], var.gpu_region)
-    error_message = "Use a GPU region that infra/ec2-gpu and the image build also allow."
+    error_message = "Use a GPU region that platform/ec2-gpu and the image build also allow."
   }
 }
 variable "gpu_instance_id" {
