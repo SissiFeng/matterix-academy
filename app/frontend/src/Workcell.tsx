@@ -27,6 +27,7 @@ import {
 } from "./workcellTypes";
 import s from "./Workcell.module.css";
 import InstrumentStories from "./InstrumentStories";
+import StartMap from "./StartMap";
 import type { Instrument, Starter } from "./studioContent";
 
 type Props = {
@@ -67,73 +68,6 @@ const purposes: Partial<Record<WorkspaceView, string>> = {
     "Check what stands between a practised workflow and a run on the real instrument.",
   runs: "Replay what the twin did in each saved run, step by step, and see where it stopped.",
 };
-type Stop = { target: string; title: string; detail: string };
-const routes: { id: string; title: string; lead: string; stops: Stop[] }[] = [
-  {
-    id: "learn",
-    title: "Learning route",
-    lead: "New to lab automation? Follow these stops in order.",
-    stops: [
-      {
-        target: "instruments",
-        title: "Meet the robot",
-        detail: "Parts, modules and what each one does",
-      },
-      {
-        target: "learn",
-        title: "Learn by level",
-        detail: "From a first transfer to full workflows",
-      },
-      {
-        target: "sim",
-        title: "Simulate",
-        detail: "Run a whole experiment before the real robot",
-      },
-      {
-        target: "marketplace",
-        title: "Adapt a workflow",
-        detail: "Borrow a published method",
-      },
-      {
-        target: "groups",
-        title: "Compare with classmates",
-        detail: "Share and agree on one workflow",
-      },
-    ],
-  },
-  {
-    id: "use",
-    title: "Using route",
-    lead: "Bringing your own instrument? Prepare it here before a real run.",
-    stops: [
-      {
-        target: "onboard",
-        title: "Add a device",
-        detail: "Record the instrument from your lab",
-      },
-      {
-        target: "twin",
-        title: "Practise on its twin",
-        detail: "A software copy that behaves like it",
-      },
-      {
-        target: "plan",
-        title: "Plan the bench",
-        detail: "Find a layout that runs the workflow",
-      },
-      {
-        target: "readiness",
-        title: "Check readiness",
-        detail: "What stands before a real run",
-      },
-      {
-        target: "runs",
-        title: "Review runs",
-        detail: "Replay what happened, step by step",
-      },
-    ],
-  },
-];
 const actionName = (action: Session["experiment"]["actions"][number]) =>
   `${capabilityLabels[action.kind]}${["aspirate", "dispense"].includes(action.kind) ? ` ${action.volume} µL · ${action.well}` : ""}`;
 const when = (value: string) =>
@@ -557,43 +491,11 @@ export default function Workcell({
         <>
           {view === "overview" ? (
             <>
-              <section className={s.roadmap} aria-labelledby="roadmap-title">
-                <h2 id="roadmap-title">Where to start</h2>
-                {routes.map((route) => (
-                  <section
-                    key={route.id}
-                    className={s.route}
-                    aria-labelledby={`route-${route.id}`}
-                  >
-                    <header>
-                      <div>
-                        <h3 id={`route-${route.id}`}>{route.title}</h3>
-                        <p>{route.lead}</p>
-                      </div>
-                      {route.id === "learn" && (
-                        <button className={s.primary} onClick={onFirstLesson}>
-                          Start learning Flex <ArrowRight size={16} />
-                        </button>
-                      )}
-                    </header>
-                    <ol>
-                      {route.stops
-                        .filter((stop) => stop.target !== "plan" || canPlan)
-                        .map((stop, index) => (
-                          <li key={stop.target}>
-                            <button onClick={() => onNavigate(stop.target)}>
-                              <span className={s.stopNumber} aria-hidden="true">
-                                {index + 1}
-                              </span>
-                              <strong>{stop.title}</strong>
-                              <small>{stop.detail}</small>
-                            </button>
-                          </li>
-                        ))}
-                    </ol>
-                  </section>
-                ))}
-              </section>
+              <StartMap
+                canPlan={canPlan}
+                onNavigate={onNavigate}
+                onFirstLesson={onFirstLesson}
+              />
               <InstrumentStories
                 onDesign={onDesign}
                 busy={creationBusy}

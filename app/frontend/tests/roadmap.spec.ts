@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("the start page maps a learning route and a using route to their pages", async ({
+test("the start page maps every stop on both routes to its page", async ({
   page,
 }) => {
   await page.goto("/");
@@ -15,11 +15,30 @@ test("the start page maps a learning route and a using route to their pages", as
   await expect(learning.getByRole("listitem")).toHaveCount(5);
   await expect(using.getByRole("listitem")).toHaveCount(5);
 
-  await learning.getByRole("button", { name: /Simulate/ }).click();
-  await expect(page).toHaveURL(/#\/sim$/);
-  await page.getByRole("button", { name: "Start here", exact: true }).click();
-  await using.getByRole("button", { name: /Check readiness/ }).click();
-  await expect(
-    page.getByRole("heading", { name: "Real-device readiness", level: 1 }),
-  ).toBeVisible();
+  const start = page.getByRole("button", { name: "Start here", exact: true });
+  const stops: [typeof learning, string, RegExp, string][] = [
+    [
+      learning,
+      "Meet the robot",
+      /#\/instruments$/,
+      "What the robot is made of",
+    ],
+    [learning, "Learn by level", /#\/learn$/, "Learning lab"],
+    [learning, "Simulate", /#\/sim$/, "Four sources. One mixture."],
+    [learning, "Adapt a workflow", /#\/marketplace$/, "Workflow marketplace"],
+    [learning, "Compare with classmates", /#\/groups$/, "Study groups"],
+    [using, "Add a device", /#\/onboard$/, "Add a device"],
+    [using, "Practise on its twin", /#\/twin$/, "Teaching twin"],
+    [using, "Plan the bench", /#\/plan$/, "Plan your workcell"],
+    [using, "Check readiness", /#\/readiness$/, "Real-device readiness"],
+    [using, "Review runs", /#\/runs$/, "Teaching runs"],
+  ];
+  for (const [route, name, url, heading] of stops) {
+    await route.getByRole("button", { name }).click();
+    await expect(page).toHaveURL(url);
+    await expect(
+      page.getByRole("heading", { name: heading, exact: true }),
+    ).toBeVisible();
+    await start.click();
+  }
 });

@@ -15,7 +15,10 @@ async function enter(page: Page) {
 }
 
 async function identify(page: Page) {
-  await page.getByRole("button", { name: "Add a device", exact: true }).click();
+  await page
+    .getByLabel("Workcell navigation")
+    .getByRole("button", { name: "Add a device", exact: true })
+    .click();
   await page.getByLabel("Device name", { exact: true }).fill("Flex 01");
   await page.getByLabel("Workcell name").fill("Liquid handling");
   await page.getByRole("button", { name: "Save and continue" }).click();
