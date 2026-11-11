@@ -456,3 +456,18 @@ def test_a_draft_acting_where_the_sample_is_not_is_sent_back():
     with pytest.raises(ValidationError, match="moves samples, so it must not hold one"):
         Draft.model_validate(robot_holding)
     Draft.model_validate(with_steps(load, move, {"role": "reader", "operation": "read"}))
+
+
+def test_nova_placement_wishes_need_a_description_that_states_them(app):
+    wishes = {
+        **DRAFT,
+        "preferences": [
+            {"kind": "near", "role": "heater", "other_role": "reader", "side": "", "metres": 0.5}
+        ],
+    }
+    nova(app, wishes, wishes)
+    drafter = app.state.twins.drafter
+    silent = drafter.attempt(drafter.begin("Heat a plate to 37 °C, then read it."))[1]
+    assert silent["preferences"] == []
+    stated = drafter.attempt(drafter.begin("Heat a plate, then read it; keep them close."))[1]
+    assert stated["preferences"][0]["kind"] == "near"

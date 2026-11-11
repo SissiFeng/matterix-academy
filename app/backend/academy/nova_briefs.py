@@ -9,6 +9,7 @@ with the brief so the next poll can continue it.
 """
 
 import json
+import re
 
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
@@ -16,6 +17,12 @@ from pydantic import ValidationError
 
 ATTEMPTS = 4
 TOOL = "teaching_workflow_draft"
+# Words a description uses when it states where instruments go on the bench.
+PLACES = re.compile(
+    r"\b(near|close|next to|beside|adjacent|apart|away|far|left|right|front|back|"
+    r"side|corner|cm|metres?|meters?|m)\b",
+    re.IGNORECASE,
+)
 NAMES = {"pro": "Amazon Nova Pro", "lite": "Amazon Nova Lite", "micro": "Amazon Nova Micro"}
 
 
@@ -129,4 +136,10 @@ class NovaBriefs:
                 },
             ]
             return "generating", None, "", state
-        return "draft", draft.model_dump(mode="json"), "", state
+        draft = draft.model_dump(mode="json")
+        # Nova adds placement wishes the text never states; they would only narrow the
+        # layout search, so they are dropped unless the description talks about places.
+        text = state["messages"][0]["content"][0]["text"].rsplit("Workflow description:", 1)[-1]
+        if not PLACES.search(text):
+            draft["preferences"] = []
+        return "draft", draft, "", state
