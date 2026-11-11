@@ -57,6 +57,30 @@ test("a learner without a GPU runs the experiment on the Flex teaching twin", as
   ).toBe(true);
 });
 
+test("an idle teaching-twin page reads status rarely and never polls the twin run", async ({
+  page,
+}) => {
+  await enter(page);
+  const session = await (
+    await page.request.post("/api/simulations", {
+      data: { session_id: crypto.randomUUID(), seed: 42 },
+    })
+  ).json();
+  const calls: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith("/api/")) calls.push(path);
+  });
+  await page.goto(`/#/sim/${session.id}`);
+  await expect(
+    page.getByRole("button", { name: "Run mixing experiment" }),
+  ).toBeEnabled();
+  await page.waitForTimeout(6000);
+  expect(calls.filter((path) => path.endsWith("/twin-run"))).toHaveLength(1);
+  // Was about two requests a second; one read of each resource is enough here.
+  expect(calls.length).toBeLessThanOrEqual(6);
+});
+
 test("unqualified GPU twin displays no fabricated video, progress or amounts", async ({
   page,
 }) => {

@@ -90,6 +90,8 @@ export default function SimulationLab({
   const mutation = useRef(0);
   const inFlight = useRef(false);
   const launch = useRef<{ session_id: string; seed: number } | null>(null);
+  // Milliseconds between status reads; only a live GPU run needs the fast rate.
+  const pace = useRef(2000);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -101,14 +103,24 @@ export default function SimulationLab({
     let timer: number | undefined;
     const controller = new AbortController();
     setResolved(false);
+    let catalogAt = 0;
+    // A twin run changes only when this page starts one, so it is read once.
+    let twinLoaded = false;
     const poll = async () => {
+      if (document.hidden) {
+        timer = window.setTimeout(poll, 2000);
+        return;
+      }
       const epoch = mutation.current;
       try {
-        const nextCatalog = await api<Catalog>("/simulations", {
-          signal: controller.signal,
-        });
-        if (!active) return;
-        setCatalog(nextCatalog);
+        if (Date.now() - catalogAt >= 10000) {
+          const nextCatalog = await api<Catalog>("/simulations", {
+            signal: controller.signal,
+          });
+          if (!active) return;
+          setCatalog(nextCatalog);
+          catalogAt = Date.now();
+        }
         if (selectedId) {
           const [nextSession, nextRun, nextTwinRun] = await Promise.all([
             api<SimulationSession>(`/sessions/${selectedId}`, {
@@ -117,15 +129,20 @@ export default function SimulationLab({
             api<SimulationRun | null>(`/sessions/${selectedId}/remote-run`, {
               signal: controller.signal,
             }),
-            api<TwinRun | null>(`/simulations/${selectedId}/twin-run`, {
-              signal: controller.signal,
-            }),
+            twinLoaded
+              ? undefined
+              : api<TwinRun | null>(`/simulations/${selectedId}/twin-run`, {
+                  signal: controller.signal,
+                }),
           ]);
           if (!active || epoch !== mutation.current) return;
           if (nextSession.experiment.course_id !== "flex-mixing")
             throw new Error("This session is not a mixing simulation.");
           setSession(nextSession);
-          setTwinRun(nextTwinRun);
+          if (nextTwinRun !== undefined) {
+            setTwinRun(nextTwinRun);
+            twinLoaded = true;
+          }
           setRun((old) =>
             old &&
             nextRun?.run_id === old.run_id &&
@@ -142,7 +159,7 @@ export default function SimulationLab({
           if (!catalog) setError((e as Error).message);
         }
       } finally {
-        if (active) timer = window.setTimeout(poll, 2000);
+        if (active) timer = window.setTimeout(poll, pace.current);
       }
     };
     void poll();
@@ -378,6 +395,7 @@ export default function SimulationLab({
             ? "done"
             : "idle";
   const hasEnded = !!run && terminalRuns.has(run.status);
+  pace.current = run && !hasEnded ? 2000 : native ? 5000 : 15000;
   const a1 = native
     ? state?.well_volumes_ul.A1
     : frame?.mixture_components_ul.reduce((a, b) => a + b, 0);
