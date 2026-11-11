@@ -509,7 +509,7 @@ export default function LayoutPanel({
             </small>
           </div>
         )}
-        {motions.length > 0 && unchecked.length > 0 && (
+        {entries.length > 0 && unchecked.length > 0 && (
           <small className={s.hint}>
             Sizes not checked against the real instrument:{" "}
             {unchecked.join(", ")}.
