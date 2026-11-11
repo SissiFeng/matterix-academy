@@ -79,8 +79,42 @@ class Draft(StrictModel):
                 raise ValueError("A zone needs a side; near and apart need a second role")
             if p.other_role == p.role:
                 raise ValueError("Near and apart need two different roles")
+        loaded, at = {}, {}  # first load step and current role of each sample
+        for i, step in enumerate(self.steps, 1):
+            if step.operation == "load":
+                if step.sample in loaded:
+                    raise ValueError(
+                        f"Step {i} loads {step.sample} again after step {loaded[step.sample]}; "
+                        "load each sample once and move it with a transfer step"
+                    )
+                loaded[step.sample], at[step.sample] = i, step.role
+            elif step.operation == "wait":
+                continue
+            elif step.sample not in at:
+                raise ValueError(
+                    f"Step {i} acts on {step.sample} before any step loads it; start with "
+                    "one load step where the sample begins"
+                )
+            elif step.operation == "transfer":
+                if step.source_role != at[step.sample]:
+                    raise ValueError(
+                        f"Step {i} moves {step.sample} from {step.source_role}, but it is at "
+                        f"{at[step.sample]}; order the steps so each move starts where the "
+                        "sample is"
+                    )
+                at[step.sample] = step.target_role
+            elif step.role != at[step.sample]:
+                raise ValueError(
+                    f"Step {i}: {step.sample} is at {at[step.sample]}, not {step.role}; move "
+                    "it there first or act on it where it is"
+                )
         movers = {s.role for s in self.steps if s.operation == "transfer"}
         for role in self.roles:
+            if role.key in movers and "load" in role.operations:
+                raise ValueError(
+                    f"{role.name} moves samples, so it must not hold one: give the moves to "
+                    "a robot role with only transfer, and keep load on the stations"
+                )
             if role.reach_slots and "load" not in role.operations:
                 raise ValueError(f"{role.name} holds no samples, so it has no slots to reach")
             # A station that never moves a sample must not claim transfer, or no
@@ -188,7 +222,8 @@ PROMPT = (
     "each sample once, then every move between stations is a transfer step by a role "
     "with the transfer operation, with source_role and target_role set; leave both empty "
     "for other steps. Every role a sample is ever at, including each transfer's source "
-    "and target, lists load among its operations. Other steps act on the sample named in sample. reach_slots is how "
+    "and target, lists load among its operations; that only says it can hold one, and "
+    "adds no step: a sample has exactly one load step, where it starts. Other steps act on the sample named in sample. reach_slots is how "
     "many slots on that instrument a robot arm must reach when the text says so, else 0. "
     "preferences hold layout wishes the text states: zone (role on the left, right, "
     "front or back of the bench, other_role empty), near or apart (two roles within or "
