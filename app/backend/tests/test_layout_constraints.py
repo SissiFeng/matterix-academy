@@ -170,3 +170,15 @@ def test_consolidation_offers_a_shared_deck(client, monkeypatch):
     # Plates a and b join c and d on the Flex: one more slot than its peak of three.
     assert into_flex["transfers_saved"] == 1 and into_flex["extra_slots"] == 1
     assert "more slots" in into_flex["message"]
+
+
+def test_searched_layouts_stand_square_to_the_bench(client, monkeypatch):
+    from academy import layout_search
+
+    monkeypatch.setattr(layout_search, "CHUNK_PLANS", 4)
+    monkeypatch.setattr(layout_search, "CHUNK_SECONDS", 120.0)
+    placed_cell(client)
+    found = search(client)
+    assert found["candidates"]
+    for option in found["candidates"]:
+        assert all(p["yaw"] % 90 == 0 for p in option["layout"]["placements"])

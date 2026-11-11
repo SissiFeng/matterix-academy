@@ -318,6 +318,8 @@ export type BriefRole = {
   operations: Operation[];
   vessel: Vessel;
   query: string;
+  /** The maker or model the description names for this role, when it names one. */
+  model?: string;
   reach_slots?: number;
 };
 export type BriefStep = {

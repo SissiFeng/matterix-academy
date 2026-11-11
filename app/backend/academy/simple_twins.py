@@ -982,6 +982,64 @@ def drawn(twin):
     return {**twin, "asset": {**asset, "mesh": mesh}} if mesh else twin
 
 
+def new_twin(twin_id, source, spec, asset):
+    """An unconfirmed twin, as a learner starts one from a template or a library entry."""
+    return {
+        "id": str(twin_id),
+        "status": "draft",
+        "confirmed": False,
+        "mode": "mock",
+        "source": source,
+        "spec": deepcopy(spec),
+        "asset": asset,
+        "image_sha256": None,
+        "identification": None,
+        "matches": [],
+        "response_id": None,
+        "message": "",
+        "evidence": "synthetic",
+        "revision": 0,
+        "residuals": [],
+    }
+
+
+def library_pick(role):
+    """The library entry or template to start a drafted role's twin from, with its spec.
+
+    The instrument the description names comes first, then the role's own search words,
+    then anything that can do what the role does. An entry must support the role's
+    operations and slots; its vessel is a teaching default and follows the role.
+    """
+    from . import chemlab, simready, workcell_models
+    from .library import COLLECTIONS, search
+    from .workflow_brief import fits
+
+    provenance = {
+        "chemlab": chemlab.provenance,
+        "simready": simready.provenance,
+        "workcell": workcell_models.provenance,
+    }
+    purposes = " ".join(o for o in role["operations"] if o in {"mix", "heat", "read", "transfer"})
+    for query in dict.fromkeys(
+        filter(None, [role.get("model"), role["query"], role["name"], purposes])
+    ):
+        for found in search(query, 300)["results"]:
+            spec = deepcopy(COLLECTIONS[found["collection"]][found["id"]]["spec"])
+            if not fits(role, spec, vessel=False):
+                continue
+            if role["vessel"] != "none":
+                spec["container"]["vessel"] = role["vessel"]
+            asset = provenance[found["collection"]](found["id"])
+            return f"{found['collection']}_asset", spec, asset
+    for spec in TEMPLATES.values():
+        if fits(role, spec, vessel=False):
+            spec = {**deepcopy(spec), "name": role["name"]}
+            if role["vessel"] != "none":
+                spec["container"]["vessel"] = role["vessel"]
+            return "academy_template", spec, None
+    return None
+
+
 class SimpleTwinService:
     key = "simple-lab"
 
@@ -1220,29 +1278,18 @@ class SimpleTwinService:
             if hasattr(self.provider, "api_key"):
                 # Fail before claiming: an unreadable key means nothing was submitted.
                 self.provider.api_key()
-        twin = {
-            "id": str(data.id),
-            "status": "starting" if data.image else "draft",
-            "confirmed": False,
-            "mode": "mock",
-            "source": source,
-            "spec": deepcopy(
-                TEMPLATES[data.template_id]
-                if data.template_id
-                else assets[asset_id]["spec"]
-                if asset_id
-                else None
-            ),
-            "asset": provenance(asset_id) if asset_id else None,
-            "image_sha256": hashlib.sha256(raw).hexdigest() if data.image else None,
-            "identification": None,
-            "matches": [],
-            "response_id": None,
-            "message": "",
-            "evidence": "synthetic",
-            "revision": 0,
-            "residuals": [],
-        }
+        twin = new_twin(
+            data.id,
+            source,
+            TEMPLATES[data.template_id]
+            if data.template_id
+            else assets[asset_id]["spec"]
+            if asset_id
+            else None,
+            provenance(asset_id) if asset_id else None,
+        )
+        if data.image:
+            twin.update(status="starting", image_sha256=hashlib.sha256(raw).hexdigest())
         record["twins"].append(twin)
         # Claim before the paid call so a crash leaves a visible record, never a silent replay.
         catalog = self.save(owner, record, data.expected_version)
@@ -1440,7 +1487,8 @@ class SimpleTwinService:
             latest = self.get(owner)
             if (latest.get("brief") or {}).get("id") != brief["id"]:
                 return self.catalog(owner)
-            latest["brief"] = brief
+            latest["brief"] = deepcopy(brief)
+            self.choose(latest)
             try:
                 return self.save(owner, latest, latest["version"])
             except Conflict:
@@ -1457,6 +1505,39 @@ class SimpleTwinService:
             keys = {r["key"] for r in draft["roles"]}
             brief["bindings"] = {k: v for k, v in brief["bindings"].items() if k in keys}
 
+    @staticmethod
+    def choose(record):
+        """Give every drafted role an instrument, for the learner to review.
+
+        A role keeps the instrument already chosen for it. Otherwise it takes a twin the
+        workcell has that can play it, or a new unconfirmed twin started from the library.
+        """
+        from .workflow_brief import fits, used_roles
+
+        brief = record.get("brief") or {}
+        if not brief.get("draft"):
+            return
+        twins = {t["id"]: t for t in record["twins"]}
+        bindings = {k: v for k, v in brief["bindings"].items() if v in twins}
+        for role in used_roles(brief["draft"]):
+            if role["key"] in bindings:
+                continue
+            free = [
+                t
+                for t in record["twins"]
+                if t["id"] not in bindings.values() and t["spec"] and fits(role, t["spec"])
+            ]
+            if free:
+                # A confirmed instrument is one the learner already reviewed.
+                bindings[role["key"]] = max(free, key=lambda t: t["confirmed"])["id"]
+                continue
+            picked = len(record["twins"]) < 12 and library_pick(role)
+            if picked:
+                twin = new_twin(uuid4(), *picked)
+                record["twins"].append(twin)
+                bindings[role["key"]] = twin["id"]
+        brief["bindings"] = bindings
+
     def poll_brief(self, owner, data):
         record = self.current(owner, data.expected_version)
         brief = record.get("brief")
@@ -1466,6 +1547,35 @@ class SimpleTwinService:
         self._brief_result(brief, result)
         if brief["status"] == "generating":
             return self.catalog(owner)
+        self.choose(record)
+        return self.save(owner, record, data.expected_version)
+
+    def choose_instruments(self, owner, data):
+        """Fill the roles that have no instrument yet; chosen ones stay as they are."""
+        record = self.current(owner, data.expected_version)
+        if not (record.get("brief") or {}).get("draft"):
+            raise HTTPException(409, "Draft a workflow from a description first")
+        self.choose(record)
+        return self.save(owner, record, data.expected_version)
+
+    def accept_brief(self, owner, data):
+        """Confirm the instruments chosen for the draft as they stand and use its steps."""
+        from .workflow_brief import used_roles
+
+        record = self.current(owner, data.expected_version)
+        brief = record.get("brief") or {}
+        if not brief.get("draft"):
+            raise HTTPException(409, "Draft a workflow from a description first")
+        chosen = {brief["bindings"].get(r["key"]) for r in used_roles(brief["draft"])}
+        for twin in record["twins"]:
+            if (
+                twin["id"] in chosen
+                and not twin["confirmed"]
+                and twin["status"] in {"draft", "ready"}
+            ):
+                TwinSpec.model_validate(twin["spec"])
+                twin.update(confirmed=True, status="ready", revision=1)
+        self._apply(record)
         return self.save(owner, record, data.expected_version)
 
     def bind_role(self, owner, data):
@@ -1484,9 +1594,14 @@ class SimpleTwinService:
 
     def apply_brief(self, owner, data):
         """Replace the saved workflow with the drafted steps on the chosen instruments."""
-        from .workflow_brief import apply
 
         record = self.current(owner, data.expected_version)
+        self._apply(record)
+        return self.save(owner, record, data.expected_version)
+
+    def _apply(self, record):
+        from .workflow_brief import apply
+
         twins = {t["id"]: t for t in record["twins"]}
         try:
             steps, constraints = apply(record.get("brief") or {}, twins)
@@ -1508,7 +1623,6 @@ class SimpleTwinService:
         self.check_plan(record, steps)
         record["steps"] = steps
         record["constraints"] = constraints
-        return self.save(owner, record, data.expected_version)
 
     def import_brief(self, owner, data):
         """A workflow file from another tool, checked like an Astra draft; nothing is run."""
@@ -1528,6 +1642,7 @@ class SimpleTwinService:
             "draft": draft,
             "bindings": {k: v for k, v in bindings.items() if k in keys},
         }
+        self.choose(record)
         return self.save(owner, record, data.expected_version)
 
     def plan(self, owner, data):

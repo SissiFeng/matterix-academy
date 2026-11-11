@@ -65,9 +65,14 @@ def _base(twins, placement):
 
 
 def _pose(spec, side, point, toward):
-    """The placement whose access point is at `point` with its front facing `toward`."""
-    yaw = round(math.degrees(math.atan2(toward[0] - point[0], toward[1] - point[1])))
-    yaw = 180 if yaw == -180 else yaw
+    """The placement whose access point is at `point`, its front turned toward `toward`.
+
+    The front faces the arm as nearly as a quarter turn allows: instruments stand square
+    to the bench and to each other, as people arrange them, never at an odd angle.
+    """
+    facing = math.degrees(math.atan2(toward[0] - point[0], toward[1] - point[1]))
+    yaw = round(facing / 90) * 90 % 360
+    yaw = yaw - 360 if yaw > 180 else yaw
     x0, x1, z0, z1 = footprint(spec)
     local = ((x0 + x1) / 2, z1 + 0.04 if side == "front" else (z0 + z1) / 2)
     rx, rz = _yaw(yaw, *local)
