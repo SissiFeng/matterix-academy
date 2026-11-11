@@ -12,13 +12,57 @@ async function enter(page: Page) {
     .click();
 }
 
-test("unqualified native lab displays no fabricated video, progress or amounts", async ({
+test("a learner without a GPU runs the experiment on the Flex teaching twin", async ({
   page,
 }) => {
+  let nativeRuns = 0;
+  await page.route("**/api/runs", (route) => {
+    nativeRuns += 1;
+    return route.abort();
+  });
   await enter(page);
   await expect(
     page.getByRole("heading", { name: "Four sources. One mixture." }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: /Flex teaching twin/ }),
+  ).toBeChecked();
+  await expect(page.getByText("Not run yet").first()).toBeVisible();
+  await page.getByRole("button", { name: "Run mixing experiment" }).click();
+  await expect(page).toHaveURL(/#\/sim\/[a-f0-9-]+$/);
+  await expect(
+    page.getByRole("progressbar", { name: "Completed steps" }),
+  ).toHaveAttribute("aria-valuenow", "5", { timeout: 15000 });
+  await expect(page.locator("strong", { hasText: /^40 µL$/ })).toBeVisible();
+  await expect(page.getByText("4 / 4", { exact: true })).toBeVisible();
+  await expect(page.getByText("Parked on D4")).toBeVisible();
+  // The engine is named wherever the result is shown; nothing claims to be native.
+  await expect(page.getByText("Flex teaching twin · synthetic")).toBeVisible();
+  await expect(page.getByText("SYNTHETIC · NOT A LIVE VIEW")).toBeVisible();
+  await expect(page.getByText(/Not an Isaac\/GPU run/)).toBeVisible();
+  await expect(page.getByText("A fresh tip for every source")).toBeVisible();
+  await expect(page.locator("video")).toHaveCount(0);
+  await expect(page.getByText("Native observations")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("strong", { hasText: /^40 µL$/ })).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: /Flex teaching twin/ }),
+  ).toBeChecked();
+  expect(nativeRuns).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("unqualified GPU twin displays no fabricated video, progress or amounts", async ({
+  page,
+}) => {
+  await enter(page);
+  await page.getByRole("radio", { name: /Digital twin on GPU/ }).check();
+  await expect(page.getByText("Awaiting qualification")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Run mixing experiment" }),
   ).toBeDisabled();
@@ -26,16 +70,46 @@ test("unqualified native lab displays no fabricated video, progress or amounts",
   await expect(page.locator("video")).toHaveJSProperty("srcObject", null);
   await expect(page.getByText("Vial 2 → well A1")).toBeVisible();
   await expect(page.getByText("Vial 6 → well A1")).toBeVisible();
-  await page.reload();
+  await expect(page.getByText("40 µL", { exact: true })).toHaveCount(0);
+});
+
+test("a saved instrument twin stops the experiment at the layer it cannot satisfy", async ({
+  page,
+}) => {
+  await enter(page);
+  const id = crypto.randomUUID();
+  const added = await page.request.post("/api/twins", {
+    data: { expected_version: 0, id, template_id: "liquid-handler" },
+  });
+  const catalog = await added.json();
+  const spec = {
+    ...catalog.twins[0].spec,
+    name: "Small-volume handler",
+    container: { vessel: "plate", max_volume_ul: 25 },
+  };
+  const confirmed = await page.request.put(`/api/twins/${id}/confirm`, {
+    data: { expected_version: catalog.version, spec },
+  });
+  expect(confirmed.ok()).toBe(true);
+  await page.getByRole("radio", { name: /Small-volume handler/ }).check();
+  await page.getByRole("button", { name: "Run mixing experiment" }).click();
+  await expect(page.getByText("Stopped at step 4")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page.getByRole("alert")).toContainText(
+    "Small-volume handler holds 25 µL; this transfer needs 30 µL",
+  );
+  await expect(page.locator("strong", { hasText: /^20 µL$/ })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Four sources. One mixture." }),
+    page.getByText("Small-volume handler · synthetic"),
   ).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  // The built-in twin still runs the same experiment to the end.
+  await page.getByRole("radio", { name: /Flex teaching twin/ }).check();
+  await expect(page.getByText("Not run yet").first()).toBeVisible();
+  await page.getByRole("button", { name: "Run mixing experiment" }).click();
+  await expect(
+    page.getByRole("progressbar", { name: "Completed steps" }),
+  ).toHaveAttribute("aria-valuenow", "5", { timeout: 15000 });
 });
 
 test("saved native fixture displays matching quantities and survives refresh without another run", async ({
@@ -193,6 +267,7 @@ test("first visit can request a GPU before mixing execution is qualified", async
     return route.abort();
   });
   await enter(page);
+  await page.getByRole("radio", { name: /Digital twin on GPU/ }).check();
   await expect(
     page.getByRole("button", { name: "Run mixing experiment", exact: true }),
   ).toBeDisabled();

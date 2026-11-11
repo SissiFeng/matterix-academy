@@ -168,3 +168,51 @@ resource "aws_cloudwatch_metric_alarm" "database_throttles" {
 
 output "alarm_topic_arn" { value = try(aws_sns_topic.alerts[0].arn, null) }
 output "monthly_budget_scope" { value = length(aws_budgets_budget.monthly) > 0 ? var.budget_scope : null }
+
+# GPU host alarms read the embedded metrics the reaper logs each minute (namespace Academy/GPU).
+# They exist only when a GPU host is configured; none of them stops or starts anything.
+locals {
+  gpu_alarms = var.gpu_instance_id == "" ? {} : {
+    unwanted-running = {
+      metric      = "UnwantedRunningSeconds"
+      threshold   = 1800
+      periods     = 1
+      description = "The GPU host has been running for 30 minutes with no demand. The controller should have stopped it; check the host and stop it manually if needed."
+    }
+    long-running = {
+      metric      = "RunningSeconds"
+      threshold   = 14400
+      periods     = 1
+      description = "The GPU host has been running for four hours. Confirm that this is intended use."
+    }
+    needs-operator = {
+      metric      = "NeedsOperator"
+      threshold   = 1
+      periods     = 3
+      description = "The GPU controller has reported an operator-attention state for 15 minutes."
+    }
+    capacity-wait = {
+      metric      = "CapacityWait"
+      threshold   = 1
+      periods     = 3
+      description = "AWS has had no GPU capacity for the pinned host for 15 minutes; learners are waiting."
+    }
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "gpu" {
+  for_each            = local.gpu_alarms
+  alarm_name          = "${local.name}-gpu-${each.key}"
+  alarm_description   = each.value.description
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = each.value.periods
+  metric_name         = each.value.metric
+  namespace           = "Academy/GPU"
+  period              = 300
+  statistic           = "Minimum"
+  threshold           = each.value.threshold
+  treat_missing_data  = "notBreaching"
+  dimensions          = { Instance = var.gpu_instance_id }
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
+}

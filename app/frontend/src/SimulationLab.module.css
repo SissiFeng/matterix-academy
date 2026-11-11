@@ -545,3 +545,131 @@
     transform: scale(0.82);
   }
 }
+.engines {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  min-width: 250px;
+}
+.engines legend {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.engines label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: var(--hairline) solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  font-size: 13px;
+  cursor: pointer;
+}
+.engines label:has(input:checked) {
+  border-color: var(--line-emph);
+  background: var(--surface-2);
+}
+.engines label:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+.engines input {
+  accent-color: var(--green);
+  margin: 0;
+}
+.engines label > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.engines label small {
+  font-size: 10px;
+}
+.schematic {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #101b16;
+  font:
+    10px "Manrope",
+    sans-serif;
+  letter-spacing: 0.08em;
+  fill: #9fb0a3;
+}
+.schematic > rect:first-child {
+  fill: #172820;
+  stroke: #ffffff20;
+}
+.vessel {
+  fill: #0c1511;
+  stroke: #57765f;
+}
+[data-active] > .vessel {
+  stroke: #e3ebe2;
+  stroke-width: 2;
+}
+.liquid {
+  fill: #7eaf88;
+  transition:
+    y var(--dur-3) var(--ease-out),
+    height var(--dur-3) var(--ease-out),
+    width var(--dur-3) var(--ease-out);
+}
+.lid {
+  fill: #bd9f5d;
+  opacity: 0;
+  transition: opacity var(--dur-3) var(--ease-in-out);
+}
+.lid[data-shown] {
+  opacity: 1;
+}
+.tip {
+  fill: #7eaf88;
+}
+.tip[data-used] {
+  fill: transparent;
+  stroke: #57765f;
+}
+.amount {
+  fill: #e3ebe2;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.route {
+  fill: none;
+  stroke: #e3ebe2;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+}
+.checks {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 8px;
+}
+.checks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.checks [data-passed="true"] svg {
+  color: var(--ok);
+}
+.checks [data-passed="false"] svg {
+  color: var(--danger);
+}
+.currentAction[data-stopped] p {
+  color: var(--danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  .liquid,
+  .lid {
+    transition: none;
+  }
+}

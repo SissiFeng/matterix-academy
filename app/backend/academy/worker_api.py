@@ -329,4 +329,5 @@ def reap_handler(event, context):
     }
     if runs.gpu:
         result["gpu"] = runs.gpu.reconcile()
+        print(json.dumps(runs.gpu.metrics()))
     return result

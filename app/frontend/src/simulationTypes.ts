@@ -90,3 +90,30 @@ export const terminalRuns = new Set([
   "cancelled",
   "outcome_unknown",
 ]);
+export type TwinOption = {
+  key: string;
+  kind: "builtin" | "device" | "instrument";
+  name: string;
+  revision: number;
+};
+export type TwinFrame = Pick<
+  MixingState,
+  | "source_volumes_ul"
+  | "mixture_components_ul"
+  | "lid_parked"
+  | "tips_used"
+  | "tips_discarded"
+>;
+/** The recipe replayed on a saved teaching twin: synthetic, never native. */
+export type TwinRun = {
+  version: number;
+  run_id: string;
+  session_id: string;
+  engine: "teaching" | "simple_twin";
+  evidence: "synthetic";
+  twin: TwinOption;
+  status: "completed" | "stopped";
+  stop: { step: number; layer: string; message: string } | null;
+  frames: TwinFrame[];
+  checks: { label: string; passed: boolean }[];
+};

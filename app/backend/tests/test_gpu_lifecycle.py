@@ -13,6 +13,7 @@ from academy.gpu_lifecycle import (
     startup_seconds,
 )
 from academy.runs import RunService, SubmitRun, revised
+from academy.store import Write
 from botocore.exceptions import ClientError, ReadTimeoutError
 from fastapi import HTTPException
 from test_dispatch import saved, worker
@@ -798,3 +799,85 @@ def test_startup_bound_is_configurable_within_limits(monkeypatch, value, expecte
     else:
         monkeypatch.setenv("ACADEMY_GPU_STARTUP_SECONDS", value)
     assert startup_seconds() == expected
+
+
+def test_one_missed_heartbeat_long_after_boot_is_not_an_operator_fault(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    boot(gpu, ec2, None, now)
+    for _ in range(70):  # ready for longer than the startup bound
+        now[0] += 10
+        heartbeat(gpu, now)
+        assert gpu.reconcile()["state"] == "ready"
+    now[0] += 50
+    assert gpu.reconcile()["state"] == "preparing"
+    assert gpu.claim_writes() is not None
+    heartbeat(gpu, now)
+    assert tick(gpu, now)["state"] == "ready"
+    # A worker that stays quiet for the whole bound still needs an operator.
+    now[0] += 601
+    status = gpu.reconcile()
+    assert status["state"] == "error"
+    assert gpu.record()["error_code"] == "worker_start_timeout"
+    assert gpu.claim_writes() is None
+
+
+@pytest.mark.parametrize("code", ["RequestLimitExceeded", "Throttling"])
+def test_aws_throttling_is_retried_soon_and_is_not_an_operator_fault(managed, code):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    ec2.describe_instances.side_effect = ClientError({"Error": {"Code": code}}, "DescribeInstances")
+    gpu.reconcile()
+    assert gpu.status()["state"] == "preparing"
+    assert gpu.record()["retry_at"] == now[0] + 30
+    ec2.describe_instances.side_effect = None
+    now[0] += 31
+    assert gpu.reconcile()["state"] == "starting"
+    ec2.start_instances.assert_called_once()
+
+
+def test_silent_idle_host_is_stopped_once_nothing_can_be_waiting_on_it(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    boot(gpu, ec2, None, now)
+    heartbeat(gpu, now)
+    assert tick(gpu, now)["state"] == "ready"
+    # The worker wedges: demand lapses, but a stale worker alone is not yet a reason to stop.
+    now[0] += 3600 + 600
+    gpu.reconcile()
+    ec2.stop_instances.assert_not_called()
+    metric = gpu.metrics()
+    assert (metric["HostRunning"], metric["NeedsOperator"]) == (1, 1)
+    assert metric["UnwantedRunningSeconds"] >= 600
+    assert metric["_aws"]["CloudWatchMetrics"][0]["Namespace"] == "Academy/GPU"
+    assert metric["Instance"] == "i-pinned"
+    # A queued workflow still holds the host for its own deadline.
+    gpu.store.put("system#queue", "1#waiting", {"version": 1}, None)
+    now[0] += 400
+    gpu.reconcile()
+    ec2.stop_instances.assert_not_called()
+    gpu.store.transact([Write("system#queue", "1#waiting", None, 1)])
+    now[0] += 61
+    gpu.reconcile()
+    ec2.stop_instances.assert_called_once_with(InstanceIds=["i-pinned"])
+    assert gpu.record()["error_code"] == "silent_host_stopped"
+    assert gpu.claim_writes() is None
+    power(ec2, "stopped")
+    assert tick(gpu, now)["state"] == "sleeping"
+    assert gpu.metrics()["HostRunning"] == 0
+
+
+def test_new_demand_does_not_boot_a_host_whose_only_worker_holds_an_unresolved_run(managed):
+    gpu, ec2, _, now = managed
+    hold(gpu, "quarantined", status="outcome_unknown", updated_at=now[0] - 7200)
+    demand(gpu)
+    gpu.reconcile()
+    ec2.start_instances.assert_not_called()
+    status = gpu.status()
+    assert status["state"] == "error"
+    assert "operator review" in status["message"]
+    # Once an operator reconciles the run, the same demand boots the host.
+    old = gpu.store.get("system#workers", "lab-1")
+    gpu.store.put("system#workers", "lab-1", revised(old, active_run=None), old["version"])
+    tick(gpu, now, 61)
+    ec2.start_instances.assert_called_once_with(InstanceIds=["i-pinned"])

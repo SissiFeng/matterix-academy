@@ -19,6 +19,7 @@ from .gpu_lifecycle import configured as configured_gpu
 from .learning import present, readiness
 from .library import search
 from .media import MediaService, ViewerRequest
+from .mixing_twins import MixingTwinService, TwinRun
 from .mock_connector import router as mock_connector_router
 from .models import COURSES, Experiment, Guest, Profile, Revision, UpdateExperiment, UpdateLearning
 from .onboarding import DeviceUpdate, OnboardingService, TwinCreate
@@ -86,6 +87,7 @@ def create_app(settings: Settings | None = None, store=None):
     app.include_router(workcell_router)
     app.state.media = MediaService(app.state.runs)
     app.state.twins = SimpleTwinService(app.state.store, settings)
+    app.state.mixing_twins = MixingTwinService(app.state.store, app.state.twins)
     if settings.runtime == "local":
         app.add_middleware(
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
@@ -515,6 +517,7 @@ def create_app(settings: Settings | None = None, store=None):
         return {
             **app.state.runs.availability(owner),
             "recipe": MixingPlan().model_dump(mode="json"),
+            "twins": app.state.mixing_twins.catalog(owner),
             "sessions": [
                 session
                 for session in app.state.store.list(owner)
@@ -533,6 +536,14 @@ def create_app(settings: Settings | None = None, store=None):
             return existing
         app.state.store.put(owner, key, expected, None)
         return expected
+
+    @app.get("/api/simulations/{session_id}/twin-run")
+    def twin_run(session_id: UUID, owner: str = Depends(identify)):
+        return app.state.mixing_twins.get(owner, session_id)
+
+    @app.post("/api/simulations/{session_id}/twin-run", status_code=201)
+    def run_on_twin(session_id: UUID, data: TwinRun, owner: str = Depends(identify)):
+        return app.state.mixing_twins.run(owner, session_id, data)
 
     @app.post("/api/sessions", status_code=201)
     def create_session(experiment: Experiment, owner: str = Depends(identify)):
