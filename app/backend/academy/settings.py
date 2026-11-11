@@ -34,6 +34,9 @@ class Settings:
     twin_region: str = ""
     twin_api_key: str = ""
     twin_api_key_secret: str = ""
+    # Workflow drafting with an Amazon Nova model through the Lambda role, instead of Astra.
+    brief_model: str = ""
+    brief_region: str = ""
 
     def __post_init__(self):
         if self.runtime not in {"local", "aws"}:
@@ -49,6 +52,12 @@ class Settings:
             raise ValueError("ACADEMY_TWIN_API_KEY_SECRET must be a Secrets Manager secret ARN")
         if (self.twin_api_key or self.twin_api_key_secret) and not self.twin_region:
             raise ValueError("A Bedrock twin key requires ACADEMY_TWIN_REGION")
+        if self.brief_model and not re.fullmatch(
+            r"(us|ca|eu|apac|global)\.amazon\.nova-[a-z0-9.-]+:\d+", self.brief_model
+        ):
+            raise ValueError("ACADEMY_BRIEF_MODEL must be an Amazon Nova inference profile ID")
+        if bool(self.brief_model) != bool(self.brief_region):
+            raise ValueError("Set ACADEMY_BRIEF_MODEL and ACADEMY_BRIEF_REGION together")
         if self.runtime == "aws" and self.twin_api_key:
             raise ValueError("AWS reads the Bedrock twin key from Secrets Manager, not plaintext")
         if self.runtime == "aws" and (
@@ -109,4 +118,6 @@ class Settings:
             twin_region=os.getenv("ACADEMY_TWIN_REGION", ""),
             twin_api_key=os.getenv("ACADEMY_TWIN_API_KEY", ""),
             twin_api_key_secret=os.getenv("ACADEMY_TWIN_API_KEY_SECRET", ""),
+            brief_model=os.getenv("ACADEMY_BRIEF_MODEL", ""),
+            brief_region=os.getenv("ACADEMY_BRIEF_REGION", ""),
         )

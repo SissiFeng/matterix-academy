@@ -274,3 +274,137 @@ def test_cleared_roles_can_be_chosen_again_without_touching_the_rest(client, app
     assert "reader" in catalog["brief"]["bindings"] and len(catalog["twins"]) == 3
     none = client.put("/api/twins/workflow/brief/choose", json={"expected_version": 0})
     assert none.status_code == 409
+
+
+class FakeConverse:
+    """Bedrock Converse returning the given tool inputs in order; an exception is raised."""
+
+    def __init__(self, *outputs):
+        self.outputs = list(outputs)
+        self.calls = []
+
+    def converse(self, **request):
+        self.calls.append(json.loads(json.dumps(request)))
+        output = self.outputs.pop(0)
+        if isinstance(output, Exception):
+            raise output
+        return {
+            "output": {
+                "message": {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "toolUse": {
+                                "toolUseId": f"t{len(self.calls)}",
+                                "name": "x",
+                                "input": output,
+                            }
+                        }
+                    ],
+                }
+            }
+        }
+
+
+def nova(app, *outputs):
+    from academy.nova_briefs import NovaBriefs
+    from academy.settings import Settings
+
+    fake = FakeConverse(*outputs)
+    settings = Settings(brief_model="us.amazon.nova-pro-v1:0", brief_region="us-east-1")
+    app.state.twins.drafter = NovaBriefs(settings, client=fake)
+    return fake
+
+
+def poll(client, version):
+    return client.post("/api/twins/workflow/brief/poll", json={"expected_version": version})
+
+
+def test_nova_drafts_through_the_lambda_role_and_corrects_a_rejected_draft(client, app):
+    station_with_transfer = json.loads(json.dumps(DRAFT))
+    station_with_transfer["roles"][0]["operations"].append("transfer")
+    fake = nova(app, station_with_transfer, DRAFT)
+    catalog = client.get("/api/twins").json()
+    assert catalog["brief_available"] and catalog["brief_model"] == "Amazon Nova Pro"
+    # Astra stays off: photo sketches still need it.
+    assert catalog["astra_available"] is False
+
+    first = describe(client, catalog["version"])
+    assert first.status_code == 200, first.text
+    brief = first.json()["brief"]
+    assert brief["status"] == "generating" and "exchange" not in brief
+    assert fake.calls[0]["modelId"] == "us.amazon.nova-pro-v1:0"
+    assert fake.calls[0]["toolConfig"]["toolChoice"] == {
+        "tool": {"name": "teaching_workflow_draft"}
+    }
+
+    done_ = poll(client, first.json()["version"])
+    assert done_.status_code == 200, done_.text
+    assert done_.json()["brief"]["status"] == "draft"
+    assert done_.json()["brief"]["draft"]["roles"][0]["operations"] == ["load", "heat"]
+    # As with Astra, every role the steps use is given an instrument to review.
+    assert set(done_.json()["brief"]["bindings"]) == {"heater", "robot", "reader"}
+    # The second call carried the first draft and why it was rejected.
+    feedback = fake.calls[1]["messages"][-1]["content"][0]["toolResult"]
+    assert (
+        feedback["status"] == "error" and "must not list transfer" in feedback["content"][0]["text"]
+    )
+    assert "exchange" not in app.state.twins.get("guest-unused") and not fake.outputs
+
+
+def test_nova_gives_up_after_its_attempts(client, app):
+    from academy.nova_briefs import ATTEMPTS
+
+    bad = {**DRAFT, "steps": []}
+    fake = nova(app, *[bad] * ATTEMPTS)
+    catalog = describe(client, client.get("/api/twins").json()["version"]).json()
+    for _ in range(ATTEMPTS - 1):
+        catalog = poll(client, catalog["version"]).json()
+    assert len(fake.calls) == ATTEMPTS
+    assert catalog["brief"]["status"] == "failed"
+    assert "did not match the workflow schema" in catalog["brief"]["message"]
+    # Finished drafts are never asked for again.
+    assert poll(client, catalog["version"]).json()["brief"]["status"] == "failed"
+    assert len(fake.calls) == ATTEMPTS
+
+
+def test_overlapping_polls_never_repeat_a_claimed_nova_call(app):
+    import time
+
+    service = app.state.twins
+    fake = nova(app, DRAFT)
+    brief = {
+        "id": "b1",
+        "status": "generating",
+        "source": "nova",
+        "draft": None,
+        "bindings": {},
+        "message": "",
+        "exchange": service.drafter.begin("Heat a plate, then read it."),
+        "busy_until": time.time() + 10,
+    }
+    service.save("nova-owner", {**service.get("nova-owner"), "brief": brief}, 0)
+    assert service._nova_attempt("nova-owner", "b1")["brief"]["status"] == "generating"
+    assert fake.calls == []
+    record = service.get("nova-owner")
+    record["brief"]["busy_until"] = 0
+    service.save("nova-owner", record, record["version"])
+    assert service._nova_attempt("nova-owner", "b1")["brief"]["status"] == "draft"
+    assert len(fake.calls) == 1 and "exchange" not in service.get("nova-owner")["brief"]
+
+
+def test_a_failed_nova_call_says_so_and_the_settings_pair_is_checked(client, app):
+    import pytest
+    from academy.settings import Settings
+    from botocore.exceptions import ClientError
+
+    nova(
+        app, ClientError({"Error": {"Code": "AccessDeniedException", "Message": "no"}}, "Converse")
+    )
+    catalog = describe(client, client.get("/api/twins").json()["version"]).json()
+    assert catalog["brief"]["status"] == "failed"
+    assert catalog["brief"]["message"].startswith("Amazon Nova Pro did not return a draft")
+    with pytest.raises(ValueError, match="Nova inference profile"):
+        Settings(brief_model="openai.gpt-6-astra", brief_region="us-east-1")
+    with pytest.raises(ValueError, match="together"):
+        Settings(brief_model="us.amazon.nova-pro-v1:0")

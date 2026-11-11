@@ -13,7 +13,7 @@ github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@139333201
 # alarm_email        = "operator@example.org"
 # Wakeup for the reviewed Ohio GPU host; does not enable native execution.
 gpu_instance_id = "i-0f369ff6e01f8d623"
-gpu_worker_id   = "ec2-flex-ohio-1"
+gpu_worker_id   = "ec2-flex-ohio-2"
 # monthly_budget_usd = 100
 
 # GPU host region (EC2/SSM only; Cognito, DynamoDB, KVS stay in `region`).
@@ -24,3 +24,7 @@ gpu_region = "us-east-2"
 # Bedrock API key in an existing ca-central-1 secret first; Terraform never sees the key.
 # twin_region             = "us-east-1"
 # twin_api_key_secret_arn = "arn:aws:secretsmanager:ca-central-1:247893369214:secret:matterix-academy/dev/bedrock-twin-key-AbCdEf"
+
+# Workflow drafting with Amazon Nova through the API Lambda role (no API key).
+brief_model  = "us.amazon.nova-pro-v1:0"
+brief_region = "us-east-1"

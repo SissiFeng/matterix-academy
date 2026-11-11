@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import re
+import time
 from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1044,8 +1045,12 @@ class SimpleTwinService:
     key = "simple-lab"
 
     def __init__(self, store, settings, provider=None):
+        from .nova_briefs import NovaBriefs
+
         self.store = store
         self.provider = provider or BedrockTwins(settings)
+        # Workflow drafting uses Nova when configured, otherwise Astra.
+        self.drafter = NovaBriefs(settings) if settings.brief_model else None
 
     def get(self, owner):
         return self.store.get(owner, self.key) or {
@@ -1063,13 +1068,18 @@ class SimpleTwinService:
         record = self.get(owner)
         return {
             "layout": None,  # records saved before layouts existed
-            "brief": None,  # or before workflow descriptions
             "constraints": [],  # or before layout preferences
             **record,
             "twins": [{**drawn(t), "size_basis": size_basis(t)} for t in record["twins"]],
+            # None for records saved before workflow descriptions. The model conversation
+            # behind a draft in progress stays on the server.
+            "brief": record.get("brief")
+            and {k: v for k, v in record["brief"].items() if k != "exchange"},
             "templates": TEMPLATES,
             "simready": SIMREADY,
             "astra_available": self.provider.available,
+            "brief_available": (self.drafter or self.provider).available,
+            "brief_model": self.drafter.name if self.drafter else "GPT-6 Astra",
             "real_available": False,
             "real_reason": REAL_REASON,
         }
@@ -1456,6 +1466,8 @@ class SimpleTwinService:
 
     def describe(self, owner, data):
         """Ask Astra to draft roles and steps from a description; the client polls."""
+        if self.drafter:
+            return self._nova_describe(owner, data)
         if not self.provider.available:
             raise HTTPException(
                 503, "Astra is not configured here. Add instruments and build the steps by hand."
@@ -1538,11 +1550,68 @@ class SimpleTwinService:
                 bindings[role["key"]] = twin["id"]
         brief["bindings"] = bindings
 
+    def _nova_describe(self, owner, data):
+        record = self.current(owner, data.expected_version)
+        if (record.get("brief") or {}).get("status") == "generating":
+            raise HTTPException(409, "A draft is still being written")
+        record["brief"] = {
+            "id": str(uuid4()),
+            "text": data.text,
+            "status": "generating",
+            "source": "nova",
+            "response_id": None,
+            "message": "",
+            "draft": None,
+            "bindings": (record.get("brief") or {}).get("bindings", {}),
+            "exchange": self.drafter.begin(data.text),
+            "busy_until": 0,
+        }
+        self.save(owner, record, data.expected_version)
+        return self._nova_attempt(owner, record["brief"]["id"])
+
+    def _nova_attempt(self, owner, brief_id):
+        """At most one model call, claimed first so overlapping polls never repeat it."""
+        record = self.get(owner)
+        brief = record.get("brief") or {}
+        if brief.get("id") != brief_id or brief["status"] != "generating":
+            return self.catalog(owner)
+        if brief.get("busy_until", 0) > time.time():
+            return self.catalog(owner)
+        brief["busy_until"] = time.time() + 14
+        try:
+            self.save(owner, record, record["version"])
+        except Conflict:
+            return self.catalog(owner)
+        status, draft, message, exchange = self.drafter.attempt(brief["exchange"])
+        for _ in range(3):
+            latest = self.get(owner)
+            current = latest.get("brief") or {}
+            if current.get("id") != brief_id:
+                return self.catalog(owner)
+            current.update(status=status, message=message, exchange=exchange, busy_until=0)
+            if draft:
+                keys = {r["key"] for r in draft["roles"]}
+                current["draft"] = draft
+                current["bindings"] = {k: v for k, v in current["bindings"].items() if k in keys}
+                self.choose(latest)
+            if status != "generating":
+                current.pop("exchange", None)
+            try:
+                return self.save(owner, latest, latest["version"])
+            except Conflict:
+                continue
+        raise Conflict
+
     def poll_brief(self, owner, data):
         record = self.current(owner, data.expected_version)
         brief = record.get("brief")
         if not brief or brief["status"] != "generating":
             return self.catalog(owner)
+        if brief.get("source") == "nova":
+            if not self.drafter:
+                brief.update(status="failed", message="Drafting is no longer configured here.")
+                return self.save(owner, record, data.expected_version)
+            return self._nova_attempt(owner, brief["id"])
         result = self.provider.poll(brief["response_id"])
         self._brief_result(brief, result)
         if brief["status"] == "generating":

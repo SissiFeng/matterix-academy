@@ -79,9 +79,21 @@ class Draft(StrictModel):
                 raise ValueError("A zone needs a side; near and apart need a second role")
             if p.other_role == p.role:
                 raise ValueError("Near and apart need two different roles")
+        movers = {s.role for s in self.steps if s.operation == "transfer"}
         for role in self.roles:
             if role.reach_slots and "load" not in role.operations:
                 raise ValueError(f"{role.name} holds no samples, so it has no slots to reach")
+            # A station that never moves a sample must not claim transfer, or no
+            # instrument of its kind could be chosen for it.
+            if (
+                "transfer" in role.operations
+                and role.key not in movers
+                and set(role.operations) - {"transfer", "wait"}
+            ):
+                raise ValueError(
+                    f"{role.name} never moves a sample, so it must not list transfer; "
+                    "only the robot role that moves samples does"
+                )
         for i, step in enumerate(self.steps, 1):
             role = roles.get(step.role)
             if not role or step.operation not in role.operations:
@@ -155,21 +167,23 @@ def schema():
 PROMPT = (
     "Turn the laboratory workflow described below into a teaching workflow for a simulated "
     "workcell. List the instrument roles it needs (at most 8) and the steps (at most 48). "
-    "A role is a kind of instrument, not a brand: key is a short lowercase slug such as "
-    "plate-reader, name is a generic name, operations are only those the workflow uses "
+    "A role is a kind of instrument, not a brand: key is a short lowercase slug of letters, digits "
+    "and hyphens (never underscores) such as plate-reader, name is a generic name, operations are only those the workflow uses "
     "from: load (holds a sample), transfer (a robot arm moves the sample between two "
-    "stations), mix, heat, read, wait. vessel is what the role holds (none, tube, vial, "
+    "stations; only a robot role lists it, never a station), mix, heat, read, wait. vessel is what the role holds (none, tube, vial, "
     "plate, reservoir; none for a robot arm). query is 1-3 words to search an instrument "
     "library for this role. model is the maker or model the text names for this role, such "
     "as Opentrons Flex or UR5e, and empty when it names none. Name each tracked plate, tube or vial in sample with a short "
     "slug such as plate-a; use one sample when the text does not say how many. Load "
     "each sample once, then every move between stations is a transfer step by a role "
     "with the transfer operation, with source_role and target_role set; leave both empty "
-    "for other steps. Other steps act on the sample named in sample. reach_slots is how "
+    "for other steps. Every role a sample is ever at, including each transfer's source "
+    "and target, lists load among its operations. Other steps act on the sample named in sample. reach_slots is how "
     "many slots on that instrument a robot arm must reach when the text says so, else 0. "
     "preferences hold layout wishes the text states: zone (role on the left, right, "
     "front or back of the bench, other_role empty), near or apart (two roles within or "
-    "at least metres apart, side empty); leave it empty otherwise. "
+    "at least metres apart, side empty; metres is 0.5 for a zone); leave it empty "
+    "otherwise. "
     "If the text never names a robot, add one transfer role for the moves. value is the "
     "volume in µL for load, °C for heat (4-120), seconds for mix and wait (1-1000), and 1 "
     "otherwise. In assumptions, say briefly what you assumed or simplified, such as "
