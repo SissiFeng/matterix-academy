@@ -455,9 +455,8 @@ export default function InstrumentStudio({
         </div>
       </div>
       <p className={s.notice}>
-        Synthetic teaching twins: instrument runs are mock results and arm paths
-        are simulated. Neither is Isaac/GPU, physical robot or chemical
-        validation.
+        Synthetic teaching twins: runs and arm paths are not Isaac/GPU, physical
+        robot or chemical validation.
       </p>
       {error && (
         <div className={s.alert} role="alert">

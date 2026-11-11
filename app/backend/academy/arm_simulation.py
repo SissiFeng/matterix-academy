@@ -32,11 +32,13 @@ except ImportError:  # the kinematic estimate stands in where MuJoCo is not inst
     mujoco = None
 
 ENGINE = "mujoco"
-TIMESTEP = 0.002
+TIMESTEP = 0.004  # well inside the controller's 20 rad/s bandwidth
 PAYLOAD_KG = 1.1  # a two-finger gripper holding a filled plate
 TOOL_RADIUS = 0.045
 MARGIN = 0.25  # clearances are measured up to this distance
-CHECK_RAD = 0.02  # joint travel between clearance checks, about a centimetre at the wrist
+# Joint travel between clearance checks. A link tip then moves about a centimetre, under
+# the thinnest link's radius, so no link can pass through an instrument between checks.
+CHECK_RAD = 0.01
 SAFETY = 0.01  # the planner's required clearance
 SPEED_RESERVE = 0.8  # share of the speed cap the connector uses, the rest is for pausing
 SETTLE_DEG = 0.2
@@ -349,7 +351,7 @@ class Bench:
     def _measure(self, out, label, touching):
         model, data = self.model, self.data
         for i, j, link, obstacle, twin_id in self.pairs:
-            if twin_id in touching and link in ("gripper", "wrist 3"):
+            if twin_id in touching and link == "gripper":
                 continue  # the gripper reaches into the station it serves
             key = "self_clearance_m" if twin_id is None else "clearance_m"
             if model.geom_rbound[i] + model.geom_rbound[j] + out[key] < np.linalg.norm(
@@ -403,11 +405,12 @@ class Bench:
                     checked = data.qpos.copy()
                     self._measure(out, label, touching)
                 lag = float(np.max(np.abs(target - data.qpos)))
-                if n <= steps:
-                    out["tracking_deg"] = max(out["tracking_deg"], math.degrees(lag))
-                elif lag < math.radians(SETTLE_DEG) and float(
-                    np.max(np.abs(data.qvel))
-                ) < math.radians(SETTLE_DEG):
+                out["tracking_deg"] = max(out["tracking_deg"], math.degrees(lag))
+                if (
+                    n > steps
+                    and lag < math.radians(SETTLE_DEG)
+                    and float(np.max(np.abs(data.qvel))) < math.radians(SETTLE_DEG)
+                ):
                     break
             out["seconds"] += n * TIMESTEP
         out["seconds"] = round(out["seconds"] + dwell, 1)
@@ -416,6 +419,18 @@ class Bench:
         for key in ("clearance_m", "self_clearance_m"):
             out[key] = round(out[key], 3)
         return out
+
+
+def describe(speed):
+    """What a simulated result was run with, or None where MuJoCo is not installed."""
+    if not available():
+        return None
+    return {
+        "engine": ENGINE,
+        "version": mujoco.__version__,
+        "speed": speed,
+        "payload_kg": PAYLOAD_KG,
+    }
 
 
 def simulate(bench, step_no, segments, speed, dwell):
@@ -443,13 +458,7 @@ def simulate(bench, step_no, segments, speed, dwell):
             f"Step {step_no}: the {bench.arm.name} strays {result['tracking_deg']:.1f}° from "
             "this path in simulation",
         )
-    return {
-        "engine": ENGINE,
-        "version": mujoco.__version__,
-        "speed": speed,
-        "payload_kg": PAYLOAD_KG,
-        **result,
-    }
+    return {**describe(speed), **result}
 
 
 assert set(BODIES) == set(ARMS)

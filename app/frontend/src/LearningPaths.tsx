@@ -216,7 +216,7 @@ export default function LearningPaths({
             <Resource
               number="03"
               title="Plan a multi-device workcell"
-              description="Assign operations to selected instruments, arrange a bench layout and inspect its simulated arm paths."
+              description="Assign operations to selected instruments, arrange a bench layout and inspect its arm path checks."
               action="Open workcell planner"
               onOpen={() => onNavigate("instruments/layout")}
             />

@@ -590,9 +590,7 @@ class Search:
         return found
 
 
-def search_layouts(
-    twins, bench, steps, fixed=(), start=0, avoid=(), seconds=CHUNK_SECONDS, constraints=()
-):
+def search_layouts(twins, bench, steps, fixed=(), start=0, avoid=(), seconds=None, constraints=()):
     """One chunk of the enumeration, from starting arrangement `start` onward.
 
     `avoid` holds layouts earlier chunks already returned, so they are not checked again.
@@ -600,7 +598,7 @@ def search_layouts(
     and instruments left off the bench.
     """
     search = Search(twins, bench, steps, fixed, constraints)
-    deadline = time.monotonic() + seconds
+    deadline = time.monotonic() + (seconds or CHUNK_SECONDS)
     found = []
     seen = [list(placements) for placements in avoid]
     index = start

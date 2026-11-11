@@ -112,7 +112,7 @@ export default function LayoutPanel({
   };
 
   const motions = preview?.motions ?? [];
-  const simulated = motions[0]?.simulation;
+  const simulated = preview?.simulation;
   const entries = [
     ...motions.map((m) => ({ ...m, blocked: null as string | null })),
     ...(preview?.blocked
@@ -528,9 +528,9 @@ export default function LayoutPanel({
           The arm has Universal Robots' link geometry, masses and joint torque
           limits, carries a {simulated.payload_kg} kg gripper and plate at{" "}
           {simulated.speed}°/s, and is checked against the instruments and
-          itself. Instruments are boxes with the size and device times their
-          twins state. No cables, calibrated poses, Isaac/GPU or physical robot
-          validation.
+          itself. Instruments are boxes sized from their twins, and device times
+          are the values the twins state. No cables, calibrated poses, Isaac/GPU
+          or physical robot validation.
         </details>
       ) : (
         <p className={studio.notice}>

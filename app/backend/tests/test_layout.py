@@ -313,6 +313,8 @@ def test_layout_search_returns_measured_layouts_that_carry_the_workflow(client, 
     from academy import layout_search
 
     monkeypatch.setattr(layout_search, "CHUNK_PLANS", 6)
+    # The plan budget, not a slow machine's clock, ends this chunk.
+    monkeypatch.setattr(layout_search, "CHUNK_SECONDS", 120.0)
     reader, heater, arm, (shelf,), catalog = placed_cell(client, [("Shelf", [0.3, 0.4, 0.3])])
     found = search(client)
     assert found["arm"] == "UR5e" and found["total"] > found["next"] > 0

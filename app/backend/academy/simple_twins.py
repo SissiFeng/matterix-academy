@@ -23,6 +23,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
 from pydantic import Field, ValidationError, model_validator
 
+from . import arm_simulation
 from .arms import arm_for
 from .consolidate import consolidation
 from .layout_search import SHIFTS, robustness, search_layouts
@@ -30,6 +31,7 @@ from .mock_contract import PlanError, execute_mock, site_keys
 from .models import StrictModel
 from .store import Conflict
 from .workcell_layout import (
+    NOMINAL_SPEED,
     MotionError,
     action_chain,
     plan_workflow,
@@ -1078,6 +1080,7 @@ class SimpleTwinService:
             "motions": [],
             "error": None,
             "blocked": None,
+            "simulation": arm_simulation.describe(NOMINAL_SPEED),
         }
         if not layout:
             return result

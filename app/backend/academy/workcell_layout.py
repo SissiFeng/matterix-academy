@@ -5,8 +5,11 @@ the twin names another profile in `arms.py`) mounted on top of its own parts. Li
 plane y = 0 (world is y-up, matching the twin parts). The planner is deterministic and
 pure Python so the same layout always gets the same verdict on Lambda and locally.
 
-Synthetic geometry only: no arm self-collision, dynamics, controller or calibrated
-pose. A passing path is not motion-planning, Isaac/GPU or physical robot validation.
+The planner itself is geometry only: no arm self-collision, dynamics or controller.
+`plan_workflow` then runs each path it finds in the MuJoCo bench of `arm_simulation`,
+which adds those and can refuse the path; where MuJoCo is not installed the planner's
+own estimates stand and the motion carries no `simulation`. Neither is a calibrated
+pose, Isaac/GPU or physical robot validation.
 """
 
 import math

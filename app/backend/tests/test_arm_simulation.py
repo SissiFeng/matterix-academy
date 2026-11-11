@@ -87,8 +87,18 @@ def test_planned_transfers_report_simulated_time_and_clearance(client):
     assert motion["clearance_m"] >= arm_simulation.SAFETY
 
 
+def test_a_refused_layout_still_says_it_was_simulated(client, monkeypatch):
+    monkeypatch.setattr(arm_simulation, "PAYLOAD_KG", 300.0)
+    reader, heater, arm, _, _ = placed_cell(client)
+    checked = preview(client, placements(reader, heater, arm))
+    assert "rated joint torque" in checked["error"]["message"]
+    assert checked["motions"] == [] and checked["simulation"]["engine"] == "mujoco"
+
+
 def test_without_mujoco_the_kinematic_estimate_stands(client, monkeypatch):
     monkeypatch.setattr(arm_simulation, "mujoco", None)
     reader, heater, arm, _, _ = placed_cell(client)
-    [motion] = preview(client, placements(reader, heater, arm))["motions"]
+    checked = preview(client, placements(reader, heater, arm))
+    assert checked["simulation"] is None
+    [motion] = checked["motions"]
     assert "simulation" not in motion and motion["seconds"] > 0

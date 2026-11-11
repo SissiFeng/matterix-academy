@@ -248,6 +248,13 @@ export type LayoutPreview = {
   motions: Motion[];
   error: { message: string; layer: string } | null;
   blocked: BlockedMotion | null;
+  /** What arm paths are simulated with; null when only the geometry is checked. */
+  simulation: {
+    engine: "mujoco";
+    version: string;
+    speed: number;
+    payload_kg: number;
+  } | null;
 };
 export type LayoutMetrics = {
   run_s: number;
