@@ -1028,9 +1028,9 @@ export default function App() {
               ].includes(view) && (
                 <button
                   className={s.textButton}
-                  onClick={() => nav(`learn/${learningLevel}`)}
+                  onClick={() => nav("overview")}
                 >
-                  <ArrowLeft size={16} /> Back to learning lab
+                  <ArrowLeft size={16} /> Back to start
                 </button>
               )}
               {view === "learn" ? (
