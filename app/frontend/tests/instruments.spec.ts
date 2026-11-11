@@ -781,3 +781,104 @@ test("the model library previews every drawn instrument and adds one to the work
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("instruments added from the model library are drawn, planned and searched on the bench", async ({
+  page,
+}) => {
+  // Planned paths and a search chunk; CI runners take about twice a laptop's time.
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const models = new Set<string>();
+  page.on("response", (r) => {
+    if (r.url().endsWith(".glb") && r.ok())
+      models.add(new URL(r.url()).pathname);
+  });
+  await openInstruments(page);
+  for (const [query, name] of [
+    ["opentrons flex", "Liquid handler (Opentrons Flex)"],
+    ["ur5e", "UR5e arm"],
+    ["clariostar", "Plate reader (CLARIOstar Plus)"],
+  ]) {
+    await page.goto("/#/models");
+    const library = page.getByRole("region", { name: "Instrument models" });
+    await library.getByLabel("Search instrument models").fill(query);
+    await library
+      .getByRole("button", {
+        name: new RegExp(`^${name.replace(/[()]/g, "\\$&")}`),
+      })
+      .click();
+    await library
+      .getByRole("complementary", { name })
+      .getByRole("button", { name: "Add to my workcell" })
+      .click();
+    await expect(page).toHaveURL(/#\/plan\/instruments$/);
+    await expect(page.locator("article", { hasText: name })).toBeVisible();
+  }
+  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  for (let i = 3; i > 0; i--) {
+    await confirm.first().click();
+    await expect(confirm).toHaveCount(i - 1);
+  }
+
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  const add = page.getByRole("button", { name: "Add step" });
+  await add.click();
+  await add.click();
+  await page
+    .getByLabel("Step 1 instrument")
+    .selectOption({ label: "Liquid handler (Opentrons Flex)" });
+  await page.getByLabel("Step 1 volume").fill("150");
+  await page
+    .getByLabel("Step 2 instrument")
+    .selectOption({ label: "UR5e arm" });
+  await page
+    .getByLabel("Step 2 from")
+    .selectOption({ label: "From Liquid handler (Opentrons Flex)" });
+  await page
+    .getByLabel("Step 2 to")
+    .selectOption({ label: "To Plate reader (CLARIOstar Plus)" });
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save workflow" }),
+  ).toBeDisabled();
+
+  // On the bench each instrument is drawn as its model and the transfer is planned.
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
+  for (const name of [
+    "Liquid handler (Opentrons Flex)",
+    "UR5e arm",
+    "Plate reader (CLARIOstar Plus)",
+  ])
+    await expect(
+      page.getByRole("button", {
+        name: new RegExp(`^${name.replace(/[()]/g, "\\$&")} at x`),
+      }),
+    ).toBeVisible();
+  await expect
+    .poll(() => [...models])
+    .toEqual(
+      expect.arrayContaining([
+        "/library-models/chemlab/bmg_clariostarplus.glb",
+        "/library-models/chemlab/opentrons_flex_single_5_1000ul.glb",
+        "/workcell-assets/ur5e_2f140.glb",
+      ]),
+    );
+
+  // A search finds bench layouts the arm can serve; the chosen one plans the transfer.
+  await page.getByRole("button", { name: "Search layouts" }).click();
+  const first = page.getByRole("button", { name: /^Layout \d+/ }).first();
+  await expect(first).toContainText("s run", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Stop" }).click();
+  await first.click();
+  await expect(
+    page.getByRole("button", {
+      name: /Step 2 · Liquid handler \(Opentrons Flex\) → Plate reader \(CLARIOstar Plus\)/,
+    }),
+  ).toContainText("cm min clearance", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+  expect(errors).toEqual([]);
+});
