@@ -131,6 +131,14 @@ export type LibraryResults = {
   total: number;
   results: LibraryEntry[];
 };
+/** A library entry drawn with its own 3D model, for the model library page. */
+export type ModelEntry = LibraryEntry & { mesh: Mesh; url: string };
+export type ModelResults = {
+  size: number;
+  total: number;
+  domains: Record<string, number>;
+  results: ModelEntry[];
+};
 export type LibraryMatch = LibraryEntry & {
   suggested_by: "astra" | "label_text";
   verified: boolean;

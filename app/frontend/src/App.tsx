@@ -32,6 +32,7 @@ import {
   Store,
   GitBranch,
   LayoutDashboard,
+  Boxes,
   House,
   ListChecks,
 } from "lucide-react";
@@ -60,6 +61,7 @@ import {
 const WorkflowStudio = lazy(() => import("./WorkflowStudio"));
 const SimulationLab = lazy(() => import("./SimulationLab"));
 const InstrumentStudio = lazy(() => import("./InstrumentStudio"));
+const ModelLibrary = lazy(() => import("./ModelLibrary"));
 const WorkflowCourse = lazy(() => import("./WorkflowCourse"));
 const LearningPaths = lazy(() => import("./LearningPaths"));
 const LearningLab = lazy(() => import("./LearningLab"));
@@ -600,7 +602,7 @@ export default function App() {
     const routeChanged = (event: HashChangeEvent) => {
       if (movePlanLink()) return;
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|groups|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|groups|sim|workflow-course|instruments|plan|models|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (!route && window.location.hash) return;
       if (leaveGuard.current && !leaveGuard.current()) {
@@ -638,7 +640,7 @@ export default function App() {
       setView("lab");
     } else {
       const route = window.location.hash.match(
-        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|groups|sim|workflow-course|instruments|plan|connect)(?:\/([a-z0-9-]+))?$/,
+        /^#\/(overview|onboard|twin|readiness|runs|learn|marketplace|discovery|connector|history|groups|sim|workflow-course|instruments|plan|models|connect)(?:\/([a-z0-9-]+))?$/,
       );
       if (route) {
         setView(route[1]);
@@ -938,6 +940,13 @@ export default function App() {
                   <LayoutDashboard size={18} /> Plan a layout
                 </button>
               )}
+              <button
+                className={view === "models" ? s.activeNav : ""}
+                aria-current={view === "models" ? "page" : undefined}
+                onClick={() => nav("models")}
+              >
+                <Boxes size={18} /> Instrument models
+              </button>
             </nav>
             <div className={s.sidebarBottom}>
               <button className={s.helpButton} onClick={() => setHelp(true)}>
@@ -987,23 +996,26 @@ export default function App() {
                       ? "Meet the instruments"
                       : view === "plan"
                         ? "Plan a layout"
-                        : view === "lab"
-                          ? session?.experiment.course_id === "workflow-sandbox"
-                            ? "Workflow studio"
-                            : "Flex foundations"
-                          : view === "history"
-                            ? "My experiments"
-                            : view === "groups"
-                              ? "Study groups"
-                              : view === "discovery"
-                                ? "Discovery studio"
-                                : view === "marketplace"
-                                  ? "Workflow marketplace"
-                                  : view === "connector"
-                                    ? "Connector explorer"
-                                    : view === "sim"
-                                      ? "Simulation lab"
-                                      : "Learning lab"))}
+                        : view === "models"
+                          ? "Instrument models"
+                          : view === "lab"
+                            ? session?.experiment.course_id ===
+                              "workflow-sandbox"
+                              ? "Workflow studio"
+                              : "Flex foundations"
+                            : view === "history"
+                              ? "My experiments"
+                              : view === "groups"
+                                ? "Study groups"
+                                : view === "discovery"
+                                  ? "Discovery studio"
+                                  : view === "marketplace"
+                                    ? "Workflow marketplace"
+                                    : view === "connector"
+                                      ? "Connector explorer"
+                                      : view === "sim"
+                                        ? "Simulation lab"
+                                        : "Learning lab"))}
               </span>
               <span>
                 <span className={s.noteDot} />{" "}
@@ -1126,6 +1138,14 @@ export default function App() {
               ) : view === "plan" ? (
                 <div className={s.instrumentPage}>
                   <InstrumentStudio registerLeaveGuard={registerLeaveGuard} />
+                </div>
+              ) : view === "models" ? (
+                <div className={s.instrumentPage}>
+                  <ModelLibrary
+                    canAdd={canPlan}
+                    onAdded={() => nav("plan/instruments")}
+                    onPlan={() => nav("plan")}
+                  />
                 </div>
               ) : view === "sim" ? (
                 <SimulationLab onOpenInstruments={() => nav("plan/workflow")} />

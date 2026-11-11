@@ -948,6 +948,22 @@ and supervised acceptance. This mock does not supply a physical device driver.
     }
 
 
+def drawn(twin):
+    """The twin with the model its library entry draws today.
+
+    Twins added before an entry had a model stored no mesh; they pick it up on read.
+    """
+    from . import chemlab, workcell_models
+
+    asset = twin.get("asset")
+    entries = {
+        "chemlab_asset": chemlab.CHEMLAB,
+        "workcell_asset": workcell_models.catalog(),
+    }.get(twin.get("source"), {})
+    mesh = asset and entries.get(asset.get("id"), {}).get("mesh")
+    return {**twin, "asset": {**asset, "mesh": mesh}} if mesh else twin
+
+
 class SimpleTwinService:
     key = "simple-lab"
 
@@ -968,11 +984,13 @@ class SimpleTwinService:
     def catalog(self, owner):
         from .simready import SIMREADY
 
+        record = self.get(owner)
         return {
             "layout": None,  # records saved before layouts existed
             "brief": None,  # or before workflow descriptions
             "constraints": [],  # or before layout preferences
-            **self.get(owner),
+            **record,
+            "twins": [drawn(t) for t in record["twins"]],
             "templates": TEMPLATES,
             "simready": SIMREADY,
             "astra_available": self.provider.available,

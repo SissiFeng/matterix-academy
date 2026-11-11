@@ -5,7 +5,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { api } from "./api";
 import type { Mesh, TwinSpec } from "./instrumentTypes";
 import { footprint } from "./layoutGeometry";
-import type { Deck } from "./workcellCase/cell";
+import { HOME, type Deck } from "./workcellCase/cell";
 import { buildBalance } from "./workcellCase/balanceModel";
 import { buildOT2 } from "./workcellCase/ot2Model";
 import { buildRobot } from "./workcellCase/robotModel";
@@ -15,23 +15,23 @@ type Registry = {
   assets: { id: string; file: string | null; sha256: string | null }[];
 };
 
+const ARM_REST = HOME.map((d) => (d * Math.PI) / 180);
+
 const hex = (b: ArrayBuffer) =>
   [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
 
+async function download(url: string, sha256: string) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: ${response.status}`);
+  const bytes = await response.arrayBuffer();
+  if (hex(await crypto.subtle.digest("SHA-256", bytes)) !== sha256)
+    throw new Error(`${url} does not match its pinned digest`);
+  return bytes;
+}
+
 const files = new Map<string, Promise<ArrayBuffer>>();
 function verified(url: string, sha256: string) {
-  if (!files.has(url))
-    files.set(
-      url,
-      (async () => {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`${url}: ${response.status}`);
-        const bytes = await response.arrayBuffer();
-        if (hex(await crypto.subtle.digest("SHA-256", bytes)) !== sha256)
-          throw new Error(`${url} does not match its pinned digest`);
-        return bytes;
-      })(),
-    );
+  if (!files.has(url)) files.set(url, download(url, sha256));
   return files.get(url)!;
 }
 
@@ -68,6 +68,46 @@ export function instrumentModel(mesh: Mesh): Promise<THREE.Object3D> {
       })(),
     );
   return templates.get(key)!;
+}
+
+/**
+ * A Z-up model loaded on its own rather than kept, since browsing the whole library would
+ * otherwise hold every file in memory. `release` frees what the model alone owns.
+ */
+export async function looseModel(
+  mesh: Mesh,
+): Promise<{ object: THREE.Object3D; release: () => void }> {
+  if (mesh.kind === "ur5e") {
+    const robot = await armModel();
+    robot.pose(ARM_REST, 0.15);
+    return { object: robot.group, release: () => release(robot.group) };
+  }
+  // Procedural models share their cached template's buffers.
+  if (mesh.kind !== "glb")
+    return { object: (await instrumentModel(mesh)).clone(true), release() {} };
+  const bytes = await download(mesh.url!, mesh.sha256!);
+  const scene = (await new GLTFLoader().parseAsync(bytes, "")).scene;
+  return { object: scene, release: () => release(scene) };
+}
+
+function release(root: THREE.Object3D) {
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const material = mesh.material as
+      THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[] | undefined;
+    for (const m of Array.isArray(material)
+      ? material
+      : material
+        ? [material]
+        : []) {
+      m.map?.dispose();
+      m.normalMap?.dispose();
+      m.roughnessMap?.dispose();
+      m.metalnessMap?.dispose();
+      m.dispose();
+    }
+  });
 }
 
 let robotFile: Promise<ArrayBuffer> | null = null;

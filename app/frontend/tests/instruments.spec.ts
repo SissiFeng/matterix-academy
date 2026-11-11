@@ -742,3 +742,42 @@ test("browser fixture only: a drafted description lists roles and guides instrum
   });
   expect(errors).toEqual([]);
 });
+
+test("the model library previews every drawn instrument and adds one to the workcell", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openInstruments(page);
+  await page.getByRole("link", { name: "Browse models" }).click();
+  await expect(page).toHaveURL(/#\/models$/);
+  const library = page.getByRole("region", { name: "Instrument models" });
+  await expect(library.getByLabel("Search instrument models")).toHaveAttribute(
+    "placeholder",
+    /Search \d{3} models/,
+  );
+  const models = library.getByRole("list", { name: "Models" });
+  await expect(models.getByRole("listitem")).toHaveCount(24);
+  // Thumbnails are drawn from the pinned models as cards come into view.
+  await expect(models.locator("img").first()).toBeVisible({ timeout: 30_000 });
+  await library
+    .getByLabel("Domain")
+    .selectOption("Molecular Spectroscopy & Structure");
+  await library.getByLabel("Search instrument models").fill("clariostar");
+  await expect(library.getByText("No model matches.")).toBeVisible();
+  await library.getByLabel("Domain").selectOption("");
+  await library
+    .getByRole("button", { name: /Plate reader \(CLARIOstar Plus\)/ })
+    .click();
+  const detail = library.getByRole("complementary", {
+    name: "Plate reader (CLARIOstar Plus)",
+  });
+  await expect(detail.getByText("CC-BY-NC-4.0", { exact: true })).toBeVisible();
+  await expect(detail.locator("canvas")).toBeVisible();
+  await detail.getByRole("button", { name: "Add to my workcell" }).click();
+  await expect(page).toHaveURL(/#\/plan\/instruments$/);
+  await expect(
+    page.locator("article", { hasText: "Plate reader (CLARIOstar Plus)" }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});

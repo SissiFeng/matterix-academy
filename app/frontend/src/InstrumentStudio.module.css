@@ -175,6 +175,24 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+.addHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modelsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--brand-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.modelsLink:hover {
+  text-decoration: underline;
+}
 .library {
   display: grid;
   gap: 8px;

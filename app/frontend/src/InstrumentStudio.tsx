@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   Camera,
   Download,
@@ -616,7 +617,12 @@ export default function InstrumentStudio({
                   onFind={findFor}
                 />
               )}
-              <h2>Add an instrument</h2>
+              <div className={s.addHeading}>
+                <h2>Add an instrument</h2>
+                <a className={s.modelsLink} href="#/models">
+                  Browse models <ArrowRight size={14} aria-hidden />
+                </a>
+              </div>
               <section className={s.library} aria-label="Asset library">
                 <label className={s.search}>
                   <Search size={16} aria-hidden />
@@ -832,6 +838,11 @@ export default function InstrumentStudio({
                 }}
               />
             ))}
+          {tab === "layout" && (
+            <a className={s.modelsLink} href="#/models">
+              Browse instrument models <ArrowRight size={14} aria-hidden />
+            </a>
+          )}
 
           {tab === "workflow" && (
             <>
