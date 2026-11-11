@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { ArrowLeft, Pause, Play } from "lucide-react";
-import { api } from "../api";
+import { api, json as body } from "../api";
 import { CellEngine, type ChartData, type Snapshot, type View } from "./engine";
 import { NAMES, LIMIT_DEG } from "./kin";
 import s from "./WorkcellCase.module.css";
@@ -70,6 +70,20 @@ const LANE: Record<string, [string, string]> = {
   design: ["Design", "var(--accent)"],
 };
 
+type ArmSimulation = {
+  engine: "mujoco";
+  version: string;
+  payload_kg: number;
+  seconds: number;
+  tracking_deg: number;
+  torque_ratio: number;
+  clearance_m: number;
+  self_clearance_m: number;
+  nearest: string | null;
+  collision: { link: string; blocked_by: string; at_s: number } | null;
+  problem: string | null;
+};
+
 export default function WorkcellCase({
   caseId,
   onBack,
@@ -91,6 +105,11 @@ export default function WorkcellCase({
   const [rate, setRate] = useState(8);
   const [form, setForm] = useState({ name: "Waypoint", hold: 0, grip: "" });
   const [json, setJson] = useState("");
+  // A simulated result belongs to the exact chain and speed it was run for.
+  const [sim, setSim] = useState<(ArmSimulation & { key: string }) | null>(
+    null,
+  );
+  const [simulating, setSimulating] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -719,6 +738,44 @@ export default function WorkcellCase({
                 >
                   {(S.message ?? S.planMsg).text}
                 </div>
+                <div className={s.row}>
+                  <button
+                    disabled={!S.plan || S.plan.total > 180 || simulating}
+                    onClick={async () => {
+                      const path = E?.armPath();
+                      if (!E || !path) return;
+                      const key = E.exportJSON();
+                      setSimulating(true);
+                      try {
+                        const result = await api<ArmSimulation>(
+                          "/workcell/arm-path/simulate",
+                          body(path),
+                        );
+                        setSim({ ...result, key });
+                        if (result.collision && E.exportJSON() === key)
+                          E.seekArm(result.collision.at_s);
+                      } catch {
+                        E.flash(
+                          "The arm simulation did not answer. Try again.",
+                        );
+                      } finally {
+                        setSimulating(false);
+                      }
+                    }}
+                  >
+                    {simulating ? "Simulating…" : "Simulate in MuJoCo"}
+                  </button>
+                </div>
+                {sim && sim.key === E?.exportJSON() && (
+                  <div
+                    role="status"
+                    className={`${s.msg} ${sim.problem ? s.bad : s.ok}`}
+                  >
+                    {sim.problem
+                      ? `In simulation: ${sim.problem}.`
+                      : `Simulated in MuJoCo ${sim.version}: ${sim.seconds.toFixed(1)} s · ${Math.round(sim.torque_ratio * 100)}% joint torque · ${(sim.clearance_m * 100).toFixed(1)} cm ${sim.nearest ? `from ${sim.nearest}` : "clear"} · ${sim.payload_kg} kg load. Not run on a robot.`}
+                  </div>
+                )}
                 <div className={s.chain}>
                   {S.chain.slice(0, S.visible).map((w, i) => (
                     <div

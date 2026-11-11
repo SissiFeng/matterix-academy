@@ -1941,6 +1941,26 @@ export class CellEngine {
     this.S.speed = Math.max(1, Math.min(40, Math.round(v)));
     this.changed();
   }
+  /** The planned arm motion as timed joint vectors (rad) with the keep-outs it must clear. */
+  armPath(dt = 0.04) {
+    const p = this.wf.plan;
+    if (!p) return null;
+    const n = Math.ceil(p.total / dt);
+    return {
+      arm: "ur5e",
+      dt,
+      joints: Array.from({ length: n + 1 }, (_, k) =>
+        K.sample(p.segs, Math.min(k * dt, p.total)).map((v) => v * DEG),
+      ),
+      boxes: C.keepouts().map((b) => ({
+        name: `${b.owner} ${b.part}`.slice(0, 80),
+        min: b.min,
+        max: b.max,
+        stand: !!b.skipNearBase,
+      })),
+      tool_m: C.TCP,
+    };
+  }
   exportJSON() {
     const S = this.S;
     return JSON.stringify(

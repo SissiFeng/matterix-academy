@@ -31,6 +31,12 @@ test("the synthesis workcell case loads registered assets and runs end to end", 
   await expect(
     page.getByText("Arm, fingers and rack clear every modelled keep-out."),
   ).toBeVisible();
+  // The hand-designed chain also runs in the rigid-body simulation.
+  await page.getByRole("button", { name: "Simulate in MuJoCo" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    /Simulated in MuJoCo [\d.]+: \d+\.\d s · \d+% joint torque/,
+    { timeout: 30000 },
+  );
   await page.getByRole("tab", { name: "Workflow" }).click();
   await page.getByRole("button", { name: /Add 200 µL reagent mix/ }).click();
   const log = page.getByTestId("run-log");
