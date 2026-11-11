@@ -133,7 +133,7 @@ export default function TwinScene({
           .then((template) => {
             if (!alive) return;
             boxes.forEach((b) => (b.visible = false));
-            group.add(fitted(template, spec));
+            group.add(fitted(template, spec, mesh.up));
             if (glow) {
               const helper = new THREE.Box3Helper(
                 new THREE.Box3().setFromObject(group),

@@ -94,7 +94,8 @@ export type Mesh = {
   kind: "glb" | "ot2" | "balance" | "ur5e";
   url?: string;
   sha256?: string;
-  up?: "z";
+  /** The axis the model stands on; a Z-up model is turned to the scene's Y up. */
+  up?: "y" | "z";
   asset?: string;
 };
 export type SimReadyProvenance = {

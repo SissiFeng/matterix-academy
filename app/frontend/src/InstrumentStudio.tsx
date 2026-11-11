@@ -227,7 +227,8 @@ export default function InstrumentStudio({
     const timer = window.setTimeout(
       () =>
         api<LibraryResults>(
-          `/twins/library?q=${encodeURIComponent(query.trim())}`,
+          // Every match is listed for the learner to pick from; the list scrolls.
+          `/twins/library?q=${encodeURIComponent(query.trim())}&limit=300`,
         )
           .then((found) => current && setLibrary(found))
           .catch((e) => current && setError((e as Error).message)),
@@ -683,12 +684,8 @@ export default function InstrumentStudio({
                 </label>
                 <p className={s.libraryMeta}>
                   {query.trim()
-                    ? `${library?.total ?? 0} match${library?.total === 1 ? "" : "es"}${
-                        (library?.total ?? 0) > (library?.results.length ?? 0)
-                          ? ` · showing ${library?.results.length}, refine to narrow`
-                          : ""
-                      }`
-                    : "Featured · or search for your model"}
+                    ? `${library?.total ?? 0} match${library?.total === 1 ? "" : "es"}`
+                    : "Featured · search a model, or a purpose such as mix or weigh"}
                 </p>
                 <ul className={s.results}>
                   {library?.results.map((entry) => (

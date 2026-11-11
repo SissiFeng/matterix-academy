@@ -122,10 +122,15 @@ export async function armModel() {
  * The model turned Y up and moved so its envelope stands on the twin's footprint
  * centre, front toward the twin's +Z like the planning box.
  */
-export function fitted(template: THREE.Object3D, spec: TwinSpec) {
+export function fitted(
+  template: THREE.Object3D,
+  spec: TwinSpec,
+  up: Mesh["up"] = "z",
+) {
   const holder = new THREE.Group();
   const upright = new THREE.Group();
-  upright.rotation.x = -Math.PI / 2; // Z-up model: its front, -Y, becomes +Z
+  // A Z-up model's front, -Y, becomes +Z; a Y-up model already stands that way.
+  if (up !== "y") upright.rotation.x = -Math.PI / 2;
   upright.add(template.clone(true));
   holder.add(upright);
   holder.updateMatrixWorld(true);

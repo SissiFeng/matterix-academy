@@ -32,8 +32,14 @@ def mesh(slug):
     model = MODELS["models"].get(slug)
     if not model:
         return None
-    # ChemLab models stand on z = 0 with Z up; the view turns them to Y up.
-    return {"kind": "glb", "url": f"/{model['file']}", "sha256": model["sha256"], "up": "z"}
+    # Most ChemLab models stand on z = 0 with Z up and the view turns them to Y up; the
+    # manifest marks the few that are already Y up.
+    return {
+        "kind": "glb",
+        "url": f"/{model['file']}",
+        "sha256": model["sha256"],
+        "up": model.get("up", "z"),
+    }
 
 
 FEATURED = {

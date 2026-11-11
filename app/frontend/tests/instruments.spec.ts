@@ -273,7 +273,33 @@ test("a ChemLab asset starts a non-commercial reference twin", async ({
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await enterInstruments(page);
-  await page.getByLabel("Search the asset library").fill("xpr204e");
+  // Lab shorthand and two-letter words find the instrument they mean.
+  const search = page.getByLabel("Search the asset library");
+  await search.fill("rotavap");
+  await expect(
+    page.getByRole("button", { name: /^Add Rotary evaporator/ }),
+  ).toBeVisible();
+  await search.fill("ph meter");
+  await expect(page.getByText("1 match", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Add pH \/ DO \/ conductivity meter/ }),
+  ).toBeVisible();
+  // A purpose finds instruments that can do it, whatever they are called.
+  await search.fill("混液");
+  await expect(
+    page.getByRole("button", { name: "Add Liquid handler (Opentrons Flex)" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Add Hotplate stirrer/ }),
+  ).toBeVisible();
+  // A broad query lists every match, not a first page.
+  await search.fill("spectrometer");
+  await expect(page.getByText(/^(1[7-9]|[2-9]\d) matches$/)).toBeVisible();
+  const library = page.getByRole("region", { name: "Asset library" });
+  await expect(library.getByRole("button", { name: /^Add / })).toHaveCount(
+    Number((await page.getByText(/^\d+ matches$/).innerText()).split(" ")[0]),
+  );
+  await search.fill("xpr204e");
   await expect(page.getByText("1 match", { exact: true })).toBeVisible();
   await page
     .getByRole("button", { name: "Add Analytical balance (XPR204E)" })

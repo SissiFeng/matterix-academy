@@ -322,7 +322,7 @@ function Preview({ mesh }: { mesh: Mesh }) {
       .then((loaded) => {
         if (!alive) return loaded.release();
         model = loaded;
-        holder = upright(loaded.object);
+        holder = upright(loaded.object, mesh.up);
         scene.add(holder);
         const size = new THREE.Box3()
           .setFromObject(holder)
