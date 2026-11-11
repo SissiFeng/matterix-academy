@@ -1085,6 +1085,7 @@ export default function App() {
                   onDesign={createStudio}
                   creationBusy={busy}
                   onNavigate={nav}
+                  canPlan={canPlan}
                   onOpen={open}
                   onSessionsLoaded={setSessions}
                   onSessionSaved={updateSession}

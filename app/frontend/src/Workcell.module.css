@@ -272,49 +272,131 @@
   max-width: 620px;
   margin: 10px 0 0;
 }
-.startGuide {
+.roadmap {
+  display: grid;
+  gap: 14px;
   margin-bottom: 40px;
 }
-.startGuide > h2 {
-  margin: 0 0 18px;
+.roadmap > h2 {
+  margin: 0 0 4px;
 }
-.startGuide ol {
+.route {
+  border: var(--hairline) solid var(--line);
+  background: var(--surface);
+  border-radius: 7px;
+  padding: 22px 22px 18px;
+}
+.route:first-of-type {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+.route header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.route h3 {
+  margin: 0 0 4px;
+}
+.route header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.route ol {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-flow: column;
 }
-.startGuide li {
+.route li {
+  position: relative;
+  min-width: 0;
+}
+/* The line joining each stop to the next. */
+.route li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 25px;
+  left: calc(10px + 28px);
+  right: 0;
+  border-top: 2px solid var(--line-strong);
+}
+.route li button {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  border: var(--hairline) solid var(--line);
-  background: var(--surface);
+  align-items: flex-start;
+  gap: 4px;
+  padding: 11px 14px 10px 10px;
+  border: 0;
   border-radius: 7px;
-  padding: 20px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-.startGuide li:nth-child(2) {
-  border-color: var(--line-strong);
-  background: var(--surface-3);
+.route li button:hover {
+  background: var(--surface-2);
 }
-.stepNumber {
-  font-size: 11px;
+.route li button:hover .stopNumber {
+  border-color: var(--brand);
+  color: var(--brand-text);
+}
+.stopNumber {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+.route li strong {
+  font-size: 14px;
+}
+.route li small {
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--muted);
 }
-.startGuide h3 {
-  margin: 10px 0 6px;
-}
-.startGuide li p {
-  margin: 0 0 18px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-.startGuide .actions {
-  margin-top: auto;
-  flex-wrap: wrap;
+@media (max-width: 760px) {
+  .route header {
+    flex-direction: column;
+  }
+  .route ol {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+  }
+  .route li:not(:last-child)::after {
+    top: calc(10px + 28px);
+    bottom: -10px;
+    left: 23px;
+    right: auto;
+    border-top: 0;
+    border-left: 2px solid var(--line-strong);
+  }
+  .route li button {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    column-gap: 12px;
+    row-gap: 2px;
+  }
+  .stopNumber {
+    grid-row: span 2;
+    margin: 0;
+  }
 }
 .muted {
   color: var(--muted);
@@ -968,9 +1050,6 @@
   font-size: 12px;
 }
 @media (max-width: 1200px) {
-  .startGuide ol {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .wizard {
     grid-template-columns: minmax(0, 1fr) 215px;
   }
@@ -1031,9 +1110,6 @@
     gap: 8px;
     font-size: 9px;
     padding: 12px 2px;
-  }
-  .startGuide ol {
-    grid-template-columns: 1fr;
   }
   .pair {
     padding: 20px;
