@@ -23,7 +23,26 @@ retry_install() {
   return "$status"
 }
 
-# GNU timeout bounds stalled package mirrors and also terminates stubborn children.
-retry_install system-dependencies 300 install-deps chromium
 export PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=60000
 retry_install chromium-download 120 install chromium
+
+# Hosted runners already carry the shared libraries Chromium needs, so the package
+# mirrors are only consulted when the downloaded browser cannot start.
+if node --input-type=module -e 'import { chromium } from "@playwright/test"; await (await chromium.launch()).close();' \
+  >>"$log_dir/system-dependencies.log" 2>&1; then
+  echo "system-dependencies: Chromium starts without extra packages" |
+    tee -a "$log_dir/system-dependencies.log"
+  exit 0
+fi
+
+# Hosted runners list Azure's Ubuntu mirror first. When its name stops resolving, every
+# package waits out a DNS timeout before the next mirror is tried, so drop it up front.
+mirrors=/etc/apt/apt-mirrors.txt
+if [ -f "$mirrors" ] && ! getent hosts azure.archive.ubuntu.com >/dev/null; then
+  echo "system-dependencies: azure.archive.ubuntu.com does not resolve; using the remaining mirrors" |
+    tee -a "$log_dir/system-dependencies.log"
+  sudo sed -i '/azure\.archive\.ubuntu\.com/d' "$mirrors"
+fi
+
+# GNU timeout bounds stalled package mirrors and also terminates stubborn children.
+retry_install system-dependencies 300 install-deps chromium

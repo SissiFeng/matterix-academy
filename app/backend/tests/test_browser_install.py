@@ -10,8 +10,13 @@ from pathlib import Path
 import pytest
 
 
-@pytest.mark.parametrize("failed_phase", [None, "install-deps", "install"])
-def test_browser_install_retries_transient_failures_and_stops_on_exhaustion(tmp_path, failed_phase):
+@pytest.mark.parametrize(
+    ("failed_phase", "starts"),
+    [(None, False), ("install-deps", False), ("install", False), (None, True)],
+)
+def test_browser_install_retries_transient_failures_and_stops_on_exhaustion(
+    tmp_path, failed_phase, starts
+):
     root = Path(__file__).resolve().parents[3]
     (tmp_path / "scripts").mkdir()
     (tmp_path / "app/frontend").mkdir(parents=True)
@@ -33,6 +38,10 @@ def test_browser_install_retries_transient_failures_and_stops_on_exhaustion(tmp_
         "sys.exit(124 if phase == os.environ.get('FAILED_PHASE') or attempt == 1 else 0)\n"
     )
     timeout.chmod(0o755)
+    # Stands in for the probe that launches the downloaded browser.
+    node = binary / "node"
+    node.write_text(f"#!/bin/sh\nexit {0 if starts else 1}\n")
+    node.chmod(0o755)
     sleep = binary / "sleep"
     sleep.write_text("#!/bin/sh\nexit 0\n")
     sleep.chmod(0o755)
@@ -50,14 +59,15 @@ def test_browser_install_retries_transient_failures_and_stops_on_exhaustion(tmp_
         check=False,
     )
     calls = json.loads(log.read_text())
-    expected_phases = ["install-deps"] * 2
-    if failed_phase != "install-deps":
-        expected_phases += ["install"] * 2
+    # Packages are fetched only when the downloaded browser cannot start.
+    expected_phases = ["install"] * 2
+    if failed_phase != "install" and not starts:
+        expected_phases += ["install-deps"] * 2
     assert [call[-2] for call in calls] == expected_phases
     assert all(call[0] == "--kill-after=15s" for call in calls)
     assert all(call[1] == ("300s" if call[-2] == "install-deps" else "120s") for call in calls)
     assert result.returncode == (124 if failed_phase else 0)
-    assert (
-        "failed (exit 124)"
-        in (tmp_path / "build/browser-install-logs/system-dependencies.log").read_text()
-    )
+    logs = tmp_path / "build/browser-install-logs"
+    assert "failed (exit 124)" in (logs / "chromium-download.log").read_text()
+    if starts:
+        assert "starts without extra packages" in (logs / "system-dependencies.log").read_text()
