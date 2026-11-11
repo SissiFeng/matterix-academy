@@ -14,5 +14,9 @@ def test_runtime_and_frontend_release_versions_agree():
 
 
 def test_health_and_openapi_report_the_packaged_version(client):
-    assert client.get("/api/health").json() == {"status": "ok", "version": __version__}
+    assert client.get("/api/health").json() == {
+        "status": "ok",
+        "version": __version__,
+        "simulation": "mujoco",
+    }
     assert client.get("/api/openapi.json").json()["info"]["version"] == __version__

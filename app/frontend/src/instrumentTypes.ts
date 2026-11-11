@@ -206,12 +206,25 @@ export type MotionSummary = {
   planner: "swing" | "joint" | "rrt_connect";
   length_m: number;
   clearance_m: number;
-  /** Arm time at the connector's default speed; absent on older runs. */
+  /** Arm time at the connector's default speed, simulated when `simulation` is present. */
   seconds?: number;
   source_site?: string | null;
   target_site?: string | null;
   /** Least elbow bend while lowering into a station. */
   elbow_deg?: number;
+  /** Present when the path was run in the rigid-body simulation. */
+  simulation?: {
+    engine: "mujoco";
+    version: string;
+    speed: number;
+    payload_kg: number;
+    tracking_deg: number;
+    torque_ratio: number;
+    self_clearance_m: number;
+    nearest: string | null;
+    kinematic_seconds: number;
+    kinematic_clearance_m: number;
+  };
 };
 export type Motion = MotionSummary & {
   frames: ArmFrame[];

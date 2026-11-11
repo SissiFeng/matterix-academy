@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import groups, opentrons_check, sim2real_api
+from . import arm_simulation, groups, opentrons_check, sim2real_api
 from ._version import __version__
 from .auth import identify, local_signer, may_plan_layouts, require_layout_planner
 from .connections import ConnectionService
@@ -122,7 +122,12 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": __version__}
+        return {
+            "status": "ok",
+            "version": __version__,
+            # The engine arm paths are simulated in, or None where it could not load.
+            "simulation": arm_simulation.ENGINE if arm_simulation.available() else None,
+        }
 
     @app.post("/api/runs/{run_id}/viewer")
     def viewer(run_id: UUID, data: ViewerRequest, owner: str = Depends(identify)):

@@ -112,6 +112,7 @@ export default function LayoutPanel({
   };
 
   const motions = preview?.motions ?? [];
+  const simulated = motions[0]?.simulation;
   const entries = [
     ...motions.map((m) => ({ ...m, blocked: null as string | null })),
     ...(preview?.blocked
@@ -122,6 +123,8 @@ export default function LayoutPanel({
             length_m: 0,
             clearance_m: 0,
             planner: null,
+            seconds: undefined,
+            simulation: undefined,
           },
         ]
       : []),
@@ -428,7 +431,9 @@ export default function LayoutPanel({
               ? "fix highlighted footprints first"
               : checking
                 ? "checking…"
-                : "synthetic geometry check"}
+                : simulated
+                  ? "simulated in MuJoCo"
+                  : "geometry check only"}
           </small>
         </strong>
         {bad.size > 0 && (
@@ -464,7 +469,7 @@ export default function LayoutPanel({
                 <small>
                   {m.blocked
                     ? `Blocked by ${m.blocked}${preview?.blocked?.link ? ` (${preview.blocked.link})` : ""}`
-                    : `${m.length_m.toFixed(2)} m tool path · ${(m.clearance_m * 100).toFixed(1)} cm min clearance · ${m.planner}`}
+                    : `${m.simulation && m.seconds ? `${m.seconds.toFixed(1)} s · ` : ""}${m.length_m.toFixed(2)} m tool path · ${(m.clearance_m * 100).toFixed(1)} cm min clearance · ${m.simulation ? `${Math.round(m.simulation.torque_ratio * 100)}% joint torque` : m.planner}`}
                 </small>
               </button>
               {onExport && !m.blocked && (
@@ -515,11 +520,25 @@ export default function LayoutPanel({
           Save layout
         </button>
       </div>
-      <p className={studio.notice}>
-        Capsule links and box instruments only: no self-collision, dynamics,
-        cables or calibrated poses. A clear path here is synthetic and is not
-        motion-planning, Isaac/GPU or physical robot validation.
-      </p>
+      {simulated ? (
+        <details className={studio.notice}>
+          <summary>
+            Simulated in MuJoCo {simulated.version}, not run on a robot
+          </summary>
+          The arm has Universal Robots' link geometry, masses and joint torque
+          limits, carries a {simulated.payload_kg} kg gripper and plate at{" "}
+          {simulated.speed}°/s, and is checked against the instruments and
+          itself. Instruments are boxes with the size and device times their
+          twins state. No cables, calibrated poses, Isaac/GPU or physical robot
+          validation.
+        </details>
+      ) : (
+        <p className={studio.notice}>
+          Capsule links and box instruments only: no self-collision, dynamics,
+          cables or calibrated poses. A clear path here is not simulated and is
+          not motion-planning, Isaac/GPU or physical robot validation.
+        </p>
+      )}
     </>
   );
 }

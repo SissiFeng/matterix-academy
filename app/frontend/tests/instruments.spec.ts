@@ -438,6 +438,15 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
     name: /Step 2 · Heating station → Plate reader/,
   });
   await expect(path).toContainText("cm min clearance");
+  // The path was run in the rigid-body simulation, and says what that covers.
+  await expect(path).toContainText(/\d+\.\d s · .*% joint torque/);
+  await expect(
+    page.getByText("simulated in MuJoCo", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByText(/Simulated in MuJoCo [\d.]+, not run on a robot/)
+    .click();
+  await expect(page.getByText(/No cables,\s+calibrated poses/)).toBeVisible();
 
   // Keyboard placement moves the footprint in 10 cm steps.
   const heater = page.getByRole("button", { name: /^Heating station at x/ });

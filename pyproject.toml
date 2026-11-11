@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "mangum>=0.19,<1",
   "boto3>=1.38,<2", "itsdangerous>=2.2,<3", "httpx>=0.28,<1",
+  "mujoco>=3.3,<3.4",
 ]
 
 [project.optional-dependencies]

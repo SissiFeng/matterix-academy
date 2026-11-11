@@ -12,6 +12,7 @@ pose. A passing path is not motion-planning, Isaac/GPU or physical robot validat
 import math
 import random
 
+from . import arm_simulation
 from .arms import ARMS, ELBOW_MIN_DEG, arm_for
 from .mock_contract import PlanError, transfer_sites
 
@@ -719,23 +720,67 @@ def plan_transfer(twins, layout, step_no, step, sites=(None, None)):
     )
 
 
+def _simulated(benches, twins, layout, planned, chain):
+    """Replace a planned transfer's kinematic estimates with its simulated result."""
+    planner = chain["planner"]
+    bench = benches.get(planned["actor_id"])
+    if bench is None:
+        bench = benches[planned["actor_id"]] = arm_simulation.Bench(
+            twins, layout, twins[planned["actor_id"]], planner.arm, planner.base, TOOL
+        )
+    segments = [
+        (label, joints, (ignore or {}).get(GRIPPER, set()))
+        for label, joints, ignore in chain["segments"]
+    ]
+    try:
+        result = arm_simulation.simulate(bench, planned["step"], segments, NOMINAL_SPEED, 2 * DWELL)
+    except PlanError as exc:
+        hit = getattr(exc, "hit", None) or {}
+        attempt = {
+            **{k: planned[k] for k in ("step", "actor_id", "source_id", "target_id", "arm")},
+            "blocked_by": hit.get("blocked_by"),
+            "link": hit.get("link"),
+            "frames": planned["frames"],
+            "joints": planned["joints"],
+        }
+        raise MotionError(str(exc), [], attempt) from exc
+    planned["simulation"] = {
+        **{
+            k: result[k]
+            for k in ("engine", "version", "speed", "payload_kg", "tracking_deg", "torque_ratio")
+        },
+        "self_clearance_m": result["self_clearance_m"],
+        "nearest": result["nearest"],
+        "kinematic_seconds": planned["seconds"],
+        "kinematic_clearance_m": planned["clearance_m"],
+    }
+    planned["seconds"] = result["seconds"]
+    planned["clearance_m"] = result["clearance_m"]
+
+
 def plan_workflow(twins, layout, steps, keep_frames=False):
-    """Motions for every transfer step; raises PlanError('geometry') on the first failure."""
+    """Motions for every transfer step; raises PlanError('geometry') on the first failure.
+
+    Each planned path is then run in the MuJoCo bench, where that is installed, and its
+    duration and clearances are the simulated ones.
+    """
     validate_layout(twins, layout)
     sites = transfer_sites(twins, steps)
-    motions = []
+    motions, benches = [], {}
     for index, step in enumerate(steps):
         if step["operation"] != "transfer":
             continue
         try:
             planned = plan_transfer(twins, layout, index + 1, step, sites[index + 1])
+            chain = planned.pop("_chain")
+            if arm_simulation.available():
+                _simulated(benches, twins, layout, planned, chain)
         except MotionError as exc:
             exc.motions = motions
             raise
         except PlanError as exc:
             # Keep the paths already planned so a preview can still show them.
             raise MotionError(str(exc), motions, None) from exc
-        planned.pop("_chain")
         if not keep_frames:
             planned.pop("frames")
             planned.pop("joints")
