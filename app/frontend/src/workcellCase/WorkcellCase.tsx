@@ -740,7 +740,7 @@ export default function WorkcellCase({
                 </div>
                 <div className={s.row}>
                   <button
-                    disabled={!S.plan || simulating}
+                    disabled={!S.plan || S.plan.total > 180 || simulating}
                     onClick={async () => {
                       const path = E?.armPath();
                       if (!E || !path) return;
@@ -752,7 +752,8 @@ export default function WorkcellCase({
                           body(path),
                         );
                         setSim({ ...result, key });
-                        if (result.collision) E.seekArm(result.collision.at_s);
+                        if (result.collision && E.exportJSON() === key)
+                          E.seekArm(result.collision.at_s);
                       } catch {
                         E.flash(
                           "The arm simulation did not answer. Try again.",

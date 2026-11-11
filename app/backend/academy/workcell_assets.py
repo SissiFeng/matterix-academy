@@ -13,6 +13,7 @@ from pydantic import Field, model_validator
 
 from . import arm_simulation
 from .auth import identify
+from .mock_contract import PlanError
 from .models import StrictModel
 
 ROOT = Path(__file__).with_name("workcell_assets.json")
@@ -143,7 +144,7 @@ class ArmPath(StrictModel):
     joints: list[tuple[Radians, Radians, Radians, Radians, Radians, Radians]] = Field(
         min_length=2, max_length=6000
     )
-    boxes: list[Keepout] = Field(max_length=400)
+    boxes: list[Keepout] = Field(max_length=64)
     tool_m: float = Field(ge=0.05, le=0.4)
 
     @model_validator(mode="after")
@@ -158,6 +159,9 @@ def simulate_arm_path(data: ArmPath, owner: str = Depends(identify)):
     """Read-only: nothing is stored and no robot moves."""
     if not arm_simulation.available():
         raise HTTPException(503, "The arm simulation is not installed on this server")
-    return arm_simulation.play(
-        data.arm, data.joints, data.dt, [b.model_dump() for b in data.boxes], data.tool_m
-    )
+    try:
+        return arm_simulation.play(
+            data.arm, data.joints, data.dt, [b.model_dump() for b in data.boxes], data.tool_m
+        )
+    except PlanError as exc:
+        raise HTTPException(422, str(exc)) from exc

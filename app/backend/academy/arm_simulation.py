@@ -19,6 +19,7 @@ are whatever the twin states, and no physical robot has run the path.
 import itertools
 import math
 import os
+import time
 
 from .arms import ARMS
 from .mock_contract import PlanError
@@ -45,6 +46,7 @@ SETTLE_DEG = 0.2
 SETTLE_SECONDS = 2.0
 KP, KV = 400.0, 40.0  # computed-torque gains: critically damped at 20 rad/s
 TRACKING_LIMIT_DEG = 2.0
+PLAY_SECONDS = 8.0  # computing time one submitted trajectory may take
 
 # so/eo: shoulder and elbow offsets along the joint axes that DH parameters leave out.
 BODIES = {
@@ -392,7 +394,7 @@ class Bench:
                         "at_s": round(now, 2),
                     }
 
-    def _follow(self, out, label, at, duration, touching):
+    def _follow(self, out, label, at, duration, touching, deadline=math.inf):
         """Track `at(t)` for `duration`, then let the arm settle; adds to `out`."""
         model, data = self.model, self.data
         inertial = np.zeros(model.nv)
@@ -404,6 +406,8 @@ class Bench:
         self._measure(out, label, touching, began)
         n = 0
         for n in range(1, steps + settle + 1):
+            if not n % 256 and time.monotonic() > deadline:
+                raise PlanError("constraint", "This path takes too long to simulate here")
             target = np.array(at(n * TIMESTEP))
             error = target - data.qpos
             rate = (target - previous) / TIMESTEP - data.qvel
@@ -472,7 +476,7 @@ class Bench:
             f = min(1.0, t / dt - k)
             return [a + f * (b - a) for a, b in zip(joints[k], joints[k + 1], strict=True)]
 
-        self._follow(out, "trajectory", at, last * dt, None)
+        self._follow(out, "trajectory", at, last * dt, None, time.monotonic() + PLAY_SECONDS)
         return self._rounded(out)
 
 

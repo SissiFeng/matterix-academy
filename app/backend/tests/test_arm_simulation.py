@@ -159,3 +159,9 @@ def test_arm_path_requests_are_bounded_and_need_identity(app, client):
     from fastapi.testclient import TestClient
 
     assert post(TestClient(app), path(1.2)).status_code == 401
+
+
+def test_a_path_too_slow_to_compute_is_refused(client, monkeypatch):
+    monkeypatch.setattr(arm_simulation, "PLAY_SECONDS", 0.0)
+    response = post(client, path(1.2, n=2000))
+    assert response.status_code == 422 and "too long to simulate" in response.text
