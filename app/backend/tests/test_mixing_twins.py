@@ -7,6 +7,7 @@ from academy.mixing_twins import MixingTwinService, TwinRun
 from academy.recipes import CreateMixing, mixing_session
 from academy.settings import Settings
 from academy.simple_twins import TEMPLATES, SimpleTwinService
+from academy.store import Conflict
 from fastapi import HTTPException
 from test_instruments import add, confirm
 from test_onboarding import create_device
@@ -125,3 +126,26 @@ def test_a_gpu_owned_experiment_is_not_rerun_on_a_teaching_twin(store):
         service.run("alice", sim["id"], request)
     assert refused.value.status_code == 409
     assert service.get("alice", sim["id"]) is None
+
+
+def test_a_concurrent_retry_of_the_same_request_returns_the_stored_receipt(store):
+    service = MixingTwinService(store, SimpleTwinService(store, Settings()))
+    sim = mixing_session(CreateMixing(session_id=uuid4()))
+    store.put("alice", "session#" + sim["id"], sim, None)
+    request = TwinRun(run_id=uuid4(), expected_version=1, twin="flex")
+    put = store.put
+
+    def lose_the_race_to(rival):
+        def hooked(owner, key, body, expected):
+            store.put = put
+            service.run("alice", sim["id"], rival)
+            return put(owner, key, body, expected)
+
+        store.put = hooked
+
+    lose_the_race_to(request)
+    assert service.run("alice", sim["id"], request) == service.get("alice", sim["id"])
+    # Losing to a different run is still a conflict, not somebody else's receipt.
+    lose_the_race_to(TwinRun(run_id=uuid4(), expected_version=1, twin="flex"))
+    with pytest.raises(Conflict):
+        service.run("alice", sim["id"], TwinRun(run_id=uuid4(), expected_version=1, twin="flex"))

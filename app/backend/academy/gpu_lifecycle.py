@@ -287,23 +287,23 @@ class GpuLifecycle:
                     "service_requested": bool(record.get("command_id")),
                     "error_code": code,
                 }
-                return self.status()
-            capacity = code in {
-                "InsufficientInstanceCapacity",
-                "InsufficientHostCapacity",
-                "InstanceLimitExceeded",
-                "VcpuLimitExceeded",
-            }
-            attempts = record.get("capacity_attempts", 0) + 1 if capacity else 0
-            changes = {
-                "state": "capacity_wait" if capacity else "error",
-                # Capacity often returns within minutes; back off 60, 120, 240, then 300 s.
-                "retry_at": now
-                + (min(CAPACITY_RETRY_MAX, 60 * 2 ** (attempts - 1)) if capacity else 300),
-                "error_code": code,
-                "capacity_attempts": attempts,
-                "note": None,
-            }
+            else:
+                capacity = code in {
+                    "InsufficientInstanceCapacity",
+                    "InsufficientHostCapacity",
+                    "InstanceLimitExceeded",
+                    "VcpuLimitExceeded",
+                }
+                attempts = record.get("capacity_attempts", 0) + 1 if capacity else 0
+                changes = {
+                    "state": "capacity_wait" if capacity else "error",
+                    # Capacity often returns within minutes; back off 60, 120, 240, then 300 s.
+                    "retry_at": now
+                    + (min(CAPACITY_RETRY_MAX, 60 * 2 ** (attempts - 1)) if capacity else 300),
+                    "error_code": code,
+                    "capacity_attempts": attempts,
+                    "note": None,
+                }
         except (BotoCoreError, KeyError, IndexError):
             # Reconcile EC2 power next tick. SSM ambiguity is latched below.
             changes = {"state": "error", "retry_at": now + 60, "error_code": "control_unconfirmed"}

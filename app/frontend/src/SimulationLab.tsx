@@ -195,13 +195,18 @@ export default function SimulationLab({
     return prepared;
   };
   // A native run owns the view; otherwise the last twin used, else what can run here.
+  // A remembered or last-used twin may since have been removed.
+  const offered = (key: string | null | undefined) =>
+    key && (key === NATIVE || catalog?.twins.some((item) => item.key === key))
+      ? key
+      : null;
   const engine =
     run && !run.cleanup?.reset_verified
       ? NATIVE
-      : (picked ??
+      : (offered(picked) ??
         (run
           ? NATIVE
-          : (twinRun?.twin.key ??
+          : (offered(twinRun?.twin.key) ??
             (catalog?.enabled ? NATIVE : (catalog?.twins[0]?.key ?? NATIVE)))));
   const twin = catalog?.twins.find((item) => item.key === engine);
   const frames = twinRun?.frames.length ?? 0;
@@ -222,6 +227,7 @@ export default function SimulationLab({
   }, [replaying, replay?.step]);
   const pick = (next: string) => {
     setPicked(next);
+    setReplay(null);
     setError("");
     if (selectedId) remember(selectedId, next);
   };
@@ -243,7 +249,7 @@ export default function SimulationLab({
       const key = `lab.mixing.twin.${current.id}`;
       const saved = JSON.parse(sessionStorage.getItem(key) ?? "null");
       const request =
-        saved?.twin === twin.key
+        saved?.twin === twin.key && saved.expected_version === current.version
           ? saved
           : {
               run_id: crypto.randomUUID(),
@@ -633,17 +639,15 @@ export default function SimulationLab({
           <div>
             <span>Liquid in the tool</span>
             <strong>
-              {amount(native ? state?.pipette_volume_ul : frame && 0)}
+              {amount(native ? state?.pipette_volume_ul : undefined)}
             </strong>
             <small>
               {mixing
                 ? (mixing.active_tip?.replace("Tips__", "Tip ") ??
                   "No tip attached")
-                : frame
-                  ? "No tip attached"
-                  : native
-                    ? "Not observed"
-                    : "Not run yet"}
+                : native
+                  ? "Not observed"
+                  : "Not modelled by this twin"}
             </small>
           </div>
           <div>

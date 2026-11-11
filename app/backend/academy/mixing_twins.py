@@ -184,5 +184,15 @@ class MixingTwinService:
             "twin": {k: twin[k] for k in ("key", "kind", "name", "revision")},
             **execute(session["experiment"], twin),
         }
-        self.store.put(owner, key, record, previous["version"] if previous else None)
+        try:
+            self.store.put(owner, key, record, previous["version"] if previous else None)
+        except Conflict:
+            # A concurrent retry of this same request may have stored its receipt first.
+            stored = self.store.get(owner, key)
+            if not stored or (stored["run_id"], stored["twin"]["key"]) != (
+                record["run_id"],
+                data.twin,
+            ):
+                raise
+            return stored
         return record
