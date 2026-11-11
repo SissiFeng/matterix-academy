@@ -433,6 +433,33 @@ def test_library_search_ranks_name_matches_and_spans_both_collections(client):
     assert client.get("/api/twins/library", params={"q": "x" * 81}).status_code == 422
 
 
+def test_model_library_pages_every_drawn_instrument_by_domain(client):
+    def browse(**params):
+        response = client.get("/api/twins/library/models", params=params)
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    everything = browse()
+    drawn = sum(1 for a in CHEMLAB.values() if a.get("mesh")) + len(workcell_catalog())
+    assert everything["size"] == everything["total"] == drawn
+    assert sum(everything["domains"].values()) == drawn
+    assert len(everything["results"]) == 24 and everything["results"][0]["collection"] == "workcell"
+    seen = set()
+    for offset in range(0, drawn, 24):
+        seen.update(r["id"] for r in browse(offset=offset)["results"])
+    assert len(seen) == drawn
+    spectroscopy = browse(domain="Molecular Spectroscopy & Structure")
+    assert spectroscopy["total"] == everything["domains"]["Molecular Spectroscopy & Structure"]
+    assert {r["domain"] for r in spectroscopy["results"]} == {"Molecular Spectroscopy & Structure"}
+    hit = browse(q="xpr204e")
+    assert hit["total"] == 1 and hit["results"][0]["mesh"] == CHEMLAB["mt_xpr204e"]["mesh"]
+    assert browse(collection="workcell")["total"] == len(workcell_catalog())
+    assert (
+        client.get("/api/twins/library/models", params={"collection": "simready"}).status_code
+        == 422
+    )
+
+
 def test_workcell_model_twin_records_the_registered_model(client):
     from academy.workcell_assets import registry
     from academy.workcell_models import catalog
@@ -459,6 +486,16 @@ def test_chemlab_models_are_pinned_and_served_from_the_app_origin():
         assert mesh["url"] == f"/library-models/chemlab/{slug}.glb"
         assert mesh["sha256"] == model["sha256"] and len(mesh["sha256"]) == 64
         assert 0 < model["bytes"] <= 16_000_000
+
+
+def test_twins_saved_before_their_entry_had_a_model_are_drawn_with_it(app):
+    service = app.state.twins
+    asset = {k: v for k, v in CHEMLAB["mt_xpr204e"].items() if k not in {"spec", "mesh"}}
+    twin = {"id": "old", "source": "chemlab_asset", "asset": {"id": "mt_xpr204e", **asset}}
+    service.store.put("old-owner", service.key, {"version": 1, "twins": [twin]}, None)
+    shown = service.catalog("old-owner")["twins"][0]
+    assert shown["asset"]["mesh"] == CHEMLAB["mt_xpr204e"]["mesh"]
+    assert "mesh" not in service.get("old-owner")["twins"][0]["asset"]
 
 
 def test_chemlab_asset_starts_an_attributed_twin_without_external_references(client):

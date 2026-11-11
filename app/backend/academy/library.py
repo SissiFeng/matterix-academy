@@ -32,6 +32,10 @@ def summary(collection, asset_id, asset):
     }
 
 
+def matches(asset, words):
+    return all(w in haystack(asset) for w in words)
+
+
 def haystack(asset):
     fields = [asset["label"], asset["spec"]["name"], asset["provider"], asset.get("domain", "")]
     return " ".join(fields).lower()
@@ -45,8 +49,7 @@ def search(query, limit=16):
         for asset_id, asset in assets.items():
             featured = asset.get("featured", collection == "simready")
             if words:
-                text = haystack(asset)
-                if not all(w in text for w in words):
+                if not matches(asset, words):
                     continue
                 in_name = all(w in asset["spec"]["name"].lower() for w in words)
             elif not featured:
@@ -67,6 +70,33 @@ def search(query, limit=16):
         "size": sum(map(len, COLLECTIONS.values())),
         "total": len(hits),
         "results": [summary(c, i, COLLECTIONS[c][i]) for _, c, i in hits[:limit]],
+    }
+
+
+def browse(query="", domain="", collection="", offset=0, limit=24):
+    """Every entry that has a drawn 3D model, by name, filtered for the asset library page."""
+    words = re.findall(r"[\w.+-]+", query.lower())
+    drawn = [
+        (c, i, a) for c, assets in COLLECTIONS.items() for i, a in assets.items() if a.get("mesh")
+    ]
+    found = [
+        (c, i, a) for c, i, a in drawn if matches(a, words) and (not collection or c == collection)
+    ]
+    domains = {}
+    for _, _, a in found:
+        domains[a["domain"]] = domains.get(a["domain"], 0) + 1
+    shown = sorted(
+        (e for e in found if not domain or e[2]["domain"] == domain),
+        key=lambda e: (e[0] != "workcell", e[2]["spec"]["name"].lower()),
+    )
+    return {
+        "size": len(drawn),
+        "total": len(shown),
+        "domains": dict(sorted(domains.items())),
+        "results": [
+            {**summary(c, i, a), "mesh": a["mesh"], "url": a["url"]}
+            for c, i, a in shown[offset : offset + limit]
+        ],
     }
 
 

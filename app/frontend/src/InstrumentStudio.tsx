@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   Camera,
   Download,
@@ -56,6 +57,8 @@ const templateLabels: Record<string, string> = {
   reader: "Plate reader",
   "transfer-arm": "Transfer robot",
 };
+/** Search chunks spent finding a first layout the arm can serve. */
+const START_CHUNKS = 3;
 const collectionLabels = {
   workcell: "Workcell model",
   chemlab: "ChemLab · NC",
@@ -345,6 +348,51 @@ export default function InstrumentStudio({
       window.clearTimeout(timer);
     };
   }, [draftKey, localConflict, catalog?.version]);
+  // A first layout the arm cannot serve is replaced by the quickest one a short search
+  // finds; it stays an unsaved draft to adjust and save.
+  const [starting, setStarting] = useState<"searching" | "none" | null>(null);
+  const startTried = useRef("");
+  const startKey =
+    tab === "layout" &&
+    !catalog?.layout &&
+    !layoutDraft &&
+    preview?.error &&
+    catalog?.steps.some((step) => step.operation === "transfer")
+      ? JSON.stringify([draft, catalog.steps])
+      : "";
+  useEffect(() => {
+    if (!startKey || startTried.current === startKey) return;
+    startTried.current = startKey;
+    const [first] = JSON.parse(startKey) as [Layout];
+    let live = true;
+    setStarting("searching");
+    (async () => {
+      let start: number | null = 0;
+      for (let chunks = 0; chunks < START_CHUNKS && start !== null; chunks++) {
+        const chunk: LayoutSearchChunk = await api<LayoutSearchChunk>(
+          "/twins/layout/search",
+          json({ bench: first.bench, fixed: [], start, avoid: [] }),
+        );
+        if (!live) return;
+        if (chunk.candidates.length) {
+          const best = chunk.candidates.reduce((a, b) =>
+            b.run_s < a.run_s ? b : a,
+          );
+          layoutDirty.current = true;
+          layoutRevision.current += 1;
+          setLayoutDraft(best.layout);
+          setStarting(null);
+          return;
+        }
+        start = chunk.next;
+      }
+      setStarting("none");
+    })().catch(() => live && setStarting(null));
+    return () => {
+      live = false;
+      setStarting(null);
+    };
+  }, [startKey]);
   const selected =
     tab === "layout" && preview
       ? ([...preview.motions, ...(preview.blocked ? [preview.blocked] : [])][
@@ -616,7 +664,12 @@ export default function InstrumentStudio({
                   onFind={findFor}
                 />
               )}
-              <h2>Add an instrument</h2>
+              <div className={s.addHeading}>
+                <h2>Add an instrument</h2>
+                <a className={s.modelsLink} href="#/models">
+                  Browse models <ArrowRight size={14} aria-hidden />
+                </a>
+              </div>
               <section className={s.library} aria-label="Asset library">
                 <label className={s.search}>
                   <Search size={16} aria-hidden />
@@ -780,61 +833,75 @@ export default function InstrumentStudio({
                 </p>
               </>
             ) : (
-              <LayoutPanel
-                twins={confirmed}
-                layout={draft}
-                onChange={editLayout}
-                preview={preview}
-                checking={checking}
-                selectedMotion={selectedMotion}
-                onSelectMotion={(i) => setSelectedMotion(i)}
-                saveDisabled={
-                  busy || (!layoutDirty.current && !!catalog.layout)
-                }
-                onExport={
-                  catalog.layout &&
-                  !layoutDirty.current &&
-                  !localConflict &&
-                  preview &&
-                  !preview.error
-                    ? async (step, speed) => {
-                        try {
-                          const doc = await apiText(
-                            `/twins/layout/action-chain?step=${step}&speed=${speed}`,
-                          );
-                          saveBlob(
-                            `ur5e-action-chain-step-${step}.json`,
-                            new Blob([doc], { type: "application/json" }),
-                          );
-                        } catch (e) {
-                          setError((e as Error).message);
+              <>
+                {starting && (
+                  <p className={s.starting} role="status">
+                    {starting === "searching"
+                      ? "The arm cannot serve this first arrangement. Finding one it can…"
+                      : "No layout the arm can serve turned up yet. Search layouts tries more, or move instruments closer."}
+                  </p>
+                )}
+                <LayoutPanel
+                  twins={confirmed}
+                  layout={draft}
+                  onChange={editLayout}
+                  preview={preview}
+                  checking={checking}
+                  selectedMotion={selectedMotion}
+                  onSelectMotion={(i) => setSelectedMotion(i)}
+                  saveDisabled={
+                    busy || (!layoutDirty.current && !!catalog.layout)
+                  }
+                  onExport={
+                    catalog.layout &&
+                    !layoutDirty.current &&
+                    !localConflict &&
+                    preview &&
+                    !preview.error
+                      ? async (step, speed) => {
+                          try {
+                            const doc = await apiText(
+                              `/twins/layout/action-chain?step=${step}&speed=${speed}`,
+                            );
+                            saveBlob(
+                              `ur5e-action-chain-step-${step}.json`,
+                              new Blob([doc], { type: "application/json" }),
+                            );
+                          } catch (e) {
+                            setError((e as Error).message);
+                          }
                         }
-                      }
-                    : undefined
-                }
-                onSearch={(fixed, start, avoid) =>
-                  api<LayoutSearchChunk>(
-                    "/twins/layout/search",
-                    json({ bench: draft.bench, fixed, start, avoid }),
-                  )
-                }
-                constraints={catalog.constraints ?? []}
-                onConstraints={(next) =>
-                  mutate(
-                    "/twins/layout/constraints",
-                    { constraints: next },
-                    "PUT",
-                  )
-                }
-                busy={busy}
-                onSave={async () => {
-                  const submitted = layoutRevision.current;
-                  if (await mutate("/twins/layout", draft, "PUT"))
-                    if (layoutRevision.current === submitted)
-                      layoutDirty.current = false;
-                }}
-              />
+                      : undefined
+                  }
+                  onSearch={(fixed, start, avoid) =>
+                    api<LayoutSearchChunk>(
+                      "/twins/layout/search",
+                      json({ bench: draft.bench, fixed, start, avoid }),
+                    )
+                  }
+                  constraints={catalog.constraints ?? []}
+                  onConstraints={(next) =>
+                    mutate(
+                      "/twins/layout/constraints",
+                      { constraints: next },
+                      "PUT",
+                    )
+                  }
+                  busy={busy}
+                  onSave={async () => {
+                    const submitted = layoutRevision.current;
+                    if (await mutate("/twins/layout", draft, "PUT"))
+                      if (layoutRevision.current === submitted)
+                        layoutDirty.current = false;
+                  }}
+                />
+              </>
             ))}
+          {tab === "layout" && (
+            <a className={s.modelsLink} href="#/models">
+              Browse instrument models <ArrowRight size={14} aria-hidden />
+            </a>
+          )}
 
           {tab === "workflow" && (
             <>

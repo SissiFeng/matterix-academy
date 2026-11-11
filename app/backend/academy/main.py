@@ -17,7 +17,7 @@ from .discovery import NotebookUpdate
 from .gateway import GatewayUnavailable, MatterixGateway
 from .gpu_lifecycle import configured as configured_gpu
 from .learning import present, readiness
-from .library import search
+from .library import browse, search
 from .media import MediaService, ViewerRequest
 from .mixing_twins import MixingTwinService, TwinRun
 from .mock_connector import router as mock_connector_router
@@ -279,6 +279,16 @@ def create_app(settings: Settings | None = None, store=None):
         q: str = Query(default="", max_length=80), _owner: str = Depends(identify)
     ):
         return search(q)
+
+    @app.get("/api/twins/library/models")
+    def instrument_models(
+        q: str = Query(default="", max_length=80),
+        domain: str = Query(default="", max_length=80),
+        collection: Literal["", "workcell", "chemlab"] = "",
+        offset: int = Query(default=0, ge=0, le=1000),
+        _owner: str = Depends(identify),
+    ):
+        return browse(q, domain, collection, offset)
 
     @app.put("/api/twins/layout")
     def save_instrument_layout(data: SaveLayout, owner: str = Depends(identify)):

@@ -451,11 +451,29 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   // Keyboard placement moves the footprint in 10 cm steps.
   const heater = page.getByRole("button", { name: /^Heating station at x/ });
   await heater.focus();
+  const heaterX = await page.getByLabel("Heating station x").inputValue();
+  const heaterZ = Number(
+    await page.getByLabel("Heating station z").inputValue(),
+  );
   await page.keyboard.press("Shift+ArrowUp");
-  await expect(heater).toHaveAttribute("aria-label", /z 0\.01 m/);
+  await expect(page.getByLabel("Heating station z")).toHaveValue(
+    String(Number((heaterZ - 0.1).toFixed(2))),
+  );
+  await page.getByLabel("Heating station z").fill(String(heaterZ));
 
   // Overlap is caught locally and blocks saving.
-  await page.getByLabel("Heating station x").fill("0");
+  await page
+    .getByRole("button", { name: /^Sample transfer robot at x/ })
+    .focus();
+  const armX = Number(
+    await page.getByLabel("Sample transfer robot x").inputValue(),
+  );
+  const armZ = Number(
+    await page.getByLabel("Sample transfer robot z").inputValue(),
+  );
+  await heater.focus();
+  await page.getByLabel("Heating station x").fill(String(armX));
+  await page.getByLabel("Heating station z").fill(String(armZ));
   await expect(
     page.getByText(
       /Sample transfer robot, Heating station overlap or leave the bench/,
@@ -464,12 +482,16 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   await expect(
     page.getByRole("button", { name: "Save layout" }),
   ).toBeDisabled();
-  await page.getByLabel("Heating station x").fill("-0.54");
+  await page.getByLabel("Heating station x").fill(heaterX);
+  await page.getByLabel("Heating station z").fill(String(heaterZ));
 
   // An out-of-reach station is explained by the server and cannot be saved.
   await page.getByRole("button", { name: /^Plate reader at x/ }).focus();
-  await page.getByLabel("Plate reader x").fill("0.95");
-  await page.getByLabel("Plate reader z").fill("0.6");
+  const readerX = await page.getByLabel("Plate reader x").inputValue();
+  const readerZ = await page.getByLabel("Plate reader z").inputValue();
+  // Across the bench from the arm, still on it.
+  await page.getByLabel("Plate reader x").fill(String(armX > 0 ? -0.9 : 0.9));
+  await page.getByLabel("Plate reader z").fill(String(armZ > 0 ? -0.45 : 0.45));
   await expect(
     page.getByText(
       /Plate reader's top access point: it is .* m from the UR5e shoulder/,
@@ -484,8 +506,8 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
     .getByRole("button", { name: "Dismiss" })
     .click();
 
-  await page.getByLabel("Plate reader x").fill("0.54");
-  await page.getByLabel("Plate reader z").fill("0.11");
+  await page.getByLabel("Plate reader x").fill(readerX);
+  await page.getByLabel("Plate reader z").fill(readerZ);
   await expect(path).toContainText("cm min clearance");
   await page.getByRole("button", { name: "Save layout" }).click();
   await expect(
@@ -756,5 +778,277 @@ test("browser fixture only: a drafted description lists roles and guides instrum
     path: "/tmp/academy-plan-roles-mobile.png",
     fullPage: true,
   });
+  expect(errors).toEqual([]);
+});
+
+test("the model library previews every drawn instrument and adds one to the workcell", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openInstruments(page);
+  await page.getByRole("link", { name: "Browse models" }).click();
+  await expect(page).toHaveURL(/#\/models$/);
+  const library = page.getByRole("region", { name: "Instrument models" });
+  await expect(library.getByLabel("Search instrument models")).toHaveAttribute(
+    "placeholder",
+    /Search \d{3} models/,
+  );
+  const models = library.getByRole("list", { name: "Models" });
+  await expect(models.getByRole("listitem")).toHaveCount(24);
+  // Thumbnails are drawn from the pinned models as cards come into view.
+  await expect(models.locator("img").first()).toBeVisible({ timeout: 30_000 });
+  await library
+    .getByLabel("Domain")
+    .selectOption("Molecular Spectroscopy & Structure");
+  await library.getByLabel("Search instrument models").fill("clariostar");
+  await expect(library.getByText("No model matches.")).toBeVisible();
+  await library.getByLabel("Domain").selectOption("");
+  await library
+    .getByRole("button", { name: /Plate reader \(CLARIOstar Plus\)/ })
+    .click();
+  const detail = library.getByRole("complementary", {
+    name: "Plate reader (CLARIOstar Plus)",
+  });
+  await expect(detail.getByText("CC-BY-NC-4.0", { exact: true })).toBeVisible();
+  await expect(detail.locator("canvas")).toBeVisible();
+  await detail.getByRole("button", { name: "Add to my workcell" }).click();
+  await expect(page).toHaveURL(/#\/plan\/instruments$/);
+  await expect(
+    page.locator("article", { hasText: "Plate reader (CLARIOstar Plus)" }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("instruments added from the model library are drawn, planned and searched on the bench", async ({
+  page,
+}) => {
+  // Planned paths and a search chunk; CI runners take about twice a laptop's time.
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const models = new Set<string>();
+  page.on("response", (r) => {
+    if (r.url().endsWith(".glb") && r.ok())
+      models.add(new URL(r.url()).pathname);
+  });
+  await openInstruments(page);
+  for (const [query, name] of [
+    ["opentrons flex", "Liquid handler (Opentrons Flex)"],
+    ["ur5e", "UR5e arm"],
+    ["clariostar", "Plate reader (CLARIOstar Plus)"],
+  ]) {
+    await page.goto("/#/models");
+    const library = page.getByRole("region", { name: "Instrument models" });
+    await library.getByLabel("Search instrument models").fill(query);
+    await library
+      .getByRole("button", {
+        name: new RegExp(`^${name.replace(/[()]/g, "\\$&")}`),
+      })
+      .click();
+    await library
+      .getByRole("complementary", { name })
+      .getByRole("button", { name: "Add to my workcell" })
+      .click();
+    await expect(page).toHaveURL(/#\/plan\/instruments$/);
+    await expect(page.locator("article", { hasText: name })).toBeVisible();
+  }
+  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  for (let i = 3; i > 0; i--) {
+    await confirm.first().click();
+    await expect(confirm).toHaveCount(i - 1);
+  }
+
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  const add = page.getByRole("button", { name: "Add step" });
+  await add.click();
+  await add.click();
+  await page
+    .getByLabel("Step 1 instrument")
+    .selectOption({ label: "Liquid handler (Opentrons Flex)" });
+  await page.getByLabel("Step 1 volume").fill("150");
+  await page
+    .getByLabel("Step 2 instrument")
+    .selectOption({ label: "UR5e arm" });
+  await page
+    .getByLabel("Step 2 from")
+    .selectOption({ label: "From Liquid handler (Opentrons Flex)" });
+  await page
+    .getByLabel("Step 2 to")
+    .selectOption({ label: "To Plate reader (CLARIOstar Plus)" });
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save workflow" }),
+  ).toBeDisabled();
+
+  // On the bench each instrument is drawn as its model and the transfer is planned.
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
+  for (const name of [
+    "Liquid handler (Opentrons Flex)",
+    "UR5e arm",
+    "Plate reader (CLARIOstar Plus)",
+  ])
+    await expect(
+      page.getByRole("button", {
+        name: new RegExp(`^${name.replace(/[()]/g, "\\$&")} at x`),
+      }),
+    ).toBeVisible();
+  await expect
+    .poll(() => [...models])
+    .toEqual(
+      expect.arrayContaining([
+        "/library-models/chemlab/bmg_clariostarplus.glb",
+        "/library-models/chemlab/opentrons_flex_single_5_1000ul.glb",
+        "/workcell-assets/ur5e_2f140.glb",
+      ]),
+    );
+
+  // The first arrangement the bench offers is one the arm can serve.
+  const transfer = page.getByRole("button", {
+    name: /Step 2 · Liquid handler \(Opentrons Flex\) → Plate reader \(CLARIOstar Plus\)/,
+  });
+  await expect(transfer).toContainText("cm min clearance", { timeout: 90_000 });
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+
+  // A search lists more layouts; the chosen one plans the transfer too.
+  await page.getByRole("button", { name: "Search layouts" }).click();
+  const first = page.getByRole("button", { name: /^Layout \d+/ }).first();
+  await expect(first).toContainText("s run", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Stop" }).click();
+  await first.click();
+  await expect(transfer).toContainText("cm min clearance", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+async function addModel(
+  page: import("@playwright/test").Page,
+  query: string,
+  name: string,
+) {
+  await page.goto("/#/models");
+  const library = page.getByRole("region", { name: "Instrument models" });
+  await library.getByLabel("Search instrument models").fill(query);
+  await library
+    .getByRole("button", {
+      name: new RegExp(`^${name.replace(/[()]/g, "\\$&")}`),
+    })
+    .click();
+  await library
+    .getByRole("complementary", { name })
+    .getByRole("button", { name: "Add to my workcell" })
+    .click();
+  await expect(page.locator("article", { hasText: name })).toBeVisible();
+}
+
+/** Confirms every added instrument and saves: load at `from`, then the arm moves it to `to`. */
+async function transferWorkflow(
+  page: import("@playwright/test").Page,
+  count: number,
+  from: string,
+  to: string,
+) {
+  const confirm = page.getByRole("button", { name: "Confirm twin" });
+  for (let i = count; i > 0; i--) {
+    await confirm.first().click();
+    await expect(confirm).toHaveCount(i - 1);
+  }
+  await page.getByRole("tab", { name: "3 · Workflow" }).click();
+  const add = page.getByRole("button", { name: "Add step" });
+  await add.click();
+  await add.click();
+  await page.getByLabel("Step 1 instrument").selectOption({ label: from });
+  await page.getByLabel("Step 1 volume").fill("150");
+  await page
+    .getByLabel("Step 2 instrument")
+    .selectOption({ label: "UR5e arm" });
+  await page.getByLabel("Step 2 from").selectOption({ label: `From ${from}` });
+  await page.getByLabel("Step 2 to").selectOption({ label: `To ${to}` });
+  await page.getByRole("button", { name: "Save workflow" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save workflow" }),
+  ).toBeDisabled();
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
+}
+
+test("workcell models start on a bench the arm can serve", async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openInstruments(page);
+  await addModel(page, "ot-2", "Opentrons OT-2");
+  await addModel(page, "ur5e", "UR5e arm");
+  await addModel(page, "precision balance", "Precision balance");
+  await transferWorkflow(page, 3, "Opentrons OT-2", "Precision balance");
+  await expect(
+    page.getByRole("button", {
+      name: /Step 2 · Opentrons OT-2 → Precision balance/,
+    }),
+  ).toContainText("cm min clearance", { timeout: 90_000 });
+  await page.getByRole("button", { name: "Save layout" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save layout" }),
+  ).toBeDisabled();
+  // The saved bench is the one the plan page opens with next time.
+  await page.reload();
+  await expect(
+    page.getByRole("button", {
+      name: /Step 2 · Opentrons OT-2 → Precision balance/,
+    }),
+  ).toContainText("cm min clearance", { timeout: 60_000 });
+  expect(errors).toEqual([]);
+});
+
+test("browser fixture only: a bench no search can serve says what to try", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  let searches = 0;
+  await page.route("**/api/twins/layout/search", (route) => {
+    searches += 1;
+    return route.fulfill({
+      json: {
+        arm: "UR5e",
+        reach_m: 0.85,
+        total: 144,
+        next: searches < 3 ? searches * 48 : null,
+        candidates: [],
+        checked: 48,
+        failure: "Liquid handler (Opentrons Flex) is beyond the UR5e's reach",
+        diagnosis: [],
+      },
+    });
+  });
+  await openInstruments(page);
+  await addModel(page, "opentrons flex", "Liquid handler (Opentrons Flex)");
+  await addModel(page, "ur5e", "UR5e arm");
+  await addModel(page, "clariostar", "Plate reader (CLARIOstar Plus)");
+  // The first arrangement fails to plan in simulation, so the plan page searches.
+  await transferWorkflow(
+    page,
+    3,
+    "Liquid handler (Opentrons Flex)",
+    "Plate reader (CLARIOstar Plus)",
+  );
+  await expect(
+    page.getByRole("status").filter({
+      hasText: "No layout the arm can serve turned up yet",
+    }),
+  ).toBeVisible({ timeout: 90_000 });
+  expect(searches).toBe(3);
+  // The arrangement stays editable and the server's reason stays beside it.
+  await expect(
+    page.getByRole("button", {
+      name: /^Liquid handler \(Opentrons Flex\) at x/,
+    }),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });
