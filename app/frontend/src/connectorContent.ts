@@ -344,11 +344,11 @@ export const connectorModules: ConnectorModule[] = [
     answers: [
       "The physical sample has exactly the requested volume",
       "The simulated API action completed; physical volume accuracy remains unverified",
-      "The same workflow has passed Matterix Isaac validation",
+      "The same workflow has passed digital twin Isaac validation",
     ],
     correct: 1,
     explanation:
-      "The simulator can exercise software behavior. It does not measure physical liquid volume, prove scientific validity, or establish a Matterix Isaac acceptance result.",
+      "The simulator can exercise software behavior. It does not measure physical liquid volume, prove scientific validity, or establish a digital twin Isaac acceptance result.",
   },
 ];
 

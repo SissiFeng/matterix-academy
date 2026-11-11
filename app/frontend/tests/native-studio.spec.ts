@@ -165,7 +165,7 @@ test("commissioning export preserves attempted submission across reload and labe
   const panel = page.getByTestId("native-studio-run");
   await panel
     .getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     })
     .click();
@@ -230,7 +230,7 @@ test("unqualified studio offers teaching without claiming native support", async
   ).toBeVisible();
   await expect(
     panel.getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     }),
   ).toBeDisabled();
@@ -242,7 +242,7 @@ test("unqualified studio offers teaching without claiming native support", async
   ).toBeVisible();
   await expect(panel.locator("video")).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Native Matterix", exact: true })
+    .getByRole("button", { name: "Native digital twin", exact: true })
     .click();
   await expect(
     page.getByLabel("Native simulation controls", { exact: true }),
@@ -257,10 +257,10 @@ test("unqualified studio offers teaching without claiming native support", async
     )
     .toBe(true);
   await page
-    .getByRole("button", { name: "Native Matterix", exact: true })
+    .getByRole("button", { name: "Native digital twin", exact: true })
     .click();
   await expect(
-    panel.getByRole("heading", { name: "Matterix simulation" }),
+    panel.getByRole("heading", { name: "Digital twin simulation" }),
   ).toBeInViewport();
   await page.screenshot({
     path: "/tmp/academy-native-studio-unavailable-mobile.png",
@@ -322,7 +322,7 @@ test("native UI fixture submits the saved revision once, restores its viewport, 
   await page.reload();
   const panel = page.getByTestId("native-studio-run");
   const submit = panel.getByRole("button", {
-    name: "Run saved workflow in Matterix",
+    name: "Run saved workflow in the digital twin",
     exact: true,
   });
   await expect(submit).toBeEnabled();
@@ -340,7 +340,7 @@ test("native UI fixture submits the saved revision once, restores its viewport, 
     .getByRole("button", { name: "Check connection", exact: true })
     .click();
   await expect(
-    panel.getByText("Running in Matterix", { exact: true }),
+    panel.getByText("Running in the digital twin", { exact: true }),
   ).toBeVisible();
   await expect(
     panel.getByRole("region", { name: "Isaac live viewport", exact: true }),
@@ -355,7 +355,7 @@ test("native UI fixture submits the saved revision once, restores its viewport, 
   expect(viewerRuns).toEqual([run.run_id]);
   await page.reload();
   await expect(
-    panel.getByText("Running in Matterix", { exact: true }),
+    panel.getByText("Running in the digital twin", { exact: true }),
   ).toBeVisible();
   await expect(panel.locator("video")).toHaveJSProperty("srcObject", null);
   expect(submissions).toHaveLength(1);
@@ -466,7 +466,7 @@ test("an uncertain native submission remains locked across refresh and repeated 
   const panel = page.getByTestId("native-studio-run");
   await panel
     .getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     })
     .click();
@@ -486,7 +486,7 @@ test("an uncertain native submission remains locked across refresh and repeated 
     .click();
   await expect(
     panel.getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     }),
   ).toBeDisabled();
@@ -536,7 +536,7 @@ test("dirty saved-plan checks cannot launch and a preflight mismatch never repla
   ).toBeVisible();
   await expect(
     panel.getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     }),
   ).toBeDisabled();
@@ -581,7 +581,7 @@ test("automatic polling recovery clears a transient connection alert after an ea
   await page.reload();
   const panel = page.getByTestId("native-studio-run");
   const submit = panel.getByRole("button", {
-    name: "Run saved workflow in Matterix",
+    name: "Run saved workflow in the digital twin",
     exact: true,
   });
   await expect(submit).toBeEnabled();
@@ -651,7 +651,7 @@ test("an accepted native run stays confirmed and locked when the subsequent sess
   });
   await panel
     .getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     })
     .click();
@@ -667,7 +667,7 @@ test("an accepted native run stays confirmed and locked when the subsequent sess
   ).toBeDisabled();
   await expect(
     panel.getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     }),
   ).toBeDisabled();
@@ -712,7 +712,7 @@ test("GPU can be requested while native execution is blocked, and reload recover
           {
             code: "deployment",
             message:
-              "Matterix execution awaits native qualification in this deployment",
+              "Digital twin execution awaits native qualification in this deployment",
           },
         ],
         gpu,
@@ -751,7 +751,7 @@ test("GPU can be requested while native execution is blocked, and reload recover
   const native = page.getByTestId("native-studio-run");
   await expect(
     native.getByRole("button", {
-      name: "Run saved workflow in Matterix",
+      name: "Run saved workflow in the digital twin",
       exact: true,
     }),
   ).toBeDisabled();

@@ -41,6 +41,7 @@ type Props = {
   onSessionsLoaded: (sessions: Session[]) => void;
   onSessionSaved: (session: Session) => void;
   registerLeaveGuard: (guard: (() => boolean) | null) => void;
+  canPlan: boolean;
 };
 const steps = [
   "Identify",
@@ -64,23 +65,73 @@ const purposes: Partial<Record<WorkspaceView, string>> = {
   twin: "A teaching twin is a software copy of your device. Practise on it and compare its state with what you expected.",
   readiness:
     "Check what stands between a practised workflow and a run on the real instrument.",
+  runs: "Replay what the twin did in each saved run, step by step, and see where it stopped.",
 };
-const startGuide = [
+type Stop = { target: string; title: string; detail: string };
+const routes: { id: string; title: string; lead: string; stops: Stop[] }[] = [
   {
-    title: "Meet the robot",
-    detail: "Tour the Opentrons Flex and OT-2 and see what each part does.",
+    id: "learn",
+    title: "Learning route",
+    lead: "New to lab automation? Follow these stops in order.",
+    stops: [
+      {
+        target: "instruments",
+        title: "Meet the robot",
+        detail: "Parts, modules and what each one does",
+      },
+      {
+        target: "learn",
+        title: "Learn by level",
+        detail: "From a first transfer to full workflows",
+      },
+      {
+        target: "sim",
+        title: "Simulate",
+        detail: "Run a whole experiment before the real robot",
+      },
+      {
+        target: "marketplace",
+        title: "Adapt a workflow",
+        detail: "Borrow a published method",
+      },
+      {
+        target: "groups",
+        title: "Compare with classmates",
+        detail: "Share and agree on one workflow",
+      },
+    ],
   },
   {
-    title: "Make your first transfer",
-    detail: "Move 100 µL between two wells, then go from beginner to advanced.",
-  },
-  {
-    title: "Run it in simulation",
-    detail: "Run a mixing experiment in the simulation lab.",
-  },
-  {
-    title: "Adapt a published workflow",
-    detail: "Browse workflows from papers and make one your own.",
+    id: "use",
+    title: "Using route",
+    lead: "Bringing your own instrument? Prepare it here before a real run.",
+    stops: [
+      {
+        target: "onboard",
+        title: "Add a device",
+        detail: "Record the instrument from your lab",
+      },
+      {
+        target: "twin",
+        title: "Practise on its twin",
+        detail: "A software copy that behaves like it",
+      },
+      {
+        target: "plan",
+        title: "Plan the bench",
+        detail: "Find a layout that runs the workflow",
+      },
+      {
+        target: "readiness",
+        title: "Check readiness",
+        detail: "What stands before a real run",
+      },
+      {
+        target: "runs",
+        title: "Review runs",
+        detail: "Replay what happened, step by step",
+      },
+    ],
   },
 ];
 const actionName = (action: Session["experiment"]["actions"][number]) =>
@@ -218,6 +269,7 @@ export default function Workcell({
   onSessionsLoaded,
   onSessionSaved,
   registerLeaveGuard,
+  canPlan,
 }: Props) {
   const routeId = window.location.hash.split("/")[2] ?? "";
   const [devices, setDevices] = useState<Device[]>([]);
@@ -505,61 +557,42 @@ export default function Workcell({
         <>
           {view === "overview" ? (
             <>
-              <section
-                className={s.startGuide}
-                aria-labelledby="start-guide-title"
-              >
-                <h2 id="start-guide-title">Where to start</h2>
-                <ol>
-                  {startGuide.map((step, index) => (
-                    <li key={step.title}>
-                      <span className={s.stepNumber} aria-hidden="true">
-                        {index + 1}
-                      </span>
-                      <h3>{step.title}</h3>
-                      <p>{step.detail}</p>
-                      <div className={s.actions}>
-                        {index === 0 ? (
-                          <button
-                            className={s.secondary}
-                            onClick={() => onNavigate("instruments")}
-                          >
-                            See the instruments
-                          </button>
-                        ) : index === 1 ? (
-                          <>
-                            <button
-                              className={s.primary}
-                              onClick={onFirstLesson}
-                            >
-                              Start learning Flex <ArrowRight size={16} />
-                            </button>
-                            <button
-                              className={s.textButton}
-                              onClick={() => onNavigate("learn")}
-                            >
-                              Choose a level
-                            </button>
-                          </>
-                        ) : index === 2 ? (
-                          <button
-                            className={s.secondary}
-                            onClick={() => onNavigate("sim")}
-                          >
-                            Open the simulation lab
-                          </button>
-                        ) : (
-                          <button
-                            className={s.secondary}
-                            onClick={() => onNavigate("marketplace")}
-                          >
-                            Browse workflows
-                          </button>
-                        )}
+              <section className={s.roadmap} aria-labelledby="roadmap-title">
+                <h2 id="roadmap-title">Where to start</h2>
+                {routes.map((route) => (
+                  <section
+                    key={route.id}
+                    className={s.route}
+                    aria-labelledby={`route-${route.id}`}
+                  >
+                    <header>
+                      <div>
+                        <h3 id={`route-${route.id}`}>{route.title}</h3>
+                        <p>{route.lead}</p>
                       </div>
-                    </li>
-                  ))}
-                </ol>
+                      {route.id === "learn" && (
+                        <button className={s.primary} onClick={onFirstLesson}>
+                          Start learning Flex <ArrowRight size={16} />
+                        </button>
+                      )}
+                    </header>
+                    <ol>
+                      {route.stops
+                        .filter((stop) => stop.target !== "plan" || canPlan)
+                        .map((stop, index) => (
+                          <li key={stop.target}>
+                            <button onClick={() => onNavigate(stop.target)}>
+                              <span className={s.stopNumber} aria-hidden="true">
+                                {index + 1}
+                              </span>
+                              <strong>{stop.title}</strong>
+                              <small>{stop.detail}</small>
+                            </button>
+                          </li>
+                        ))}
+                    </ol>
+                  </section>
+                ))}
               </section>
               <InstrumentStories
                 onDesign={onDesign}

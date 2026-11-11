@@ -208,7 +208,10 @@ test("real local API: a saved Studio design opens setup, but teaching completion
     page.getByRole("checkbox", { name: /I have reviewed this exact workflow/ }),
   ).toBeDisabled();
   await page
-    .getByRole("button", { name: "Open design & native Matterix", exact: true })
+    .getByRole("button", {
+      name: "Open design & native digital twin",
+      exact: true,
+    })
     .click();
   await expect(page).toHaveURL(new RegExp(`#\\/lab\\/${sessionId}$`));
   await expect(page.getByTestId("workflow-studio")).toBeVisible();

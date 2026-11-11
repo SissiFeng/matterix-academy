@@ -54,7 +54,7 @@ test("a missing tip gives a useful failure and does not claim Matterix evidence"
 }) => {
   await onboard(page);
   await page.getByRole("button", { name: "Start an experiment" }).click();
-  await page.getByRole("button", { name: "Matterix 3D" }).click();
+  await page.getByRole("button", { name: "Digital twin 3D" }).click();
   await expect(
     page.getByRole("heading", { name: "Your 3D lab is not connected yet." }),
   ).toBeVisible();
@@ -115,11 +115,13 @@ test("unsaved method is protected on sidebar navigation and dialogs support Esca
   await expect(page.getByLabel("Experiment title")).toHaveValue(
     "Unfinished idea",
   );
-  await page.getByRole("button", { name: "Matterix 3D" }).click();
+  await page.getByRole("button", { name: "Digital twin 3D" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Matterix 3D" })).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Digital twin 3D" }),
+  ).toBeFocused();
 });
 
 test("late response from another experiment cannot replace the active workspace", async ({

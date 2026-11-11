@@ -136,6 +136,10 @@ export default function StudyGroups({
   return (
     <div className={s.page}>
       <h1>Study groups</h1>
+      <p className={s.purpose}>
+        Share experiments and bench layouts with classmates, compare your
+        approaches and agree on one workflow.
+      </p>
       <div className={s.entry}>
         <form onSubmit={submit("/groups/join", "code")}>
           <h2>Join a group</h2>

@@ -242,6 +242,10 @@ export default function SimulationLab({
         <div>
           <h1>Four sources. One mixture.</h1>
           <p>Opentrons Flex · 40 µL mixture</p>
+          <p className={s.purpose}>
+            A simulation runs the whole experiment on a virtual robot first, so
+            a wrong volume, order or tip shows up before the real one moves.
+          </p>
         </div>
         <div className={s.launch}>
           {hasEnded && run.cleanup?.reset_verified ? (
@@ -475,9 +479,9 @@ export default function SimulationLab({
           })}
         </div>
         <p className={s.modelNote}>
-          Liquid quantities and attachments are Matterix semantic observations.
-          They do not validate fluid dynamics, grip forces or physical
-          chemistry.
+          Liquid quantities and attachments are digital twin semantic
+          observations. They do not validate fluid dynamics, grip forces or
+          physical chemistry.
         </p>
       </section>
       {run && (
@@ -502,7 +506,7 @@ export default function SimulationLab({
               <dd>{run.snapshot?.session_id ?? "Not bound yet"}</dd>
               <dt>Plan SHA-256</dt>
               <dd>{run.plan_hash}</dd>
-              <dt>Matterix revision</dt>
+              <dt>Digital twin revision</dt>
               <dd>{run.snapshot?.engine_version ?? "Not observed"}</dd>
               <dt>Assets revision</dt>
               <dd>{run.snapshot?.asset_version ?? "Not observed"}</dd>

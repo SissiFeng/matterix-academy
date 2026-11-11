@@ -77,9 +77,9 @@ function RemoteView() {
         <span>Ubuntu simulation</span>
       </div>
       <p>
-        Once connected and verified, this view will show Matterix live. For now,
-        use the independent teaching model to explore equipment, predict results
-        and practice the action sequence.
+        Once connected and verified, this view will show the digital twin live.
+        For now, use the independent teaching model to explore equipment,
+        predict results and practice the action sequence.
       </p>
       <button className={s.secondary} onClick={check} disabled={busy}>
         <RotateCcw size={15} />

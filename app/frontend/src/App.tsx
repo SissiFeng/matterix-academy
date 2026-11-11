@@ -341,8 +341,8 @@ function Onboarding({
               <div>
                 <strong>Simulation · Teaching practice available</strong>
                 <p>
-                  Matterix will provide the connected digital twin once its
-                  Ubuntu runtime is qualified.
+                  The connected digital twin will be available once its Ubuntu
+                  runtime is qualified.
                 </p>
               </div>
             </div>
@@ -894,23 +894,6 @@ export default function App() {
                 </button>
               )}
             </nav>
-            <div className={s.sidebarLabel}>GO FURTHER</div>
-            <nav aria-label="Explore navigation">
-              <button
-                className={view === "discovery" ? s.activeNav : ""}
-                aria-current={view === "discovery" ? "page" : undefined}
-                onClick={() => nav("discovery")}
-              >
-                <Compass size={18} /> Discovery studio
-              </button>
-              <button
-                className={view === "connector" ? s.activeNav : ""}
-                aria-current={view === "connector" ? "page" : undefined}
-                onClick={() => nav("connector")}
-              >
-                <GitBranch size={18} /> Connector explorer
-              </button>
-            </nav>
             <div className={s.sidebarLabel}>YOUR WORKCELL</div>
             <nav aria-label="Workcell navigation">
               {workspaceViews
@@ -929,6 +912,23 @@ export default function App() {
                     </button>
                   );
                 })}
+            </nav>
+            <div className={s.sidebarLabel}>ADVANCED</div>
+            <nav aria-label="Advanced navigation">
+              <button
+                className={view === "discovery" ? s.activeNav : ""}
+                aria-current={view === "discovery" ? "page" : undefined}
+                onClick={() => nav("discovery")}
+              >
+                <Compass size={18} /> Discovery studio
+              </button>
+              <button
+                className={view === "connector" ? s.activeNav : ""}
+                aria-current={view === "connector" ? "page" : undefined}
+                onClick={() => nav("connector")}
+              >
+                <GitBranch size={18} /> Connector explorer
+              </button>
               {canPlan && (
                 <button
                   className={view === "plan" ? s.activeNav : ""}
@@ -1085,6 +1085,7 @@ export default function App() {
                   onDesign={createStudio}
                   creationBusy={busy}
                   onNavigate={nav}
+                  canPlan={canPlan}
                   onOpen={open}
                   onSessionsLoaded={setSessions}
                   onSessionSaved={updateSession}
@@ -1247,7 +1248,7 @@ export default function App() {
                   : workspaceViews.includes(view as WorkspaceView)
                     ? "Physical readiness · unverified"
                     : view === "sim"
-                      ? "Isaac / Matterix · v0.1"
+                      ? "Isaac / Digital twin · v0.1"
                       : "Teaching model · v0.1"}
               </span>
             </footer>
@@ -1285,8 +1286,8 @@ export default function App() {
             <p>
               The current teaching model checks volume, capacity and tip-use
               rules. Deck placement is schematic; reachability, collisions and
-              chemical outcomes are not evaluated. Matterix is the digital twin
-              engine for the connected simulation path. Real-device training is
+              chemical outcomes are not evaluated. The digital twin engine
+              drives the connected simulation path. Real-device training is
               planned; no physical robot is connected here.
             </p>
             <button className={s.primary} onClick={() => setHelp(false)}>

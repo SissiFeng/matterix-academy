@@ -137,7 +137,7 @@ def main():
         print(
             json.dumps(
                 {
-                    "evidence": "Opentrons Python simulator only; not Matterix, SiLA wire or physical hardware",
+                    "evidence": "Opentrons Python simulator only; not the digital twin, SiLA wire or physical hardware",
                     "opentrons_version": opentrons.__version__,
                     "results": results,
                 },

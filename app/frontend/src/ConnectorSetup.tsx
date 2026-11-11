@@ -1073,7 +1073,7 @@ export default function ConnectorSetup({
                     disabled={busy}
                     onClick={() => onOpen(session)}
                   >
-                    Open design & native Matterix <ArrowRight size={15} />
+                    Open design & native digital twin <ArrowRight size={15} />
                   </button>
                 </div>
               )}

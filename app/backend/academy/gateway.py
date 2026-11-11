@@ -121,7 +121,7 @@ class MatterixGateway:
                 raise ValueError("Gateway does not meet the Academy simulation contract")
             return capabilities
         except (httpx.HTTPError, ValueError) as exc:
-            raise GatewayUnavailable("Matterix gateway qualification failed") from exc
+            raise GatewayUnavailable("Digital twin gateway qualification failed") from exc
 
     def close(self):
         self.client.close()

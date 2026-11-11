@@ -21,6 +21,10 @@
   line-height: 1.6;
   font-size: 14px;
 }
+.heading p.purpose {
+  margin: 0;
+  color: var(--ink);
+}
 .launch {
   display: grid;
   gap: 10px;
