@@ -409,6 +409,14 @@ def create_app(settings: Settings | None = None, store=None):
     def bind_instrument_role(data: BindRole, owner: str = Depends(identify)):
         return app.state.twins.bind_role(owner, data)
 
+    @app.put("/api/twins/workflow/brief/choose")
+    def choose_instruments_for_roles(data: TwinRevision, owner: str = Depends(identify)):
+        return app.state.twins.choose_instruments(owner, data)
+
+    @app.put("/api/twins/workflow/brief/accept")
+    def accept_drafted_workflow(data: TwinRevision, owner: str = Depends(identify)):
+        return app.state.twins.accept_brief(owner, data)
+
     @app.put("/api/twins/workflow/brief/apply")
     def apply_instrument_workflow(data: TwinRevision, owner: str = Depends(identify)):
         return app.state.twins.apply_brief(owner, data)

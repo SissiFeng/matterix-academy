@@ -663,6 +663,14 @@ export default function InstrumentStudio({
                     )
                   }
                   onFind={findFor}
+                  onChoose={() =>
+                    mutate("/twins/workflow/brief/choose", {}, "PUT")
+                  }
+                  onAccept={async () => {
+                    dirty.current = false;
+                    if (await mutate("/twins/workflow/brief/accept", {}, "PUT"))
+                      go("workflow");
+                  }}
                 />
               )}
               <div className={s.addHeading}>

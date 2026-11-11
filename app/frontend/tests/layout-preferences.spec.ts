@@ -107,28 +107,27 @@ test("an imported workflow file plans a layout that reaches deck slots", async (
   const bindings = page.getByRole("region", {
     name: "Instruments for your workflow",
   });
-  await bindings.getByRole("button", { name: "Find" }).nth(0).click();
-  await page.getByRole("button", { name: "Add Opentrons OT-2" }).click();
-  await bindings.getByRole("button", { name: "Find" }).nth(1).click();
-  await page
-    .getByRole("button", { name: "Add Liquid handler (Opentrons Flex)" })
-    .click();
-  await page
-    .getByRole("button", { name: "Transfer robot", exact: true })
-    .click();
-  await bindings
-    .getByLabel("Robot arm instrument")
-    .selectOption({ label: "Sample transfer robot (unconfirmed)" });
-  const confirm = page.getByRole("button", { name: "Confirm twin" });
-  for (let i = 3; i > 0; i--) {
-    await confirm.first().click();
-    await expect(confirm).toHaveCount(i - 1);
-  }
+  // Each role already has the instrument its description names, left for review.
+  for (const [role, instrument] of [
+    ["Liquid handler A", "Opentrons OT-2"],
+    ["Liquid handler B", "Liquid handler (Opentrons Flex)"],
+    ["Robot arm", "UR5e arm"],
+  ])
+    await expect(
+      bindings.getByLabel(`${role} instrument`).locator("option:checked"),
+    ).toHaveText(`${instrument} (unconfirmed)`);
   // The deck's slots replace a free slot count.
-  await expect(page.getByText(/11 on the deck \(1, 2, 3/)).toBeVisible();
-
-  await page.getByRole("tab", { name: "3 · Workflow" }).click();
-  await page.getByRole("button", { name: "Use drafted steps" }).click();
+  await expect(
+    page.getByText(/11 on the deck \(1, 2, 3/).first(),
+  ).toBeVisible();
+  // One confirmation accepts all three and turns the draft into the workflow.
+  await bindings
+    .getByRole("button", { name: "Confirm and use these steps" })
+    .click();
+  await expect(page.getByRole("tab", { name: "3 · Workflow" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await expect(page.getByLabel("Step 3 sample")).toHaveValue("plate-c");
   await expect(page.getByLabel("Step 1 slot")).toHaveValue("");
 

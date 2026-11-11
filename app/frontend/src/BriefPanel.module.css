@@ -95,6 +95,11 @@
   gap: 8px;
   margin-bottom: 18px;
 }
+.accept {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .bindings h2 {
   margin: 0;
 }

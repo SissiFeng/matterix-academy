@@ -153,11 +153,12 @@ function facing(
     toward[0] + Math.cos(bearing) * radius,
     toward[1] + Math.sin(bearing) * radius,
   ];
-  // Mirrors layout_search._pose: the station's front (+z) points at the arm.
-  let yaw = Math.round(
-    (Math.atan2(toward[0] - point[0], toward[1] - point[1]) * 180) / Math.PI,
-  );
-  if (yaw === -180) yaw = 180;
+  // Mirrors layout_search._pose: the station's front (+z) is turned toward the arm, to
+  // the nearest quarter turn so every instrument stands square to the bench.
+  const exact =
+    (Math.atan2(toward[0] - point[0], toward[1] - point[1]) * 180) / Math.PI;
+  let yaw = (((Math.round(exact / 90) * 90) % 360) + 360) % 360;
+  if (yaw > 180) yaw -= 360;
   const { x0, x1, z0, z1 } = footprint(spec);
   const [rx, rz] = rotate(yaw, (x0 + x1) / 2, (z0 + z1) / 2);
   const round = (v: number) => Number(v.toFixed(2)) + 0;
@@ -176,17 +177,39 @@ function around(stations: Twin[], arm: Point): Placement[] {
   const span = (r: number) =>
     size.map(({ w, d }) => 2 * Math.atan((w / 2 + GAP / 2) / (r - d / 2)));
   while (span(radius).reduce((a, b) => a + b, 0) > 2 * Math.PI) radius += 0.05;
-  const angles = span(radius);
-  let bearing = Math.PI / 2 - angles.reduce((a, b) => a + b, 0) / 2;
-  return stations.map((t, i) => {
-    const centre = bearing + angles[i] / 2;
-    bearing += angles[i];
-    return {
-      twin_id: t.id,
-      ...facing(t.spec!, arm, radius, centre),
-      access: "top",
-    };
-  });
+  const place = (r: number): Placement[] => {
+    const angles = span(r);
+    let bearing = Math.PI / 2 - angles.reduce((a, b) => a + b, 0) / 2;
+    return stations.map((t, i) => {
+      const centre = bearing + angles[i] / 2;
+      bearing += angles[i];
+      return {
+        twin_id: t.id,
+        ...facing(t.spec!, arm, r, centre),
+        access: "top",
+      };
+    });
+  };
+  // Standing square rather than facing the arm exactly, a station's corner can reach
+  // its neighbour or the arm's pedestal; the ring widens until none does.
+  const pedestal: Point[] = [
+    [arm[0] - NEAR, arm[1] - NEAR],
+    [arm[0] + NEAR, arm[1] - NEAR],
+    [arm[0] + NEAR, arm[1] + NEAR],
+    [arm[0] - NEAR, arm[1] + NEAR],
+  ];
+  const clear = (placed: Placement[]) => {
+    const shapes = placed.map((p, i) => corners(stations[i].spec!, p));
+    return shapes.every(
+      (a, i) =>
+        !overlaps(a, pedestal) &&
+        shapes.slice(i + 1).every((b) => !overlaps(a, b)),
+    );
+  };
+  let placed = place(radius);
+  for (let n = 0; n < 12 && !clear(placed); n++)
+    placed = place((radius += 0.05));
+  return placed;
 }
 
 /**

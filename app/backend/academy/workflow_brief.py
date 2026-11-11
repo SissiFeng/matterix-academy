@@ -11,6 +11,7 @@ from typing import Literal
 
 from pydantic import Field, ValidationError, model_validator
 
+from .mock_contract import site_keys
 from .models import StrictModel
 from .simple_twins import OPERATIONS, VESSELS, Operation, Revision, Vessel
 
@@ -37,6 +38,8 @@ class Role(StrictModel):
     operations: list[Operation] = Field(min_length=1, max_length=6)
     vessel: Vessel
     query: str = Field(max_length=60)
+    # The maker or model the description names for this role, to pick that instrument.
+    model: str = Field(default="", max_length=60)
     # Slots on this instrument a robot arm must be able to reach; 0 when not stated.
     reach_slots: int = Field(default=0, ge=0, le=24)
 
@@ -93,14 +96,24 @@ class Draft(StrictModel):
                 )
         for i, step in enumerate(self.steps, 1):
             role = roles.get(step.role)
-            if not role or step.operation not in role.operations:
-                raise ValueError(f"Step {i} needs a role that can {step.operation}")
+            if not role:
+                raise ValueError(f"Step {i} names {step.role!r}, which is not a listed role")
+            if step.operation not in role.operations:
+                raise ValueError(
+                    f"Step {i}: {role.name} must list {step.operation} to {step.operation}"
+                )
             ends = (step.source_role, step.target_role)
             if step.operation == "transfer":
                 if not all(ends) or ends[0] == ends[1]:
                     raise ValueError(f"Step {i}: a transfer needs two different stations")
-                if any(e not in roles or "load" not in roles[e].operations for e in ends):
-                    raise ValueError(f"Step {i}: transfer ends must be roles that hold a sample")
+                for end in ends:
+                    if end not in roles:
+                        raise ValueError(f"Step {i} moves a sample to or from {end!r}, not a role")
+                    if "load" not in roles[end].operations:
+                        raise ValueError(
+                            f"Step {i}: {roles[end].name} must list load to hold the sample "
+                            "it receives or gives up"
+                        )
             elif any(ends):
                 raise ValueError(f"Step {i}: only transfers have source and target roles")
         if any(len(a) > 200 for a in self.assumptions):
@@ -112,13 +125,14 @@ def schema():
     role = {
         "type": "object",
         "additionalProperties": False,
-        "required": ["key", "name", "operations", "vessel", "query", "reach_slots"],
+        "required": ["key", "name", "operations", "vessel", "query", "model", "reach_slots"],
         "properties": {
             "key": {"type": "string"},
             "name": {"type": "string"},
             "operations": {"type": "array", "items": {"type": "string", "enum": OPERATIONS}},
             "vessel": {"type": "string", "enum": VESSELS},
             "query": {"type": "string"},
+            "model": {"type": "string"},
             "reach_slots": {"type": "integer"},
         },
     }
@@ -168,7 +182,8 @@ PROMPT = (
     "from: load (holds a sample), transfer (a robot arm moves the sample between two "
     "stations; only a robot role lists it, never a station), mix, heat, read, wait. vessel is what the role holds (none, tube, vial, "
     "plate, reservoir; none for a robot arm). query is 1-3 words to search an instrument "
-    "library for this role. Name each tracked plate, tube or vial in sample with a short "
+    "library for this role. model is the maker or model the text names for this role, such "
+    "as Opentrons Flex or UR5e, and empty when it names none. Name each tracked plate, tube or vial in sample with a short "
     "slug such as plate-a; use one sample when the text does not say how many. Load "
     "each sample once, then every move between stations is a transfer step by a role "
     "with the transfer operation, with source_role and target_role set; leave both empty "
@@ -213,6 +228,25 @@ def parse(result):
             "build the steps by hand.",
         )
     return "draft", draft.model_dump(mode="json"), ""
+
+
+def used_roles(draft):
+    """The roles the drafted steps act on or move a sample between, in the draft's order."""
+    used = {s["role"] for s in draft["steps"]} | {
+        s[k] for s in draft["steps"] for k in ("source_role", "target_role") if s[k]
+    }
+    return [r for r in draft["roles"] if r["key"] in used]
+
+
+def fits(role, spec, vessel=True):
+    """A twin can play a role when it supports every operation, the vessel and the slots."""
+    return (
+        set(role["operations"]) <= set(spec["operations"])
+        and (
+            not vessel or role["vessel"] == "none" or spec["container"]["vessel"] == role["vessel"]
+        )
+        and len(site_keys(spec)) >= role.get("reach_slots", 0)
+    )
 
 
 def apply(brief, twins):

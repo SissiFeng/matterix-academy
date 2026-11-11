@@ -111,11 +111,14 @@ def test_description_becomes_roles_then_a_saved_workflow(client, app):
         "reader",
     ]
 
+    # Every role was given an instrument to review; none is confirmed for the learner.
+    chosen = {t["id"]: t for t in catalog["twins"]}
+    assert set(brief["bindings"]) == {"heater", "robot", "reader"}
+    assert all(not chosen[twin_id]["confirmed"] for twin_id in brief["bindings"].values())
     apply = lambda v: client.put("/api/twins/workflow/brief/apply", json={"expected_version": v})  # noqa: E731
-    catalog = client.get("/api/twins").json()
     response = apply(catalog["version"])
     assert response.status_code == 422
-    assert "Choose an instrument for Heating station" in response.json()["detail"]["message"]
+    assert "Confirm the instrument for Heating station" in response.json()["detail"]["message"]
 
     ids = {}
     for role, template in [("heater", "heater"), ("robot", "transfer-arm"), ("reader", "reader")]:
@@ -196,6 +199,83 @@ def test_bedrock_brief_request_uses_strict_json_schema(monkeypatch):
     assert sent["json"]["input"][0]["content"][0]["text"].endswith("Heat then read a plate.")
 
 
+def drafted(client, app, draft=DRAFT):
+    app.state.twins.provider = FakeBriefs(polls=[done(draft)])
+    catalog = describe(client, 0).json()
+    response = client.post(
+        "/api/twins/workflow/brief/poll", json={"expected_version": catalog["version"]}
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def chosen(catalog, role):
+    twin_id = catalog["brief"]["bindings"][role]
+    return next(t for t in catalog["twins"] if t["id"] == twin_id)
+
+
+def test_instruments_are_chosen_from_the_description_and_accepted_in_one_step(client, app):
+    catalog = drafted(client, app)
+    # The plate reader and the arm come from the library; the vessel follows the role.
+    assert chosen(catalog, "reader")["source"].endswith("_asset")
+    assert chosen(catalog, "reader")["spec"]["container"]["vessel"] == "plate"
+    assert "transfer" in chosen(catalog, "robot")["spec"]["operations"]
+    assert chosen(catalog, "heater")["spec"]["container"]["vessel"] == "plate"
+    accept = client.put(
+        "/api/twins/workflow/brief/accept", json={"expected_version": catalog["version"]}
+    )
+    assert accept.status_code == 200, accept.text
+    catalog = accept.json()
+    assert all(chosen(catalog, role)["confirmed"] for role in ("heater", "robot", "reader"))
+    assert [s["operation"] for s in catalog["steps"]] == ["load", "heat", "transfer", "read"]
+    assert catalog["steps"][2]["device_id"] == catalog["brief"]["bindings"]["robot"]
+    stale = client.put(
+        "/api/twins/workflow/brief/accept", json={"expected_version": catalog["version"] - 1}
+    )
+    assert stale.status_code == 409
+
+
+def test_a_named_instrument_is_the_one_chosen(client, app):
+    named = json.loads(json.dumps(DRAFT))
+    named["roles"][2].update(model="CLARIOstar Plus", query="reader")
+    named["roles"][1].update(model="UR5e")
+    catalog = drafted(client, app, named)
+    assert chosen(catalog, "reader")["asset"]["id"] == "bmg_clariostarplus"
+    assert chosen(catalog, "robot")["asset"]["id"] == "ur5e-2f140"
+
+
+def test_an_instrument_the_workcell_has_is_used_before_adding_one(client, app):
+    reader, catalog = add(client, 0, template_id="reader")
+    catalog = confirm(client, reader, catalog["version"], TEMPLATES["reader"])
+    app.state.twins.provider = FakeBriefs(polls=[done(DRAFT)])
+    catalog = describe(client, catalog["version"]).json()
+    catalog = client.post(
+        "/api/twins/workflow/brief/poll", json={"expected_version": catalog["version"]}
+    ).json()
+    assert catalog["brief"]["bindings"]["reader"] == reader
+    assert len(catalog["twins"]) == 3  # the reader, plus a heater and an arm
+
+
+def test_cleared_roles_can_be_chosen_again_without_touching_the_rest(client, app):
+    catalog = drafted(client, app)
+    kept = catalog["brief"]["bindings"]["heater"]
+    cleared = client.put(
+        "/api/twins/workflow/brief/bind",
+        json={"expected_version": catalog["version"], "role": "reader", "twin_id": None},
+    ).json()
+    assert "reader" not in cleared["brief"]["bindings"]
+    again = client.put(
+        "/api/twins/workflow/brief/choose", json={"expected_version": cleared["version"]}
+    )
+    assert again.status_code == 200, again.text
+    catalog = again.json()
+    # The reader twin added the first time is free again, so it is reused, not duplicated.
+    assert catalog["brief"]["bindings"]["heater"] == kept
+    assert "reader" in catalog["brief"]["bindings"] and len(catalog["twins"]) == 3
+    none = client.put("/api/twins/workflow/brief/choose", json={"expected_version": 0})
+    assert none.status_code == 409
+
+
 class FakeConverse:
     """Bedrock Converse returning the given tool inputs in order; an exception is raised."""
 
@@ -262,6 +342,8 @@ def test_nova_drafts_through_the_lambda_role_and_corrects_a_rejected_draft(clien
     assert done_.status_code == 200, done_.text
     assert done_.json()["brief"]["status"] == "draft"
     assert done_.json()["brief"]["draft"]["roles"][0]["operations"] == ["load", "heat"]
+    # As with Astra, every role the steps use is given an instrument to review.
+    assert set(done_.json()["brief"]["bindings"]) == {"heater", "robot", "reader"}
     # The second call carried the first draft and why it was rejected.
     feedback = fake.calls[1]["messages"][-1]["content"][0]["toolResult"]
     assert (

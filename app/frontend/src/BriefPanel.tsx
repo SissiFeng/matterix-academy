@@ -269,6 +269,8 @@ export function RoleBindings({
   finding,
   onBind,
   onFind,
+  onChoose,
+  onAccept,
 }: {
   brief: Brief;
   twins: Twin[];
@@ -276,7 +278,20 @@ export function RoleBindings({
   finding: string | null;
   onBind: (role: string, twinId: string | null) => void;
   onFind: (role: BriefRole) => void;
+  onChoose: () => void;
+  onAccept: () => void;
 }) {
+  // Instruments are chosen from the description; the learner changes any and confirms once.
+  const used = new Set(
+    brief.draft!.steps.flatMap((step) =>
+      [step.role, step.source_role, step.target_role].filter(Boolean),
+    ),
+  );
+  const roles = brief.draft!.roles.filter((r) => used.has(r.key));
+  const missing = roles.filter((r) => !brief.bindings[r.key]);
+  const unconfirmed = roles.filter(
+    (r) => !twins.find((t) => t.id === brief.bindings[r.key])?.confirmed,
+  );
   return (
     <section className={s.bindings} aria-label="Instruments for your workflow">
       <h2>Instruments for your workflow</h2>
@@ -324,6 +339,26 @@ export function RoleBindings({
           );
         })}
       </ul>
+      {(missing.length > 0 || unconfirmed.length > 0) && (
+        <div className={s.accept}>
+          {missing.length > 0 && (
+            <button
+              className={studio.secondary}
+              disabled={busy}
+              onClick={onChoose}
+            >
+              Choose for me
+            </button>
+          )}
+          <button
+            className={studio.primary}
+            disabled={busy || missing.length > 0}
+            onClick={onAccept}
+          >
+            Confirm and use these steps
+          </button>
+        </div>
+      )}
     </section>
   );
 }
