@@ -391,6 +391,9 @@ export type InstrumentCatalog = {
   templates: Record<string, TwinSpec>;
   simready: Record<string, SimReadyAsset>;
   astra_available: boolean;
+  /** Whether a described workflow can be drafted here, and by which model. */
+  brief_available?: boolean;
+  brief_model?: string;
   real_available: boolean;
   real_reason: string;
 };

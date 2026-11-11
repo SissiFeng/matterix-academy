@@ -82,6 +82,9 @@ export default function BriefPanel({
   onNext: () => void;
 }) {
   const brief = catalog.brief;
+  // Servers from before Nova drafting report only Astra.
+  const drafts = catalog.brief_available ?? catalog.astra_available;
+  const model = catalog.brief_model ?? "GPT-6 Astra";
   const [text, setText] = useState(
     brief?.source === "import" ? "" : (brief?.text ?? ""),
   );
@@ -109,12 +112,7 @@ export default function BriefPanel({
       <div className={studio.actions}>
         <button
           className={studio.primary}
-          disabled={
-            busy ||
-            drafting ||
-            !catalog.astra_available ||
-            text.trim().length < 10
-          }
+          disabled={busy || drafting || !drafts || text.trim().length < 10}
           onClick={() => onDescribe(text.trim())}
         >
           <Sparkles size={15} />{" "}
@@ -167,10 +165,10 @@ export default function BriefPanel({
       {brief?.source === "import" && brief.draft && (
         <p className={studio.muted}>From {brief.text}</p>
       )}
-      {!catalog.astra_available && (
+      {!drafts && (
         <p className={studio.muted}>
-          Drafting needs Astra, which is not configured here. Add instruments
-          and build the steps by hand.
+          Drafting needs a language model, which is not configured here. Add
+          instruments and build the steps by hand.
         </p>
       )}
       {brief &&
@@ -244,10 +242,10 @@ export default function BriefPanel({
       <details className={s.details}>
         <summary>How drafting works</summary>
         <p>
-          GPT-6 Astra on Amazon Bedrock reads the description and drafts
-          instrument roles and steps against the same bounded operations as the
-          step editor. It never picks a model: you choose each instrument, then
-          the drafted steps become your workflow and its slot and layout wishes
+          {model} on Amazon Bedrock reads the description and drafts instrument
+          roles and steps against the same bounded operations as the step
+          editor. It never picks a model: you choose each instrument, then the
+          drafted steps become your workflow and its slot and layout wishes
           become layout preferences.
         </p>
         <p>

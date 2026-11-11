@@ -24,3 +24,7 @@ gpu_region = "us-east-2"
 # Bedrock API key in an existing ca-central-1 secret first; Terraform never sees the key.
 # twin_region             = "us-east-1"
 # twin_api_key_secret_arn = "arn:aws:secretsmanager:ca-central-1:247893369214:secret:matterix-academy/dev/bedrock-twin-key-AbCdEf"
+
+# Workflow drafting with Amazon Nova through the API Lambda role (no API key).
+brief_model  = "us.amazon.nova-pro-v1:0"
+brief_region = "us-east-1"

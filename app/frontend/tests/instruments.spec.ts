@@ -24,11 +24,11 @@ test("instrument twins run a multi-device workflow on the mock contract", async 
   await expect(page).toHaveURL(/#\/plan$/);
   const studio = page.getByRole("region", { name: "Plan your workcell" });
   await expect(studio).toBeVisible();
-  // Without Astra the description step says so and the manual path stays open.
+  // Without a drafting model the description step says so and the manual path stays open.
   await expect(
     studio.getByRole("button", { name: "Draft roles and steps" }),
   ).toBeDisabled();
-  await expect(studio.getByText(/Drafting needs Astra/)).toBeVisible();
+  await expect(studio.getByText(/Drafting needs a language model/)).toBeVisible();
   await studio.getByRole("button", { name: /Skip to instruments/ }).click();
   await expect(page).toHaveURL(/#\/plan\/instruments$/);
   await expect(
@@ -721,7 +721,7 @@ test("browser fixture only: a drafted description lists roles and guides instrum
     if (!body || !Array.isArray(body.twins)) return route.fulfill({ response });
     await route.fulfill({
       response,
-      json: { ...body, brief, astra_available: true },
+      json: { ...body, brief, astra_available: true, brief_available: true },
     });
   });
   await openInstruments(page);
