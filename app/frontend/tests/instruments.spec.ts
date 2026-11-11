@@ -507,6 +507,22 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
     fullPage: true,
   });
 
+  // A layout names the instruments whose sizes nobody compared with the real thing.
+  const unchecked = page.getByText(
+    /Sizes not checked against the real instrument: .*Heating station/,
+  );
+  await expect(unchecked).toBeVisible();
+  await page.getByRole("tab", { name: "2 · Instruments" }).click();
+  const sized = page.getByLabel(/Sizes checked against the real instrument/);
+  await expect(sized).toHaveCount(3);
+  for (let i = 0; i < 3; i++) {
+    await sized.nth(i).click();
+    await expect(sized.nth(i)).toBeChecked();
+  }
+  await page.getByRole("tab", { name: "4 · Layout" }).click();
+  await expect(path).toBeVisible();
+  await expect(unchecked).toBeHidden();
+
   await page.reload();
   await page.getByRole("tab", { name: "3 · Workflow" }).click();
   await expect(page.getByText(/collision-free arm path/)).toBeVisible();

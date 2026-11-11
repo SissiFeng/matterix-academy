@@ -380,6 +380,24 @@ class MatchTwin(Revision):
     asset_id: str = Field(min_length=1, max_length=80)
 
 
+class SizeCheck(Revision):
+    checked: bool
+
+
+def size_basis(twin):
+    """How far a twin's dimensions can be trusted; a layout is as good as its weakest one.
+
+    `checked`: the learner compared them with the real instrument. `catalogued`: the
+    unedited footprint of a library entry. `estimated`: a template, a photo sketch or
+    hand-edited parts.
+    """
+    if twin.get("size_checked"):
+        return "checked"
+    if twin["source"].endswith("_asset") and not twin.get("size_edited"):
+        return "catalogued"
+    return "estimated"
+
+
 class ConnectorMode(Revision):
     mode: Literal["mock", "real"]
 
@@ -972,7 +990,8 @@ class SimpleTwinService:
             "layout": None,  # records saved before layouts existed
             "brief": None,  # or before workflow descriptions
             "constraints": [],  # or before layout preferences
-            **self.get(owner),
+            **(record := self.get(owner)),
+            "twins": [{**t, "size_basis": size_basis(t)} for t in record["twins"]],
             "templates": TEMPLATES,
             "simready": SIMREADY,
             "astra_available": self.provider.available,
@@ -1263,6 +1282,7 @@ class SimpleTwinService:
             source=f"{data.collection}_asset",
             spec=deepcopy(assets[data.asset_id]["spec"]),
             asset=provenance(data.asset_id),
+            size_edited=False,
         )
         return self.save(owner, record, data.expected_version)
 
@@ -1272,9 +1292,12 @@ class SimpleTwinService:
         if twin["status"] not in {"draft", "ready"}:
             raise HTTPException(409, "Wait for generation to complete")
         spec = data.spec.model_dump(mode="json")
+        if twin["confirmed"] and spec == twin["spec"]:
+            return self.catalog(owner)
+        if spec["parts"] != twin["spec"]["parts"]:
+            # New dimensions are the learner's own, and no longer the ones that were checked.
+            twin.update(size_edited=True, size_checked=False)
         if twin["confirmed"]:
-            if spec == twin["spec"]:
-                return self.catalog(owner)
             grown, changed = detail_layers(twin["spec"], spec)
             open_layers = {r["layer"] for r in twin["residuals"] if r["resolved_in"] is None}
             unjustified = sorted(grown - open_layers)
@@ -1293,6 +1316,15 @@ class SimpleTwinService:
         # A capability edit must not silently break the saved workflow.
         if record["steps"]:
             self.check_plan(record, record["steps"])
+        return self.save(owner, record, data.expected_version)
+
+    def size_check(self, owner, twin_id, data):
+        """The learner's statement that the twin's dimensions match the real instrument."""
+        record = self.current(owner, data.expected_version)
+        twin = self.found(record, twin_id)
+        if not twin["confirmed"]:
+            raise HTTPException(409, "Confirm the twin before checking its size")
+        twin["size_checked"] = data.checked
         return self.save(owner, record, data.expected_version)
 
     def mode(self, owner, twin_id, data):
