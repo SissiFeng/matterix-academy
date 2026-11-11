@@ -96,14 +96,24 @@ class Draft(StrictModel):
                 )
         for i, step in enumerate(self.steps, 1):
             role = roles.get(step.role)
-            if not role or step.operation not in role.operations:
-                raise ValueError(f"Step {i} needs a role that can {step.operation}")
+            if not role:
+                raise ValueError(f"Step {i} names {step.role!r}, which is not a listed role")
+            if step.operation not in role.operations:
+                raise ValueError(
+                    f"Step {i}: {role.name} must list {step.operation} to {step.operation}"
+                )
             ends = (step.source_role, step.target_role)
             if step.operation == "transfer":
                 if not all(ends) or ends[0] == ends[1]:
                     raise ValueError(f"Step {i}: a transfer needs two different stations")
-                if any(e not in roles or "load" not in roles[e].operations for e in ends):
-                    raise ValueError(f"Step {i}: transfer ends must be roles that hold a sample")
+                for end in ends:
+                    if end not in roles:
+                        raise ValueError(f"Step {i} moves a sample to or from {end!r}, not a role")
+                    if "load" not in roles[end].operations:
+                        raise ValueError(
+                            f"Step {i}: {roles[end].name} must list load to hold the sample "
+                            "it receives or gives up"
+                        )
             elif any(ends):
                 raise ValueError(f"Step {i}: only transfers have source and target roles")
         if any(len(a) > 200 for a in self.assumptions):
