@@ -5,8 +5,8 @@ if [[ "${CI:-}" == "true" && -z "${PACKER_BIN:-}" ]]; then
   echo "CI must install the pinned Packer and set PACKER_BIN for image validation." >&2
   exit 1
 fi
-uv run ruff check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
-uv run ruff format --check app/backend infra/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
+uv run ruff check app/backend platform/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
+uv run ruff format --check app/backend platform/cognito scripts/release.py scripts/package-native.py scripts/ec2-gpu-costs.py scripts/ec2-gpu-prepare.py scripts/ec2-gpu-release.py scripts/ec2-gpu-sources.py scripts/ec2-gpu-bootstrap.py scripts/ec2-gpu-driver.py scripts/ec2-gpu-inputs.py scripts/ec2-gpu-build.py scripts/verify-gpu-image.py scripts/matterix-sync.py scripts/publish-matterix-candidate.py
 uv run python scripts/matterix-sync.py check-policy
 uv run ruff check scripts/connector-release.py scripts/connector-qualify.py scripts/connector-resolve.py scripts/package-companion.py
 uv run ruff format --check scripts/connector-release.py scripts/connector-qualify.py scripts/connector-resolve.py scripts/package-companion.py
@@ -20,14 +20,14 @@ node --test app/frontend/studio-commissioning.test.mjs
 node --check app/frontend/learner-acceptance.mjs
 node --check app/frontend/learner-acceptance-journeys.mjs
 node --test app/frontend/learner-acceptance.test.mjs
-terraform -chdir=infra fmt -check
+terraform -chdir=platform fmt -check
 # Cached S3 backend metadata must never make local validation require AWS credentials.
 (
   terraform_data=$(mktemp -d /tmp/academy-main-verify.XXXXXX)
   trap 'rm -rf "$terraform_data"' EXIT
   export TF_DATA_DIR="$terraform_data"
-  terraform -chdir=infra init -backend=false -input=false -lockfile=readonly >/dev/null
-  terraform -chdir=infra validate
+  terraform -chdir=platform init -backend=false -input=false -lockfile=readonly >/dev/null
+  terraform -chdir=platform validate
 )
 
 bash scripts/verify-ec2-gpu.sh

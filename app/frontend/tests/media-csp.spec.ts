@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
 test("CSP permits Canadian KVS signaling while blocking other regions and hosts", async ({
   page,
 }) => {
-  const source = readFileSync(path.resolve("../../infra/main.tf"), "utf8");
+  const source = readFileSync(path.resolve("../../platform/main.tf"), "utf8");
   const template = source.match(/content_security_policy = "([^"]+)"/);
   expect(template).not.toBeNull();
   const policy = template![1]

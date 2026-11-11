@@ -1,0 +1,9 @@
+# The Terraform for this stack lives in this directory rather than in
+# infrastructure-modules: it is a serverless stack no shared module covers.
+module:
+  repo: "github.com/SissiFeng/matterix-academy"
+  path: "platform"
+  ref: "main"
+
+backend:
+  config: "dev.backend.hcl"

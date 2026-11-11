@@ -16,10 +16,10 @@ cleanup() {
 }
 trap cleanup EXIT
 # Validate a fresh copy: never read an operator's local Terraform state.
-mkdir -p "$work/infra/ec2-gpu" "$work/ops/ec2-gpu"
-cp infra/ec2-gpu/*.tf infra/ec2-gpu/*.tftpl infra/ec2-gpu/.terraform.lock.hcl "$work/infra/ec2-gpu/"
+mkdir -p "$work/platform/ec2-gpu" "$work/ops/ec2-gpu"
+cp platform/ec2-gpu/*.tf platform/ec2-gpu/*.tftpl platform/ec2-gpu/.terraform.lock.hcl "$work/platform/ec2-gpu/"
 cp ops/ec2-gpu/academy-native.service "$work/ops/ec2-gpu/"
-module="$work/infra/ec2-gpu"
+module="$work/platform/ec2-gpu"
 unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_ROLE_ARN AWS_WEB_IDENTITY_TOKEN_FILE
 unset TF_CLI_ARGS TF_CLI_ARGS_plan TF_CLI_ARGS_init TF_CLI_ARGS_show
 # Explicit overrides prevent ambient TF_VAR_enabled/account/profile from selecting a real account.
