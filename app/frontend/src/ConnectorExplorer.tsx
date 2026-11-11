@@ -271,7 +271,7 @@ function ModuleLesson({
             </div>
             <div>
               <span>03</span>
-              <h4>Matterix / Isaac</h4>
+              <h4>Digital twin / Isaac</h4>
               <p>
                 A separate digital-twin runtime. Passing this lesson or a
                 connector simulator test does not qualify an Isaac workflow.

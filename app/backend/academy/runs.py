@@ -417,14 +417,14 @@ class RunService:
             issues.append(
                 StudioIssue(
                     code="deployment",
-                    message="Matterix execution awaits native qualification in this deployment",
+                    message="Digital twin execution awaits native qualification in this deployment",
                 )
             )
         if session["status"] == "running":
             issues.append(
                 StudioIssue(
                     code="teaching_active",
-                    message="Pause the teaching simulation before starting Matterix",
+                    message="Pause the teaching simulation before starting the digital twin",
                 )
             )
         pointer = self.store.get(owner, f"remote#{session_id}")
@@ -486,7 +486,7 @@ class RunService:
             "issues": [issue.model_dump() for issue in issues],
             "message": "This saved design is ready for native simulation"
             if not issues
-            else "Resolve the listed requirements before starting Matterix",
+            else "Resolve the listed requirements before starting the digital twin",
         }
 
     def check_supported(self, plan):

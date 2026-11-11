@@ -293,7 +293,7 @@ export default function DilutionWorkspace({
                   )}
                 </div>
                 <button className={s.secondary} onClick={() => setViewer(true)}>
-                  <Monitor size={15} /> Matterix 3D
+                  <Monitor size={15} /> Digital twin 3D
                 </button>
               </div>
               <Deck
@@ -770,9 +770,9 @@ export default function DilutionWorkspace({
             <Monitor size={35} />
             <h2 id="viewer-title">Your 3D lab is not connected yet.</h2>
             <p>
-              The Ubuntu Matterix gateway must be connected and verified before
-              a live 3D session can open. Your current experiment runs in the
-              teaching model.
+              The Ubuntu digital twin gateway must be connected and verified
+              before a live 3D session can open. Your current experiment runs in
+              the teaching model.
             </p>
             <p>
               There is no live robot motion or collision simulation in this

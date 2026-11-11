@@ -263,7 +263,7 @@ export default function RemoteRunPanel({
     <section className={s.panel} aria-label="Remote experiment run">
       <div className={s.heading}>
         <div>
-          <span className={s.eyebrow}>MATTERIX / SAVED EXPERIMENT</span>
+          <span className={s.eyebrow}>DIGITAL TWIN / SAVED EXPERIMENT</span>
           <h3>Follow your remote run</h3>
         </div>
         <span className={s.badge}>
@@ -410,7 +410,7 @@ export default function RemoteRunPanel({
           }
           onClick={() => void submit()}
         >
-          <Play size={15} /> Run saved experiment in Matterix
+          <Play size={15} /> Run saved experiment in the digital twin
         </button>
         <button disabled={busy} onClick={() => setRefresh((v) => v + 1)}>
           <RefreshCw size={15} /> Check connection

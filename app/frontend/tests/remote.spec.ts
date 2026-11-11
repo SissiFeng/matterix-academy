@@ -22,7 +22,9 @@ test("native execution stays disabled before qualification", async ({
     panel.getByText(/Remote execution is awaiting Ubuntu qualification/),
   ).toBeVisible();
   await expect(
-    panel.getByRole("button", { name: "Run saved experiment in Matterix" }),
+    panel.getByRole("button", {
+      name: "Run saved experiment in the digital twin",
+    }),
   ).toBeDisabled();
   await expect(
     panel.getByText("Awaiting native execution", { exact: true }),
@@ -101,7 +103,9 @@ test("fixture-only snapshot survives disconnect and refresh without synthetic pr
     panel.getByText("Outcome unknown", { exact: true }),
   ).toBeVisible();
   await expect(
-    panel.getByRole("button", { name: "Run saved experiment in Matterix" }),
+    panel.getByRole("button", {
+      name: "Run saved experiment in the digital twin",
+    }),
   ).toBeDisabled();
   expect(mutations).toBe(0);
 });

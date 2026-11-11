@@ -570,7 +570,7 @@ class ConnectionService:
         if not self.native_evidence(owner, session, plan, native_run_id):
             issue(
                 "native_evidence",
-                "The unchanged plan needs completed qualified Matterix native evidence and verified reset",
+                "The unchanged plan needs completed qualified digital twin native evidence and verified reset",
             )
         return {
             "ready": not issues,

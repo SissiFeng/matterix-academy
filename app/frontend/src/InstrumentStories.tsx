@@ -113,11 +113,19 @@ export default function InstrumentStories({
       data-testid="instrument-stories"
     >
       <header className={s.header}>
-        <Heading id={`${id}-title`}>
-          See it move.
-          <br />
-          <span>Then make it yours.</span>
-        </Heading>
+        <div>
+          <Heading id={`${id}-title`}>
+            See it move.
+            <br />
+            <span>Then make it yours.</span>
+          </Heading>
+          {!compact && (
+            <p className={s.purpose}>
+              Watch a virtual Opentrons robot do each basic step, then change
+              the workflow yourself. No lab experience needed.
+            </p>
+          )}
+        </div>
         {!compact && <LessonSearch onLesson={selectInstrument} />}
       </header>
 

@@ -57,7 +57,7 @@ const labels: Record<string, string> = {
   queued: "Waiting for a qualified worker",
   claimed: "Worker reserved",
   starting: "Preparing Isaac",
-  running: "Running in Matterix",
+  running: "Running in the digital twin",
   pause_requested: "Pause requested",
   paused: "Paused",
   resume_requested: "Resume requested",
@@ -473,11 +473,11 @@ export default function NativeStudioRun({
   return (
     <section
       className={s.panel}
-      aria-label="Native Matterix workflow"
+      aria-label="Native digital twin workflow"
       data-testid="native-studio-run"
     >
       <header className={s.heading}>
-        <h2>Matterix simulation</h2>
+        <h2>Digital twin simulation</h2>
         <span className={s.badge}>
           {run?.evidence === "native"
             ? "Native observations received"
@@ -561,7 +561,7 @@ export default function NativeStudioRun({
             ? "Submitting…"
             : run?.cleanup?.reset_verified
               ? "Run saved workflow again"
-              : "Run saved workflow in Matterix"}
+              : "Run saved workflow in the digital twin"}
         </button>
         <button
           disabled={busy}

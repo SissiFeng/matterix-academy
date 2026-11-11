@@ -270,7 +270,7 @@ export default function IsaacViewport({
           <i className={connected ? s.liveDot : s.waitDot} />
           {connected ? status : "Simulation video"}
         </span>
-        <span>ISAAC / MATTERIX</span>
+        <span>ISAAC / DIGITAL TWIN</span>
       </div>
       <div className={s.videoStage}>
         <video

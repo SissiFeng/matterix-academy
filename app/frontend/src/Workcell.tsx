@@ -64,6 +64,7 @@ const purposes: Partial<Record<WorkspaceView, string>> = {
   twin: "A teaching twin is a software copy of your device. Practise on it and compare its state with what you expected.",
   readiness:
     "Check what stands between a practised workflow and a run on the real instrument.",
+  runs: "Replay what the twin did in each saved run, step by step, and see where it stopped.",
 };
 const startGuide = [
   {

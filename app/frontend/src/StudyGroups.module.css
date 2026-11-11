@@ -14,6 +14,12 @@
   font-size: clamp(1.8rem, 3vw, 2.4rem);
   letter-spacing: -0.8px;
 }
+.purpose {
+  max-width: 620px;
+  margin: 10px 0 28px;
+  color: var(--muted);
+  line-height: 1.55;
+}
 .page h2 {
   margin: 0 0 14px;
   font-size: 18px;

@@ -407,7 +407,7 @@ export default function WorkflowStudio({
               nativeControls.current?.focus({ preventScroll: true });
             }}
           >
-            <Monitor size={16} /> Native Matterix
+            <Monitor size={16} /> Native digital twin
           </button>
           <button
             className={s.secondary}
@@ -420,9 +420,9 @@ export default function WorkflowStudio({
       </header>
       {nativeReserved && (
         <p className={s.nativeNotice} role="status">
-          Native Matterix execution reserves this workflow. Editing and teaching
-          controls unlock after its submission is reconciled and native reset is
-          verified.
+          Native digital twin execution reserves this workflow. Editing and
+          teaching controls unlock after its submission is reconciled and native
+          reset is verified.
         </p>
       )}
       <div className={s.mobileJumps} role="group" aria-label="Studio sections">
