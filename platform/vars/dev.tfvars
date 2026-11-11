@@ -11,14 +11,14 @@ github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@139333201
 
 # Optional notifications (confirm the email subscription after apply)
 # alarm_email        = "operator@example.org"
-# Optional wakeup for one existing reviewed GPU; does not enable native execution.
-# gpu_instance_id = "i-0123456789abcdef0"
-# gpu_worker_id   = "ec2-flex-pilot-1"
+# Wakeup for the reviewed Ohio GPU host; does not enable native execution.
+gpu_instance_id = "i-0f369ff6e01f8d623"
+gpu_worker_id   = "ec2-flex-ohio-1"
 # monthly_budget_usd = 100
 
 # GPU host region (EC2/SSM only; Cognito, DynamoDB, KVS stay in `region`).
-# Set together with the us-east-2 gpu_instance_id, never with a Canadian one.
-# gpu_region = "us-east-2"
+# Change together with gpu_instance_id: the two must name the same host.
+gpu_region = "us-east-2"
 
 # Optional photo-to-twin (GPT-6 Astra). Enable model access in the region and store the
 # Bedrock API key in an existing ca-central-1 secret first; Terraform never sees the key.

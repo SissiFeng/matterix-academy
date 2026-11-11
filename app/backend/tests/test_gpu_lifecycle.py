@@ -10,6 +10,7 @@ from academy.gpu_lifecycle import (
     READINESS,
     GpuLifecycle,
     configured,
+    silent_stop_seconds,
     startup_seconds,
 )
 from academy.runs import RunService, SubmitRun, revised
@@ -836,8 +837,24 @@ def test_aws_throttling_is_retried_soon_and_is_not_an_operator_fault(managed, co
     ec2.start_instances.assert_called_once()
 
 
+def test_a_silent_host_keeps_running_unless_the_cost_guard_is_enabled(managed, monkeypatch):
+    gpu, ec2, _, now = managed
+    assert silent_stop_seconds() == 0
+    monkeypatch.setenv("ACADEMY_GPU_SILENT_STOP_SECONDS", "900")
+    assert silent_stop_seconds() == 900
+    demand(gpu)
+    boot(gpu, ec2, None, now)
+    heartbeat(gpu, now)
+    tick(gpu, now)
+    now[0] += 86400
+    gpu.reconcile()
+    ec2.stop_instances.assert_not_called()
+    assert gpu.status()["state"] == "error"
+
+
 def test_silent_idle_host_is_stopped_once_nothing_can_be_waiting_on_it(managed):
     gpu, ec2, _, now = managed
+    gpu.silent_stop = 900
     demand(gpu)
     boot(gpu, ec2, None, now)
     heartbeat(gpu, now)

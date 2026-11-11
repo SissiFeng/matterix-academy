@@ -31,7 +31,14 @@ export default function GpuRequestPanel({
     alive.current = true;
     let timer: number | undefined;
     const controller = new AbortController();
+    // Only a host that is changing power state, or a request whose response was
+    // lost, is worth reading every few seconds.
+    let changing = true;
     const read = async () => {
+      if (document.hidden) {
+        timer = window.setTimeout(read, 3000);
+        return;
+      }
       const epoch = mutation.current;
       try {
         const next = await api<Capacity>(
@@ -40,6 +47,9 @@ export default function GpuRequestPanel({
         );
         if (!controller.signal.aborted && epoch === mutation.current) {
           setCapacity(next);
+          changing = ["starting", "preparing", "stopping"].includes(
+            next.gpu?.state ?? "",
+          );
           if (next.active) setError("");
           if (
             next.request &&
@@ -55,7 +65,11 @@ export default function GpuRequestPanel({
             "GPU availability could not be checked. Check connection to recover your request.",
           );
       } finally {
-        if (!controller.signal.aborted) timer = window.setTimeout(read, 3000);
+        if (!controller.signal.aborted)
+          timer = window.setTimeout(
+            read,
+            changing || pending.current ? 3000 : 10000,
+          );
       }
     };
     void read();
@@ -101,7 +115,11 @@ export default function GpuRequestPanel({
       }
     } finally {
       sending.current = false;
-      if (alive.current) setBusy(false);
+      if (alive.current) {
+        setBusy(false);
+        // Read again now: the host may have started changing, or the response was lost.
+        setRefresh((n) => n + 1);
+      }
     }
   };
 

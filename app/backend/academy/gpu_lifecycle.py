@@ -30,9 +30,9 @@ UNREADY_GRACE_SECONDS = 120
 # An accepted stop that EC2 still reports as running is re-issued after this long.
 STOP_RETRY_SECONDS = 300
 CAPACITY_RETRY_MAX = 300
-# Cost guard: with no demand, queue or cloud-side run, a host whose worker has been
-# silent this long is stopped instead of billing until an operator notices.
-SILENT_STOP_SECONDS = 900
+# Optional cost guard, off unless ACADEMY_GPU_SILENT_STOP_SECONDS is set: with no demand,
+# queue or cloud-side run, a host whose worker has been silent this long is stopped. It
+# also stops a host an operator started by hand, so it stays an explicit choice.
 METRIC_NAMESPACE = "Academy/GPU"
 SSM_FINISHED = {"Success", "Failed", "Cancelled", "TimedOut"}
 READINESS = "system#worker-readiness"
@@ -61,6 +61,13 @@ NOTES = {
 }
 
 
+def silent_stop_seconds():
+    try:
+        return max(0, int(os.getenv("ACADEMY_GPU_SILENT_STOP_SECONDS", "0")))
+    except ValueError:
+        return 0
+
+
 def startup_seconds():
     try:
         value = int(os.getenv("ACADEMY_GPU_STARTUP_SECONDS", STARTUP_SECONDS))
@@ -83,6 +90,7 @@ def configured(store, clock=time.time):
         region=os.getenv("ACADEMY_GPU_REGION") or None,
         clock=clock,
         startup=startup_seconds(),
+        silent_stop=silent_stop_seconds(),
     )
 
 
@@ -99,11 +107,13 @@ class GpuLifecycle:
         ssm=None,
         clock=time.time,
         startup=STARTUP_SECONDS,
+        silent_stop=0,
     ):
         self.store, self.instance, self.worker, self.document = store, instance, worker, document
         self.clock, self._ec2, self._ssm = clock, ec2, ssm
         self.region = region
         self.startup = startup
+        self.silent_stop = silent_stop
 
     def client(self, name):
         attr = "_" + name
@@ -419,7 +429,8 @@ class GpuLifecycle:
                 "retry_at": now + 10,
             }
         if (
-            not wanted
+            self.silent_stop
+            and not wanted
             and not busy
             and not queued
             and max(
@@ -427,7 +438,7 @@ class GpuLifecycle:
                 record.get("boot_after", 0),
                 worker.get("last_seen", 0) if worker else 0,
             )
-            + SILENT_STOP_SECONDS
+            + self.silent_stop
             <= now
         ):
             # Claims set active_run in the same transaction, so this worker holds no

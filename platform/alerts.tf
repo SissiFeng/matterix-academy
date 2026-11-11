@@ -177,7 +177,7 @@ locals {
       metric      = "UnwantedRunningSeconds"
       threshold   = 1800
       periods     = 1
-      description = "The GPU host has been running for 30 minutes with no demand. The controller should have stopped it; check the host and stop it manually if needed."
+      description = "The GPU host has been running for 30 minutes with no demand. Nothing stops it automatically unless the silent-host guard is enabled; stop it manually if it is not in use."
     }
     long-running = {
       metric      = "RunningSeconds"
