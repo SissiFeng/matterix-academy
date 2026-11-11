@@ -41,4 +41,12 @@ test("the start page maps every stop on both routes to its page", async ({
     ).toBeVisible();
     await start.click();
   }
+
+  // A learning page's back link returns to the map it was opened from.
+  await learning.getByRole("button", { name: "Simulate" }).click();
+  await page
+    .getByRole("button", { name: "Back to start", exact: true })
+    .click();
+  await expect(learning).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
 });
