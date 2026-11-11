@@ -9,6 +9,7 @@ import {
   type SimulationRun,
   type SimulationSession,
 } from "./simulationTypes";
+import PageStory from "./PageStory";
 import s from "./SimulationLab.module.css";
 
 const amount = (value: number | null | undefined) =>
@@ -242,10 +243,7 @@ export default function SimulationLab({
         <div>
           <h1>Four sources. One mixture.</h1>
           <p>Opentrons Flex · 40 µL mixture</p>
-          <p className={s.purpose}>
-            A simulation runs the whole experiment on a virtual robot first, so
-            a wrong volume, order or tip shows up before the real one moves.
-          </p>
+          <PageStory page="sim" />
         </div>
         <div className={s.launch}>
           {hasEnded && run.cleanup?.reset_verified ? (

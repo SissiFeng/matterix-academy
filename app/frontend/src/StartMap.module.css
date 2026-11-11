@@ -1,0 +1,226 @@
+.roadmap {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 40px;
+}
+.roadmap > h2 {
+  margin: 0 0 4px;
+}
+.route {
+  border: var(--hairline) solid var(--line);
+  background: var(--surface-1);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px 10px;
+  --tint: var(--info-soft);
+}
+.route[data-route="learn"] {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+  --tint: var(--accent-soft);
+}
+.route header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 43px;
+}
+.route h3 {
+  margin: 0;
+}
+.who {
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  background: var(--tint);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.route header button {
+  margin-left: auto;
+}
+
+.map {
+  position: relative;
+  aspect-ratio: var(--across);
+}
+.map > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.down {
+  display: none;
+}
+.kerb {
+  stroke: var(--line-emph);
+  stroke-width: 34;
+}
+.tarmac {
+  stroke: var(--surface-1);
+  stroke-width: 30;
+}
+.route[data-route="use"] .tarmac {
+  stroke: var(--surface-2);
+}
+.dashes {
+  stroke: var(--line-emph);
+  stroke-width: 2.5;
+  stroke-dasharray: 2 14;
+}
+.pole {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+}
+.flag {
+  fill: var(--accent);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.traveller circle {
+  fill: var(--brand);
+  stroke: var(--surface-1);
+  stroke-width: 2.5;
+}
+.traveller path {
+  stroke: var(--on-brand);
+  stroke-width: 2;
+}
+
+.map ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.map li {
+  position: absolute;
+  left: var(--ax);
+  top: var(--ay);
+}
+.map li button {
+  position: absolute;
+  transform: translate(-50%, -34px);
+  width: 150px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+}
+.map li strong {
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+.badge {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--tint);
+  box-shadow: 0 3px 0 var(--ink);
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+.map li:nth-child(even) .badge {
+  background: var(--brand-soft);
+}
+.badge svg {
+  width: 44px;
+  height: 44px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.number {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--surface-1);
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--surface-1);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.map li button:hover .badge,
+.map li button:focus-visible .badge {
+  transform: translateY(-4px) rotate(-5deg);
+  box-shadow: 0 7px 0 var(--ink);
+}
+.map li button:hover strong {
+  color: var(--brand-text);
+}
+.map li button:focus-visible {
+  outline: 0;
+}
+.map li button:focus-visible .badge {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .route {
+    padding: 16px 16px 4px;
+  }
+  .route header {
+    flex-wrap: wrap;
+  }
+  .map {
+    aspect-ratio: var(--down);
+  }
+  .across {
+    display: none;
+  }
+  .down {
+    display: block;
+  }
+  .map li {
+    left: var(--dx);
+    top: var(--dy);
+  }
+  .map li button {
+    transform: translate(-30px, -50%);
+    width: max-content;
+    max-width: 230px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+  }
+  .badge {
+    flex: none;
+    width: 60px;
+    height: 60px;
+  }
+  .badge svg {
+    width: 38px;
+    height: 38px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .traveller {
+    display: none;
+  }
+  .badge {
+    transition: none;
+  }
+}

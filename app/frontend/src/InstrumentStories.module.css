@@ -49,13 +49,6 @@
   color: var(--brand-text);
 }
 
-.purpose {
-  max-width: 560px;
-  margin: 14px 0 0;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
 .instrumentChoices {
   display: grid;
   grid-template-columns: 1fr 1fr;
