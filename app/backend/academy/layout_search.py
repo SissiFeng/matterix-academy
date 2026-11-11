@@ -598,7 +598,7 @@ def search_layouts(twins, bench, steps, fixed=(), start=0, avoid=(), seconds=Non
     and instruments left off the bench.
     """
     search = Search(twins, bench, steps, fixed, constraints)
-    deadline = time.monotonic() + (seconds or CHUNK_SECONDS)
+    deadline = time.monotonic() + (CHUNK_SECONDS if seconds is None else seconds)
     found = []
     seen = [list(placements) for placements in avoid]
     index = start
