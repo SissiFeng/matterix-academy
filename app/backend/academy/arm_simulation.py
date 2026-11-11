@@ -213,30 +213,56 @@ def arm_xml(arm, base, tool):
     </body>"""
 
 
-def scene_xml(twins, layout, actor, arm, base, tool):
-    """The whole bench: every placed instrument as static boxes, the bench and the arm."""
+def layout_boxes(twins, layout, actor):
+    """Every placed instrument part as a static box, in the planner's y-up frame."""
     boxes = []
     for placement in layout["placements"]:
         twin = twins[placement["twin_id"]]
         yaw = math.radians(placement["yaw"])
         c, s = math.cos(yaw), math.sin(yaw)
-        for n, part in enumerate(twin["spec"]["parts"]):
+        for part in twin["spec"]["parts"]:
             px, py, pz = part["position"]
             # The planner's yaw: local (x, z) -> (c x + s z, -s x + c z), about world y.
             x, z = placement["x"] + c * px + s * pz, placement["z"] - s * px + c * pz
-            half = [v / 2 for v in part["size"]]
             boxes.append(
-                f'<geom name="box:{twin["id"]}:{n}" class="fixed" type="box" '
-                f'size="{_fmt(half)}" pos="{_fmt((x, py, z))}" '
-                f'quat="{_fmt((math.cos(yaw / 2), 0, math.sin(yaw / 2), 0))}"/>'
+                {
+                    "id": twin["id"],
+                    "name": twin["spec"]["name"],
+                    "half": [v / 2 for v in part["size"]],
+                    "pos": (x, py, z),
+                    "quat": (math.cos(yaw / 2), 0, math.sin(yaw / 2), 0),
+                    # The base stands on its own pedestal.
+                    "stand": twin["id"] == actor["id"],
+                }
             )
+    # The bench top, which the arm's own pedestal rests on.
+    boxes.append(
+        {
+            "id": "",
+            "name": "the bench",
+            "half": (5, 0.05, 5),
+            "pos": (0, -0.05, 0),
+            "quat": (1, 0, 0, 0),
+            "stand": True,
+        }
+    )
+    return boxes
+
+
+def scene_xml(arm, base, tool, boxes, gravity):
+    """Static boxes and the arm. A box marked `stand` may touch the arm's base links."""
+    geoms = "".join(
+        f'<geom name="box:{n}" class="fixed" type="box" size="{_fmt(box["half"])}" '
+        f'pos="{_fmt(box["pos"])}" quat="{_fmt(box["quat"])}"/>'
+        for n, box in enumerate(boxes)
+    )
     torque = BODIES[arm.key]["torque"]
     motors = "\n".join(
         f'<motor name="m{i}" joint="j{i}" ctrlrange="{-torque[i]} {torque[i]}"/>' for i in range(6)
     )
     return f"""<mujoco model="bench">
   <compiler angle="radian" autolimits="true"/>
-  <option timestep="{TIMESTEP}" gravity="0 -9.81 0" integrator="implicitfast"/>
+  <option timestep="{TIMESTEP}" gravity="{_fmt(gravity)}" integrator="implicitfast"/>
   <default>
     <default class="arm">
       <geom contype="0" conaffinity="0" mass="0"/>
@@ -246,8 +272,7 @@ def scene_xml(twins, layout, actor, arm, base, tool):
     </default>
   </default>
   <worldbody>
-    <geom name="bench" class="fixed" type="box" size="5 0.05 5" pos="0 -0.05 0"/>
-    {"".join(boxes)}
+    {geoms}
     {arm_xml(arm, base, tool)}
   </worldbody>
   <actuator>
@@ -301,22 +326,23 @@ def _profile(joints, speed, limits):
 
 
 class Bench:
-    """One compiled bench, reused for every transfer the same arm makes on it."""
+    """One compiled scene, reused for every move the same arm makes in it."""
 
-    def __init__(self, twins, layout, actor, arm, base, tool):
-        self.arm, self.actor_id = arm, actor["id"]
-        self.model = mujoco.MjModel.from_xml_string(
-            scene_xml(twins, layout, actor, arm, base, tool)
-        )
+    def __init__(self, arm, base, tool, boxes, gravity=(0, -9.81, 0)):
+        self.arm, self.boxes = arm, boxes
+        self.model = mujoco.MjModel.from_xml_string(scene_xml(arm, base, tool, boxes, gravity))
         self.data = mujoco.MjData(self.model)
         self.names = [
             mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, i)
             for i in range(self.model.ngeom)
         ]
-        self.labels = {t["id"]: t["spec"]["name"] for t in twins.values()}
         self.torque = np.array(BODIES[arm.key]["torque"], dtype=float)
         self.rated = [math.radians(v) for v in BODIES[arm.key]["speed"]]
         self.pairs = self._pairs()
+
+    @classmethod
+    def of_layout(cls, twins, layout, actor, arm, base, tool):
+        return cls(arm, base, tool, layout_boxes(twins, layout, actor))
 
     def flange(self, q):
         """World position of the flange at a joint vector, for checking the mounting."""
@@ -325,7 +351,7 @@ class Bench:
         return self.data.site("flange").xpos.copy()
 
     def _pairs(self):
-        """Every (arm geom, other geom, link, obstacle, twin id) whose distance matters."""
+        """Every (arm geom, other geom, link, obstacle, box id) whose distance matters."""
         model, pairs = self.model, []
         arm = [i for i, name in enumerate(self.names) if name.startswith("arm:")]
         # The carried tool is one rigid piece with the last link.
@@ -337,23 +363,18 @@ class Bench:
                     # Neighbouring links share a joint housing and always touch.
                     if j > i and welded[j] - welded[i] > 1:
                         pairs.append((i, j, link, f"its own {name.split(':')[1]}", None))
-                elif link in ("shoulder", "upper arm") and (
-                    name == "bench" or name.split(":")[1] == self.actor_id
-                ):
-                    continue  # the base stands on its own pedestal
-                elif name == "bench":
-                    pairs.append((i, j, link, "the bench", ""))
-                else:
-                    twin_id = name.split(":")[1]
-                    pairs.append((i, j, link, self.labels[twin_id], twin_id))
+                    continue
+                box = self.boxes[int(name.split(":")[1])]
+                if not (box["stand"] and link in ("shoulder", "upper arm")):
+                    pairs.append((i, j, link, box["name"], box["id"]))
         return pairs
 
-    def _measure(self, out, label, touching):
+    def _measure(self, out, label, touching, now):
         model, data = self.model, self.data
-        for i, j, link, obstacle, twin_id in self.pairs:
-            if twin_id in touching and link == "gripper":
+        for i, j, link, obstacle, box_id in self.pairs:
+            if link == "gripper" and (touching is None or box_id in touching):
                 continue  # the gripper reaches into the station it serves
-            key = "self_clearance_m" if twin_id is None else "clearance_m"
+            key = "self_clearance_m" if box_id is None else "clearance_m"
             if model.geom_rbound[i] + model.geom_rbound[j] + out[key] < np.linalg.norm(
                 data.geom_xpos[i] - data.geom_xpos[j]
             ):
@@ -361,18 +382,57 @@ class Bench:
             gap = mujoco.mj_geomDistance(model, data, i, j, out[key], None)
             if gap < out[key]:
                 out[key] = float(gap)
-                if twin_id is not None:
+                if box_id is not None:
                     out["nearest"] = obstacle
-                if gap < (0.0 if twin_id is None else SAFETY) and not out["collision"]:
-                    out["collision"] = {"segment": label, "link": link, "blocked_by": obstacle}
+                if gap < (0.0 if box_id is None else SAFETY) and not out["collision"]:
+                    out["collision"] = {
+                        "segment": label,
+                        "link": link,
+                        "blocked_by": obstacle,
+                        "at_s": round(now, 2),
+                    }
 
-    def run(self, segments, speed, dwell):
-        """Track every segment in turn; segments are (label, joints, station ids)."""
+    def _follow(self, out, label, at, duration, touching):
+        """Track `at(t)` for `duration`, then let the arm settle; adds to `out`."""
         model, data = self.model, self.data
-        mujoco.mj_resetData(model, data)
-        data.qpos[:] = segments[0][1][0]
-        mujoco.mj_forward(model, data)
-        out = {
+        inertial = np.zeros(model.nv)
+        steps = math.ceil(duration / TIMESTEP)
+        settle = math.ceil(SETTLE_SECONDS / TIMESTEP)
+        previous = np.array(at(0.0))
+        checked = data.qpos.copy()
+        began = out["seconds"]
+        self._measure(out, label, touching, began)
+        n = 0
+        for n in range(1, steps + settle + 1):
+            target = np.array(at(n * TIMESTEP))
+            error = target - data.qpos
+            rate = (target - previous) / TIMESTEP - data.qvel
+            previous = target
+            mujoco.mj_mulM(model, data, inertial, KP * error + KV * rate)
+            wanted = data.qfrc_bias + inertial
+            out["torque_ratio"] = max(
+                out["torque_ratio"], float(np.max(np.abs(wanted) / self.torque))
+            )
+            data.ctrl[:] = np.clip(wanted, -self.torque, self.torque)
+            mujoco.mj_step(model, data)
+            if float(np.max(np.abs(data.qpos - checked))) > CHECK_RAD or n == steps:
+                checked = data.qpos.copy()
+                self._measure(out, label, touching, began + n * TIMESTEP)
+            lag = float(np.max(np.abs(target - data.qpos)))
+            out["tracking_deg"] = max(out["tracking_deg"], math.degrees(lag))
+            if (
+                n > steps
+                and lag < math.radians(SETTLE_DEG)
+                and float(np.max(np.abs(data.qvel))) < math.radians(SETTLE_DEG)
+            ):
+                break
+        out["seconds"] += n * TIMESTEP
+
+    def _begin(self, start):
+        mujoco.mj_resetData(self.model, self.data)
+        self.data.qpos[:] = start
+        mujoco.mj_forward(self.model, self.data)
+        return {
             "seconds": 0.0,
             "tracking_deg": 0.0,
             "torque_ratio": 0.0,
@@ -381,44 +441,39 @@ class Bench:
             "nearest": None,
             "collision": None,
         }
-        inertial = np.zeros(model.nv)
-        for label, joints, touching in segments:
-            duration, at = _profile(joints, speed, self.rated)
-            steps = math.ceil(duration / TIMESTEP)
-            settle = math.ceil(SETTLE_SECONDS / TIMESTEP)
-            previous = np.array(at(0.0))
-            checked = data.qpos.copy()
-            self._measure(out, label, touching)
-            for n in range(1, steps + settle + 1):
-                target = np.array(at(n * TIMESTEP))
-                error = target - data.qpos
-                rate = (target - previous) / TIMESTEP - data.qvel
-                previous = target
-                mujoco.mj_mulM(model, data, inertial, KP * error + KV * rate)
-                wanted = data.qfrc_bias + inertial
-                out["torque_ratio"] = max(
-                    out["torque_ratio"], float(np.max(np.abs(wanted) / self.torque))
-                )
-                data.ctrl[:] = np.clip(wanted, -self.torque, self.torque)
-                mujoco.mj_step(model, data)
-                if float(np.max(np.abs(data.qpos - checked))) > CHECK_RAD or n == steps:
-                    checked = data.qpos.copy()
-                    self._measure(out, label, touching)
-                lag = float(np.max(np.abs(target - data.qpos)))
-                out["tracking_deg"] = max(out["tracking_deg"], math.degrees(lag))
-                if (
-                    n > steps
-                    and lag < math.radians(SETTLE_DEG)
-                    and float(np.max(np.abs(data.qvel))) < math.radians(SETTLE_DEG)
-                ):
-                    break
-            out["seconds"] += n * TIMESTEP
-        out["seconds"] = round(out["seconds"] + dwell, 1)
+
+    @staticmethod
+    def _rounded(out, extra=0.0):
+        out["seconds"] = round(out["seconds"] + extra, 1)
         for key in ("tracking_deg", "torque_ratio"):
             out[key] = round(out[key], 2)
         for key in ("clearance_m", "self_clearance_m"):
             out[key] = round(out[key], 3)
         return out
+
+    def run(self, segments, speed, dwell):
+        """Track every segment in turn; segments are (label, joints, station ids)."""
+        out = self._begin(segments[0][1][0])
+        for label, joints, touching in segments:
+            duration, at = _profile(joints, speed, self.rated)
+            self._follow(out, label, at, duration, touching)
+        return self._rounded(out, dwell)
+
+    def play(self, joints, dt):
+        """Track a trajectory already timed by its author: one joint vector every `dt`.
+
+        The gripper is left to the author's own tool checks; links are checked here.
+        """
+        out = self._begin(joints[0])
+        last = len(joints) - 1
+
+        def at(t):
+            k = min(int(t / dt), last - 1)
+            f = min(1.0, t / dt - k)
+            return [a + f * (b - a) for a, b in zip(joints[k], joints[k + 1], strict=True)]
+
+        self._follow(out, "trajectory", at, last * dt, None)
+        return self._rounded(out)
 
 
 def describe(speed):
@@ -459,6 +514,44 @@ def simulate(bench, step_no, segments, speed, dwell):
             "this path in simulation",
         )
     return {**describe(speed), **result}
+
+
+def play(arm_key, joints, dt, boxes, tool):
+    """Run a hand-designed joint trajectory in the arm's own base frame (z up).
+
+    `boxes` are axis-aligned keep-outs {name, min, max, stand}. The verdict is returned
+    rather than raised, so the designer sees what the simulation found either way.
+    """
+    arm = ARMS[arm_key]
+    scene = [
+        {
+            "id": n,
+            "name": box["name"],
+            "half": [(hi - lo) / 2 for lo, hi in zip(box["min"], box["max"], strict=True)],
+            "pos": [(hi + lo) / 2 for lo, hi in zip(box["min"], box["max"], strict=True)],
+            "quat": (1, 0, 0, 0),
+            "stand": box["stand"],
+        }
+        for n, box in enumerate(boxes)
+    ]
+    base = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    result = Bench(arm, base, tool, scene, gravity=(0, 0, -9.81)).play(joints, dt)
+    hit = result["collision"]
+    if result["torque_ratio"] > 1:
+        problem = f"The {arm.name} needs {result['torque_ratio']:.1f}× its rated joint torque"
+    elif hit:
+        problem = f"The {hit['link']} hits {hit['blocked_by']} at {hit['at_s']:.1f} s"
+    elif result["tracking_deg"] > TRACKING_LIMIT_DEG:
+        problem = f"The {arm.name} strays {result['tracking_deg']:.1f}° from the path"
+    else:
+        problem = None
+    return {
+        "engine": ENGINE,
+        "version": mujoco.__version__,
+        "payload_kg": PAYLOAD_KG,
+        **result,
+        "problem": problem,
+    }
 
 
 assert set(BODIES) == set(ARMS)

@@ -728,7 +728,7 @@ def _simulated(benches, twins, layout, planned, chain):
     planner = chain["planner"]
     bench = benches.get(planned["actor_id"])
     if bench is None:
-        bench = benches[planned["actor_id"]] = arm_simulation.Bench(
+        bench = benches[planned["actor_id"]] = arm_simulation.Bench.of_layout(
             twins, layout, twins[planned["actor_id"]], planner.arm, planner.base, TOOL
         )
     segments = [

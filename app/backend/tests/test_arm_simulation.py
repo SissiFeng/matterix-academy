@@ -23,7 +23,7 @@ def bench(arm="ur5e", obstacle=None):
         placements.append({"twin_id": "wall", "x": 0.2, "z": 0.45, "yaw": 0, "access": "top"})
     layout = {"bench": {"width": 3, "depth": 3}, "placements": placements}
     base = mount(PEDESTAL, placements[0])
-    return arm_simulation.Bench(twins, layout, twins["arm"], ARMS[arm], base, TOOL), base
+    return arm_simulation.Bench.of_layout(twins, layout, twins["arm"], ARMS[arm], base, TOOL), base
 
 
 def sweep(turn):
@@ -102,3 +102,60 @@ def test_without_mujoco_the_kinematic_estimate_stands(client, monkeypatch):
     assert checked["simulation"] is None
     [motion] = checked["motions"]
     assert "simulation" not in motion and motion["seconds"] > 0
+
+
+HOME = [math.radians(v) for v in (60, -90, 90, -90, -90, 0)]
+
+
+def path(turn, n=200, dt=0.04):
+    """The base joint turning smoothly from the UR home pose, already timed."""
+    ease = [10 * u**3 - 15 * u**4 + 6 * u**5 for u in (k / n for k in range(n + 1))]
+    return {
+        "dt": dt,
+        "joints": [[HOME[0] + turn * e, *HOME[1:]] for e in ease],
+        "boxes": [
+            {"name": "Table", "min": [-1, -1, -0.1], "max": [1, 1, -0.01], "stand": True},
+        ],
+        "tool_m": 0.204,
+    }
+
+
+def post(client, body):
+    return client.post("/api/workcell/arm-path/simulate", json=body)
+
+
+def test_a_hand_designed_path_runs_in_the_simulation(client):
+    response = post(client, path(1.2))
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["problem"] is None and result["engine"] == "mujoco"
+    # The author's timing is kept: 200 samples of 40 ms, plus settling.
+    assert 8.0 <= result["seconds"] <= 8.5
+    assert result["torque_ratio"] < 1 and result["tracking_deg"] < 1
+
+
+def test_a_keep_out_in_the_way_is_named_with_its_time(client):
+    body = path(1.2)
+    # A post standing where the forearm ends up.
+    identity = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    x, y, z = arm_simulation.Bench(ARMS["ur5e"], identity, 0.204, []).flange(body["joints"][-1])
+    post_box = {
+        "name": "OT-2 frame",
+        "min": [x - 0.05, y - 0.05, 0],
+        "max": [x + 0.05, y + 0.05, z],
+    }
+    body["boxes"].append(post_box)
+    result = post(client, body).json()
+    assert "hits OT-2 frame at" in result["problem"]
+    assert 0 < result["collision"]["at_s"] < 8
+
+
+def test_arm_path_requests_are_bounded_and_need_identity(app, client):
+    assert post(client, {**path(1.2), "dt": 0.5}).status_code == 422
+    assert post(client, {**path(1.2), "joints": [HOME]}).status_code == 422
+    assert post(client, path(1.2, n=5000, dt=0.1)).status_code == 422
+    inverted = {"name": "Bad", "min": [0, 0, 0], "max": [0, 1, 1]}
+    assert post(client, {**path(1.2), "boxes": [inverted]}).status_code == 422
+    from fastapi.testclient import TestClient
+
+    assert post(TestClient(app), path(1.2)).status_code == 401
