@@ -1629,13 +1629,27 @@ class SimpleTwinService:
 
     def accept_brief(self, owner, data):
         """Confirm the instruments chosen for the draft as they stand and use its steps."""
-        from .workflow_brief import used_roles
+        from .workflow_brief import fits, used_roles
 
         record = self.current(owner, data.expected_version)
         brief = record.get("brief") or {}
         if not brief.get("draft"):
             raise HTTPException(409, "Draft a workflow from a description first")
-        chosen = {brief["bindings"].get(r["key"]) for r in used_roles(brief["draft"])}
+        roles = used_roles(brief["draft"])
+        twins = {t["id"]: t for t in record["twins"]}
+        for role in roles:
+            twin = twins.get(brief["bindings"].get(role["key"]))
+            # A redraft can change what a role needs after its instrument was chosen.
+            if twin and twin["spec"] and not fits(role, twin["spec"]):
+                raise HTTPException(
+                    422,
+                    {
+                        "message": f"{twin['spec']['name']} cannot play {role['name']}. "
+                        "Choose another instrument for it",
+                        "layer": "state",
+                    },
+                )
+        chosen = {brief["bindings"].get(r["key"]) for r in roles}
         for twin in record["twins"]:
             if (
                 twin["id"] in chosen

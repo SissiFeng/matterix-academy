@@ -239,12 +239,14 @@ def used_roles(draft):
 
 
 def fits(role, spec, vessel=True):
-    """A twin can play a role when it supports every operation, the vessel and the slots."""
+    """A twin can play a role when it supports every operation, the vessel and the slots.
+
+    The vessel has to be the role's own, so a station that holds plates is never taken
+    for a robot arm, whose role holds nothing.
+    """
     return (
         set(role["operations"]) <= set(spec["operations"])
-        and (
-            not vessel or role["vessel"] == "none" or spec["container"]["vessel"] == role["vessel"]
-        )
+        and (not vessel or spec["container"]["vessel"] == role["vessel"])
         and len(site_keys(spec)) >= role.get("reach_slots", 0)
     )
 
