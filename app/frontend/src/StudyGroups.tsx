@@ -1,6 +1,7 @@
 import { ArrowLeft, Copy, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, json } from "./api";
+import PageStory from "./PageStory";
 import s from "./StudyGroups.module.css";
 import type { Experiment, Session } from "./types";
 
@@ -136,10 +137,9 @@ export default function StudyGroups({
   return (
     <div className={s.page}>
       <h1>Study groups</h1>
-      <p className={s.purpose}>
-        Share experiments and bench layouts with classmates, compare your
-        approaches and agree on one workflow.
-      </p>
+      <div className={s.purpose}>
+        <PageStory page="groups" />
+      </div>
       <div className={s.entry}>
         <form onSubmit={submit("/groups/join", "code")}>
           <h2>Join a group</h2>

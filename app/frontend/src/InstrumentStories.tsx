@@ -13,6 +13,7 @@ import {
   type StoryStarter,
   type StoryWorkflow,
 } from "./instrumentStoriesContent";
+import PageStory from "./PageStory";
 import s from "./InstrumentStories.module.css";
 
 export default function InstrumentStories({
@@ -119,12 +120,7 @@ export default function InstrumentStories({
             <br />
             <span>Then make it yours.</span>
           </Heading>
-          {!compact && (
-            <p className={s.purpose}>
-              Watch a virtual Opentrons robot do each basic step, then change
-              the workflow yourself. No lab experience needed.
-            </p>
-          )}
+          {!compact && <PageStory page="instruments" />}
         </div>
         {!compact && <LessonSearch onLesson={selectInstrument} />}
       </header>

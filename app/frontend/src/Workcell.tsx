@@ -27,6 +27,7 @@ import {
 } from "./workcellTypes";
 import s from "./Workcell.module.css";
 import InstrumentStories from "./InstrumentStories";
+import PageStory from "./PageStory";
 import StartMap from "./StartMap";
 import type { Instrument, Starter } from "./studioContent";
 
@@ -57,16 +58,6 @@ const titles = {
   twin: "Teaching twin",
   readiness: "Real-device readiness",
   runs: "Teaching runs",
-};
-const purposes: Partial<Record<WorkspaceView, string>> = {
-  overview:
-    "Learn lab automation on a virtual Opentrons robot before you work on the real one. Nothing you do here moves a physical instrument.",
-  onboard:
-    "Record an instrument from your lab and pair it with a teaching twin, so you can practise its workflows before using the real device.",
-  twin: "A teaching twin is a software copy of your device. Practise on it and compare its state with what you expected.",
-  readiness:
-    "Check what stands between a practised workflow and a run on the real instrument.",
-  runs: "Replay what the twin did in each saved run, step by step, and see where it stopped.",
 };
 const actionName = (action: Session["experiment"]["actions"][number]) =>
   `${capabilityLabels[action.kind]}${["aspirate", "dispense"].includes(action.kind) ? ` ${action.volume} µL · ${action.well}` : ""}`;
@@ -448,7 +439,14 @@ export default function Workcell({
               ? `Welcome to the lab, ${name}.`
               : titles[view]}
           </h1>
-          {purposes[view] && <p className={s.purpose}>{purposes[view]}</p>}
+          {view === "overview" ? (
+            <p className={s.purpose}>
+              Practise on a virtual Opentrons. Nothing here moves a real
+              instrument.
+            </p>
+          ) : (
+            <PageStory page={view} />
+          )}
         </div>
         <button
           className={s.iconButton}

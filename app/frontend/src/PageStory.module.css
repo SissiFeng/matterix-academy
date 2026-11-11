@@ -1,0 +1,76 @@
+.story {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 0;
+  margin: 16px 0 0;
+  padding: 0;
+}
+.story li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* The dotted road from one step to the next. */
+.story li:not(:last-child)::after {
+  content: "";
+  width: 34px;
+  margin: 0 12px 0 4px;
+  border-top: 3px dotted var(--line-emph);
+}
+.tile {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  box-shadow: 0 2px 0 var(--ink);
+}
+.story li:nth-child(2) .tile {
+  background: var(--brand-soft);
+}
+.story li:nth-child(3) .tile {
+  background: var(--info-soft);
+}
+.tile svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.story strong {
+  font-size: 13.5px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+@media (max-width: 760px) {
+  .story {
+    align-items: flex-start;
+  }
+  .story li {
+    flex: 1 1 0;
+    min-width: 0;
+    position: relative;
+    flex-direction: column;
+    gap: 7px;
+    text-align: center;
+  }
+  .story li:not(:last-child)::after {
+    position: absolute;
+    top: 22px;
+    left: calc(50% + 30px);
+    right: calc(-50% + 30px);
+    width: auto;
+    margin: 0;
+  }
+  .story strong {
+    font-size: 12px;
+  }
+}

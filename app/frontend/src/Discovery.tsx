@@ -20,6 +20,7 @@ import {
   type Notebook,
   type Workflow,
 } from "./discoveryContent";
+import PageStory from "./PageStory";
 import s from "./Discovery.module.css";
 
 function WorkflowArt({ item }: { item: Workflow }) {
@@ -731,10 +732,8 @@ export function DiscoveryStudio({
       <fieldset className={s.studioBody} disabled={navigationPending || busy}>
         <header className={s.hero}>
           <h1>Discovery studio</h1>
-          <p className={s.purpose}>
-            Plan a research loop: prepare samples, measure them and decide what
-            to make next. Design only; nothing runs here.
-          </p>
+          <PageStory page="discovery" />
+          <p className={s.purpose}>Design only; nothing runs here.</p>
         </header>
         <DiscoveryLoop />
         <section className={s.section}>
