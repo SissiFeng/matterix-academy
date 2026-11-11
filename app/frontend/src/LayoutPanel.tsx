@@ -86,6 +86,10 @@ export default function LayoutPanel({
   const name = (id: string | null) => (id && specs.get(id)?.name) || "—";
   const bad = conflicts(layout, specs);
   const placed = new Set(layout.placements.map((p) => p.twin_id));
+  // A simulated layout is only as good as the dimensions it was given.
+  const unchecked = twins
+    .filter((t) => placed.has(t.id) && t.size_basis !== "checked")
+    .map((t) => t.spec!.name);
   const current = layout.placements.find((p) => p.twin_id === selected);
   const { width, depth } = layout.bench;
   const update = (id: string, patch: Partial<Placement>) =>
@@ -504,6 +508,12 @@ export default function LayoutPanel({
               execution stays behind the connector's own qualification gate.
             </small>
           </div>
+        )}
+        {entries.length > 0 && unchecked.length > 0 && (
+          <small className={s.hint}>
+            Sizes not checked against the real instrument:{" "}
+            {unchecked.join(", ")}.
+          </small>
         )}
         {!onExport && motions.length > 0 && (
           <small className={s.hint}>

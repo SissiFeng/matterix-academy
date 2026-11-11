@@ -168,6 +168,8 @@ export type Twin = {
   evidence: "synthetic";
   revision: number;
   residuals: Residual[];
+  /** Where the dimensions come from; a layout is as trustworthy as its weakest twin. */
+  size_basis?: "checked" | "catalogued" | "estimated";
 };
 export type Step = {
   device_id: string;

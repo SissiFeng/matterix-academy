@@ -163,6 +163,7 @@ export default function TwinCard({
   onDownload,
   onDirtyChange,
   onMatch,
+  onSizeCheck,
 }: {
   twin: Twin;
   busy: boolean;
@@ -172,6 +173,7 @@ export default function TwinCard({
   onDownload: () => void;
   onDirtyChange: (id: string, changed: boolean) => void;
   onMatch: (match: LibraryMatch) => void;
+  onSizeCheck: (checked: boolean) => void;
 }) {
   const [draft, setDraft] = useState(twin.spec);
   const [reporting, setReporting] = useState(false);
@@ -571,6 +573,24 @@ export default function TwinCard({
             <b>Assumptions</b> {draft.assumptions}
           </p>
         </>
+      )}
+      {twin.confirmed && (
+        <label className={s.sizeCheck}>
+          <input
+            type="checkbox"
+            checked={twin.size_basis === "checked"}
+            disabled={busy || changed}
+            onChange={(e) => onSizeCheck(e.target.checked)}
+          />
+          Sizes checked against the real instrument
+          {twin.size_basis !== "checked" && (
+            <small>
+              {twin.size_basis === "catalogued"
+                ? "library footprint"
+                : "estimated"}
+            </small>
+          )}
+        </label>
       )}
       {twin.confirmed && (
         <section className={s.residuals} aria-label="Failure residuals">
