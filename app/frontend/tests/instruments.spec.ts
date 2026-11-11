@@ -28,7 +28,9 @@ test("instrument twins run a multi-device workflow on the mock contract", async 
   await expect(
     studio.getByRole("button", { name: "Draft roles and steps" }),
   ).toBeDisabled();
-  await expect(studio.getByText(/Drafting needs a language model/)).toBeVisible();
+  await expect(
+    studio.getByText(/Drafting needs a language model/),
+  ).toBeVisible();
   await studio.getByRole("button", { name: /Skip to instruments/ }).click();
   await expect(page).toHaveURL(/#\/plan\/instruments$/);
   await expect(
