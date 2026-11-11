@@ -182,6 +182,8 @@ resource "aws_lambda_function" "api" {
       ACADEMY_GPU_START_DOCUMENT        = var.gpu_instance_id != "" ? aws_ssm_document.gpu_start[0].name : ""
       ACADEMY_TWIN_REGION               = var.twin_region
       ACADEMY_TWIN_API_KEY_SECRET       = var.twin_api_key_secret_arn
+      ACADEMY_BRIEF_MODEL               = var.brief_model
+      ACADEMY_BRIEF_REGION              = var.brief_region
 
     }
   }
