@@ -667,9 +667,13 @@ export default function InstrumentStudio({
                     mutate("/twins/workflow/brief/choose", {}, "PUT")
                   }
                   onAccept={async () => {
-                    dirty.current = false;
-                    if (await mutate("/twins/workflow/brief/accept", {}, "PUT"))
+                    // Unsaved step edits stay protected until the draft has replaced them.
+                    if (
+                      await mutate("/twins/workflow/brief/accept", {}, "PUT")
+                    ) {
+                      dirty.current = false;
                       go("workflow");
+                    }
                   }}
                 />
               )}
