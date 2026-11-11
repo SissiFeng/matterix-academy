@@ -276,9 +276,11 @@ def create_app(settings: Settings | None = None, store=None):
 
     @app.get("/api/twins/library")
     def instrument_library(
-        q: str = Query(default="", max_length=80), _owner: str = Depends(identify)
+        q: str = Query(default="", max_length=80),
+        limit: int = Query(default=16, ge=1, le=300),
+        _owner: str = Depends(identify),
     ):
-        return search(q)
+        return search(q, limit)
 
     @app.get("/api/twins/library/models")
     def instrument_models(

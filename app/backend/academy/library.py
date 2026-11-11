@@ -1,5 +1,7 @@
 """Search across the pinned starting-point collections: workcell models, SimReady, ChemLab."""
 
+import difflib
+import math
 import re
 
 from .chemlab import CHEMLAB
@@ -94,6 +96,71 @@ ALIASES = {
     "bsc": ["biological safety cabinet"],
     "analyser": ["analyzer"],
     "vapor": ["vapour"],
+    # What the instrument is for. `can…` words are added to every entry from the
+    # operations its twin supports, so a purpose finds instruments whose names never say it.
+    "mix": ["canmix"],
+    "mixing": ["canmix", "mixer"],
+    "stir": ["canmix", "stirrer"],
+    "stirring": ["canmix", "stirrer"],
+    "shake": ["canmix", "shaker"],
+    "blend": ["canmix"],
+    "heat": ["canheat"],
+    "heating": ["canheat"],
+    "warm": ["canheat"],
+    "incubate": ["canheat", "incubator", "incubated"],
+    "measure": ["canread"],
+    "read": ["canread"],
+    "analyze": ["canread"],
+    "analyse": ["canread"],
+    "detect": ["canread"],
+    "transfer": ["cantransfer"],
+    "move": ["cantransfer"],
+    "weigh": ["balance"],
+    "weighing": ["balance"],
+    "dispense": ["liquid handling", "liquid handler", "dosing", "pump"],
+    "dilute": ["liquid handling", "liquid handler"],
+    "aliquot": ["liquid handling", "liquid handler"],
+    "store": ["refrigerator", "freezer", "cabinet", "storage"],
+    "storage": ["refrigerator", "freezer", "cabinet"],
+    "cool": ["refrigerator", "refrigerated", "freezer", "circulator"],
+    "dry": ["dryer", "drying"],
+    "wash": ["washer", "cleaning"],
+    "clean": ["washer", "cleaning"],
+    "separate": ["centrifuge", "chromatograph", "extractor", "extraction"],
+    "purify": ["purification", "chromatography", "extraction", "ultrafiltration"],
+    "grind": ["mill"],
+    "seal": ["sealer"],
+    "coat": ["coater"],
+}
+# Purposes typed in Chinese, read as the English purpose words above.
+PURPOSES_ZH = {
+    "混液": "mix",
+    "混合": "mix",
+    "混匀": "mix",
+    "搅拌": "stir",
+    "振荡": "shake",
+    "加热": "heat",
+    "孵育": "incubate",
+    "称量": "weigh",
+    "称重": "weigh",
+    "移液": "pipette",
+    "分液": "dispense",
+    "稀释": "dilute",
+    "离心": "centrifuge",
+    "检测": "measure",
+    "测量": "measure",
+    "读板": "plate reader",
+    "转移": "transfer",
+    "搬运": "transfer",
+    "储存": "store",
+    "冷藏": "fridge",
+    "冷冻": "freezer",
+    "干燥": "dry",
+    "清洗": "wash",
+    "研磨": "grind",
+    "封板": "seal",
+    "纯化": "purify",
+    "分离": "separate",
 }
 LONGEST_ALIAS = max(len(key.split()) for key in ALIASES)
 
@@ -113,7 +180,9 @@ def index(asset):
     """An entry's name words, all its words, and its label run together for model numbers."""
     name = set(tokens(asset["spec"]["name"]))
     other = [asset["label"], asset["provider"], asset.get("domain", "")]
-    return name, name | {t for field in other for t in tokens(field)}, squash(asset["label"])
+    can = {f"can{operation}" for operation in asset["spec"]["operations"]}
+    words = name | can | {t for field in other for t in tokens(field)}
+    return name, words, squash(asset["label"])
 
 
 INDEX = {(c, i): index(a) for c, assets in COLLECTIONS.items() for i, a in assets.items()}
@@ -121,7 +190,11 @@ INDEX = {(c, i): index(a) for c, assets in COLLECTIONS.items() for i, a in asset
 
 def parse(query):
     """The query as terms; each term is the alternative phrasings (word lists) it stands for."""
+    for typed, purpose in PURPOSES_ZH.items():
+        query = query.replace(typed, f" {purpose} ")
     words = re.findall(r"[a-z0-9]+", query.lower())
+    if query.strip() and not words:
+        return [[["\0"]]]  # typed, but nothing to look for: no entry has this word
     terms, at = [], 0
     while at < len(words):
         for n in range(min(LONGEST_ALIAS, len(words) - at), 0, -1):
@@ -147,6 +220,9 @@ def word_score(word, have):
         # inside a model number do (204 in xpr204e).
         if (len(stem) >= 4 or (len(stem) >= 3 and stem.isdigit())) and any(stem in t for t in have):
             return 1
+    # A slip of the keyboard still finds the word it was meant to be.
+    if len(word) >= 5 and difflib.get_close_matches(word, have, n=1, cutoff=0.8):
+        return 0.5
     return 0
 
 
@@ -159,26 +235,35 @@ def relevance(query, terms, entry):
 
 
 def score(terms, have):
-    """How well an entry's words answer every term, or 0 when one term finds nothing."""
-    total = 0
+    """How well an entry's words answer the query, or 0 when too few terms find anything.
+
+    One or two terms must all be found. Of three or more, most must be: a search is for
+    showing everything relevant to pick from, so one stray word does not hide the rest,
+    and an entry that answers every term outranks any that answers only some.
+    """
+    total = found_terms = 0
     for phrasings in terms:
         best = 0
         for words in phrasings:
             found = [word_score(w, have) for w in words]
             if all(found):
                 best = max(best, sum(found) / len(found))
-        if not best:
-            return 0
         total += best
-    return total
+        found_terms += bool(best)
+    needed = len(terms) if len(terms) < 3 else math.ceil(len(terms) * 0.6)
+    if found_terms < needed:
+        return 0
+    return total + (10 if found_terms == len(terms) else 0)
 
 
 def search(query, limit=16):
-    """Every query term must be found; the closest name matches rank first.
+    """Everything relevant to the query, the closest name matches first.
 
-    A term is found as a whole word, the start of a word or a longer fragment of one, in
-    the entry's name, maker, model or domain. Common lab shorthand (rotavap, XRD, fridge)
-    stands for the catalogue's wording, and plurals are read as singular.
+    A term is found as a whole word, the start of a word, a longer fragment of one or a
+    near miss, in the entry's name, maker, model or domain. Common lab shorthand (rotavap,
+    XRD, fridge) stands for the catalogue's wording, and plurals are read as singular.
+    A purpose (mix, heat, weigh, 混液) finds the instruments whose twins can do it.
+    `limit` only cuts the list shown; `total` counts every match.
     """
     terms = parse(query)
     hits = []

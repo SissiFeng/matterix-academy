@@ -91,3 +91,35 @@ def test_the_manifest_script_reads_which_way_up_a_model_stands():
     assert script.extent(doc) == pytest.approx([0.2, 0.5, 0.3])
     assert script.up_axis(doc, [0.2, 0.3, 0.5]) == "y"  # catalogue sizes are Z-up
     assert script.up_axis(doc, [0.2, 0.5, 0.3]) == "z"
+
+
+def test_a_slip_or_a_stray_word_still_shows_what_is_relevant():
+    assert top("centrifgue") == ["eppendorf_5910ri"]
+    assert top("hotplte stirrer") == ["ika_plate_rctdigital"]
+    # Two of three terms found is enough; an entry with all three would come first.
+    assert top("mettler balance xyz") == ["mt_xpr204e"]
+    assert search("no such instrument")["total"] == 0
+    assert search("???")["total"] == 0 and search("  ")["total"] > 0  # blank lists the featured
+
+
+def test_every_match_is_counted_and_can_be_listed(client):
+    assert search("anton paar")["total"] == 16
+    few = client.get("/api/twins/library", params={"q": "spectrometer", "limit": 5}).json()
+    everything = client.get("/api/twins/library", params={"q": "spectrometer", "limit": 300}).json()
+    assert len(few["results"]) == 5 and few["total"] == everything["total"] > 16
+    assert len(everything["results"]) == everything["total"]
+    assert client.get("/api/twins/library", params={"limit": 301}).status_code == 422
+
+
+def test_a_purpose_finds_the_instruments_that_can_do_it():
+    mixing = {r["id"] for r in search("mix", 300)["results"]}
+    # Liquid handlers and stirrers mix without saying so in their names.
+    assert {"opentrons_flex_single_5_1000ul", "opentrons-ot2", "ika_plate_rctdigital"} <= mixing
+    assert {"thinky_are310s"} <= mixing and "mt_xpr204e" not in mixing
+    assert {r["id"] for r in search("混液", 300)["results"]} == mixing
+    # Instruments named for the purpose lead; those that merely can do it follow.
+    assert "mixer" in search("mix")["results"][0]["name"].lower()
+    assert top("称量") == top("weigh") == top("balance")
+    both = {r["id"] for r in search("mix heat", 300)["results"]}
+    assert "ika_plate_rctdigital" in both and "opentrons-ot2" not in both
+    assert {r["id"] for r in search("transfer")["results"]} >= {"ur5e-2f140"}
