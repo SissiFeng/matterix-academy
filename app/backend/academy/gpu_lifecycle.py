@@ -30,6 +30,10 @@ UNREADY_GRACE_SECONDS = 120
 # An accepted stop that EC2 still reports as running is re-issued after this long.
 STOP_RETRY_SECONDS = 300
 CAPACITY_RETRY_MAX = 300
+# Cost guard: with no demand, queue or cloud-side run, a host whose worker has been
+# silent this long is stopped instead of billing until an operator notices.
+SILENT_STOP_SECONDS = 900
+METRIC_NAMESPACE = "Academy/GPU"
 SSM_FINISHED = {"Success", "Failed", "Cancelled", "TimedOut"}
 READINESS = "system#worker-readiness"
 # Exceeds both callers' hard Lambda lifetimes (API 15s, reaper 30s), including
@@ -52,6 +56,8 @@ NOTES = {
     "gpu_unready": "The GPU host is up but its GPU is not ready yet.",
     "halted": "The GPU host could not prepare its worker after automatic restarts and was stopped. "
     "An operator needs to check it; your workflow has not been replayed.",
+    "unresolved_run": "An earlier run needs operator review before the digital twin can start "
+    "again. Your workflow has not been replayed.",
 }
 
 
@@ -149,6 +155,40 @@ class GpuLifecycle:
             result["detail"] = (self.readiness() or {}).get("issue")
         return result
 
+    def metrics(self):
+        """One CloudWatch embedded-metric line for the reaper's log; alarms read these."""
+        record = self.record() or {}
+        now = self.clock()
+        running = record.get("power") == "running"
+        since = max(record.get("desired_until", 0), record.get("boot_after", 0))
+        values = {
+            "HostRunning": int(running),
+            "RunningSeconds": int(now - record.get("boot_after", now)) if running else 0,
+            # Demand lapsed and the host is still up: what the cost guard should end.
+            "UnwantedRunningSeconds": int(max(0, now - since)) if running else 0,
+            "NeedsOperator": int(record.get("state") == "error"),
+            "CapacityWait": int(record.get("state") == "capacity_wait"),
+        }
+        return {
+            "_aws": {
+                "Timestamp": int(now * 1000),
+                "CloudWatchMetrics": [
+                    {
+                        "Namespace": METRIC_NAMESPACE,
+                        "Dimensions": [["Instance"]],
+                        "Metrics": [
+                            {"Name": k, "Unit": "Seconds" if k.endswith("Seconds") else "Count"}
+                            for k in values
+                        ],
+                    }
+                ],
+            },
+            "Instance": self.instance,
+            "state": record.get("state"),
+            "error_code": record.get("error_code"),
+            **values,
+        }
+
     def claim_writes(self):
         old = self.record()
         if old and (
@@ -183,10 +223,11 @@ class GpuLifecycle:
         # outcome holds the host for one inspection window, not indefinitely: the
         # run is terminal, never replayed, and its evidence stays on the volume.
         busy = bool(worker and worker.get("active_run"))
-        parked = False
+        parked = unresolved = False
         if busy:
             run = self.store.get("system#runs", worker["active_run"])
             if run and run.get("status") == "outcome_unknown":
+                unresolved = True
                 desired = max(old.get("desired_until", 0), run["updated_at"] + IDLE_SECONDS)
                 parked = desired <= now
                 busy = not parked
@@ -226,7 +267,10 @@ class GpuLifecycle:
             response = self.client("ec2").describe_instances(InstanceIds=[self.instance])
             instance = response["Reservations"][0]["Instances"][0]
             power = instance["State"]["Name"]
-            changes = self.advance(record, worker, power, bool(queued), busy, now, parked)
+            changes = {"power": power}
+            changes |= self.advance(
+                record, worker, power, bool(queued), busy, now, parked, unresolved
+            )
         except ClientError as exc:
             code = exc.response["Error"]["Code"]
             # AWS asking the controller to slow down is not a fault in the host.
@@ -282,9 +326,18 @@ class GpuLifecycle:
                     pass
         return self.status()
 
-    def advance(self, record, worker, power, queued, busy, now, parked=False):
+    def advance(self, record, worker, power, queued, busy, now, parked=False, unresolved=False):
         wanted = record.get("desired_until", 0) > now
         if power == "stopped":
+            if wanted and unresolved:
+                # Its worker is quarantined with that run, so a boot could serve nobody.
+                return {
+                    "state": "error",
+                    "note": "unresolved_run",
+                    "stop_requested": False,
+                    "error_code": "unresolved_run",
+                    "retry_at": now + 60,
+                }
             halted = record.get("halted_until", 0) > now
             if wanted and halted:
                 # Repeated failed preparation: stay stopped instead of paying for more boots.
@@ -364,6 +417,32 @@ class GpuLifecycle:
                 "service_requested": False,
                 "stop_requested_at": now,
                 "retry_at": now + 10,
+            }
+        if (
+            not wanted
+            and not busy
+            and not queued
+            and max(
+                record.get("desired_until", 0),
+                record.get("boot_after", 0),
+                worker.get("last_seen", 0) if worker else 0,
+            )
+            + SILENT_STOP_SECONDS
+            <= now
+        ):
+            # Claims set active_run in the same transaction, so this worker holds no
+            # run the cloud knows of; whatever is on its volume survives a stop.
+            self.mutation_intent(
+                record, state="stopping", stop_requested=True, stop_requested_at=now
+            )
+            self.client("ec2").stop_instances(InstanceIds=[self.instance])
+            return {
+                "state": "stopping",
+                "command_id": None,
+                "service_requested": False,
+                "stop_requested_at": now,
+                "retry_at": now + 10,
+                "error_code": "silent_host_stopped",
             }
         if busy:
             return {"state": "busy", "retry_at": now + 10}
