@@ -137,32 +137,142 @@ export function conflicts(layout: Layout, specs: Map<string, TwinSpec>) {
 export const isArm = (twin: Pick<Twin, "spec">) =>
   !!twin.spec?.operations.includes("transfer");
 
-/** A starting layout: arms in the middle, stations on an arc in front of them. */
+const NEAR = 0.15; // arm base to the nearest edge of a station
+const GAP = 0.06; // between neighbouring stations
+const FIRST = 0.42; // nearest access point the layout search tries
+const BENCH = { width: 2.4, depth: 1.6 };
+
+/** A station facing `toward`, its footprint centre `radius` away at `bearing`. */
+function facing(
+  spec: TwinSpec,
+  toward: Point,
+  radius: number,
+  bearing: number,
+) {
+  const point: Point = [
+    toward[0] + Math.cos(bearing) * radius,
+    toward[1] + Math.sin(bearing) * radius,
+  ];
+  // Mirrors layout_search._pose: the station's front (+z) points at the arm.
+  let yaw = Math.round(
+    (Math.atan2(toward[0] - point[0], toward[1] - point[1]) * 180) / Math.PI,
+  );
+  if (yaw === -180) yaw = 180;
+  const { x0, x1, z0, z1 } = footprint(spec);
+  const [rx, rz] = rotate(yaw, (x0 + x1) / 2, (z0 + z1) / 2);
+  const round = (v: number) => Number(v.toFixed(2)) + 0;
+  return { x: round(point[0] - rx), z: round(point[1] - rz), yaw };
+}
+
+/** Stations around one arm, front first, each facing it and clear of its neighbours. */
+function around(stations: Twin[], arm: Point): Placement[] {
+  if (!stations.length) return [];
+  const size = stations.map((t) => {
+    const { x0, x1, z0, z1 } = footprint(t.spec!);
+    return { w: x1 - x0, d: z1 - z0 };
+  });
+  // One ring for every station: far enough that the deepest one clears the arm.
+  let radius = Math.max(FIRST, ...size.map((s) => s.d / 2 + NEAR));
+  const span = (r: number) =>
+    size.map(({ w, d }) => 2 * Math.atan((w / 2 + GAP / 2) / (r - d / 2)));
+  while (span(radius).reduce((a, b) => a + b, 0) > 2 * Math.PI) radius += 0.05;
+  const angles = span(radius);
+  let bearing = Math.PI / 2 - angles.reduce((a, b) => a + b, 0) / 2;
+  return stations.map((t, i) => {
+    const centre = bearing + angles[i] / 2;
+    bearing += angles[i];
+    return {
+      twin_id: t.id,
+      ...facing(t.spec!, arm, radius, centre),
+      access: "top",
+    };
+  });
+}
+
+/**
+ * A starting layout: each arm with its share of the stations on a ring around it, every
+ * station facing the arm. The server checks reach; layout search explores the rest.
+ */
 export function defaultLayout(twins: Twin[]): Layout {
   const arms = twins.filter(isArm);
   const stations = twins.filter((t) => !isArm(t));
-  const placements: Placement[] = arms.map((t, i) => ({
-    twin_id: t.id,
-    x: Number(((i - (arms.length - 1) / 2) * 0.9).toFixed(2)),
-    z: 0,
-    yaw: 0,
-    access: "top",
-  }));
-  stations.forEach((t, i) => {
-    const angle =
-      stations.length === 1
-        ? Math.PI / 2
-        : Math.PI * 0.05 + (Math.PI * 0.9 * i) / (stations.length - 1);
-    const radius = 0.55;
-    placements.push({
-      twin_id: t.id,
-      x: Number((-Math.cos(angle) * radius).toFixed(2)),
-      z: Number((Math.sin(angle) * radius * 0.75 + 0.05).toFixed(2)),
-      yaw: 0,
-      access: "top",
-    });
+  if (!arms.length) {
+    const placements: Placement[] = [];
+    let x = 0;
+    for (const t of stations) {
+      const { x0, x1 } = footprint(t.spec!);
+      placements.push({
+        twin_id: t.id,
+        x: Number((x - x0).toFixed(2)),
+        z: 0,
+        yaw: 0,
+        access: "top",
+      });
+      x += x1 - x0 + GAP;
+    }
+    const shift = x / 2;
+    placements.forEach((p) => (p.x = Number((p.x - shift).toFixed(2))));
+    return fit({ bench: BENCH, placements }, twins);
+  }
+  // Consecutive stations share an arm, as consecutive steps usually do.
+  const share = Math.ceil(stations.length / arms.length);
+  const groups = arms.map((_, i) => stations.slice(i * share, (i + 1) * share));
+  const specs = new Map(twins.map((t) => [t.id, t.spec!]));
+  const cells = arms.map((arm, i) => {
+    const placed = [
+      { twin_id: arm.id, x: 0, z: 0, yaw: 0, access: "top" as const },
+      ...around(groups[i], [0, 0]),
+    ];
+    const xs = placed.flatMap((p) =>
+      corners(specs.get(p.twin_id)!, p).map((c) => c[0]),
+    );
+    return { placed, lo: Math.min(...xs), hi: Math.max(...xs) };
   });
-  return { bench: { width: 2.4, depth: 1.6 }, placements };
+  // Cells side by side along x, centred on the bench.
+  const width =
+    cells.reduce((a, c) => a + c.hi - c.lo, 0) + GAP * (cells.length - 1);
+  let left = -width / 2;
+  const placements = cells.flatMap((c) => {
+    const dx = left - c.lo;
+    left += c.hi - c.lo + GAP;
+    return c.placed.map((p) => ({
+      ...p,
+      x: Number((p.x + dx).toFixed(2)) + 0,
+    }));
+  });
+  return fit({ bench: BENCH, placements }, twins);
+}
+
+/** The arrangement centred on a bench grown, in 10 cm steps, to hold every footprint. */
+function fit(layout: Layout, twins: Twin[]): Layout {
+  const specs = new Map(twins.map((t) => [t.id, t.spec!]));
+  const shape = (ps: Placement[]) =>
+    ps.flatMap((p) => corners(specs.get(p.twin_id)!, p));
+  const before = shape(layout.placements);
+  const mid = (axis: 0 | 1) =>
+    before.length
+      ? (Math.min(...before.map((c) => c[axis])) +
+          Math.max(...before.map((c) => c[axis]))) /
+        2
+      : 0;
+  const [dx, dz] = [mid(0), mid(1)];
+  const placements = layout.placements.map((p) => ({
+    ...p,
+    x: Number((p.x - dx).toFixed(2)) + 0,
+    z: Number((p.z - dz).toFixed(2)) + 0,
+  }));
+  const all = shape(placements);
+  const half = (axis: 0 | 1) =>
+    Math.max(0, ...all.map((c) => Math.abs(c[axis])));
+  const grow = (need: number, min: number) =>
+    Math.max(min, Math.ceil((2 * need + 0.1) * 10) / 10);
+  return {
+    bench: {
+      width: grow(half(0), layout.bench.width),
+      depth: grow(half(1), layout.bench.depth),
+    },
+    placements,
+  };
 }
 
 /** Reach of the arm profile a transfer twin carries (UR5e unless it names another). */

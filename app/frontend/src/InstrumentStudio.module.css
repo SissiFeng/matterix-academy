@@ -175,6 +175,15 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+.starting {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--brand);
+  background: var(--surface-1);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .addHeading {
   display: flex;
   align-items: baseline;
