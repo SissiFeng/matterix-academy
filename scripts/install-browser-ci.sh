@@ -23,6 +23,15 @@ retry_install() {
   return "$status"
 }
 
+# Hosted runners list Azure's Ubuntu mirror first. When its name stops resolving, every
+# package waits out a DNS timeout before the next mirror is tried, so drop it up front.
+mirrors=/etc/apt/apt-mirrors.txt
+if [ -f "$mirrors" ] && ! getent hosts azure.archive.ubuntu.com >/dev/null; then
+  echo "system-dependencies: azure.archive.ubuntu.com does not resolve; using the remaining mirrors" |
+    tee -a "$log_dir/system-dependencies.log"
+  sudo sed -i '/azure\.archive\.ubuntu\.com/d' "$mirrors"
+fi
+
 # GNU timeout bounds stalled package mirrors and also terminates stubborn children.
 retry_install system-dependencies 300 install-deps chromium
 export PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=60000
