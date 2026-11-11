@@ -798,3 +798,38 @@ def test_startup_bound_is_configurable_within_limits(monkeypatch, value, expecte
     else:
         monkeypatch.setenv("ACADEMY_GPU_STARTUP_SECONDS", value)
     assert startup_seconds() == expected
+
+
+def test_one_missed_heartbeat_long_after_boot_is_not_an_operator_fault(managed):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    boot(gpu, ec2, None, now)
+    for _ in range(70):  # ready for longer than the startup bound
+        now[0] += 10
+        heartbeat(gpu, now)
+        assert gpu.reconcile()["state"] == "ready"
+    now[0] += 50
+    assert gpu.reconcile()["state"] == "preparing"
+    assert gpu.claim_writes() is not None
+    heartbeat(gpu, now)
+    assert tick(gpu, now)["state"] == "ready"
+    # A worker that stays quiet for the whole bound still needs an operator.
+    now[0] += 601
+    status = gpu.reconcile()
+    assert status["state"] == "error"
+    assert gpu.record()["error_code"] == "worker_start_timeout"
+    assert gpu.claim_writes() is None
+
+
+@pytest.mark.parametrize("code", ["RequestLimitExceeded", "Throttling"])
+def test_aws_throttling_is_retried_soon_and_is_not_an_operator_fault(managed, code):
+    gpu, ec2, _, now = managed
+    demand(gpu)
+    ec2.describe_instances.side_effect = ClientError({"Error": {"Code": code}}, "DescribeInstances")
+    gpu.reconcile()
+    assert gpu.status()["state"] == "preparing"
+    assert gpu.record()["retry_at"] == now[0] + 30
+    ec2.describe_instances.side_effect = None
+    now[0] += 31
+    assert gpu.reconcile()["state"] == "starting"
+    ec2.start_instances.assert_called_once()

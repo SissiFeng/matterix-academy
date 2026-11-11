@@ -229,7 +229,14 @@ class GpuLifecycle:
             changes = self.advance(record, worker, power, bool(queued), busy, now, parked)
         except ClientError as exc:
             code = exc.response["Error"]["Code"]
-            if code in {"InvalidInstanceId", "InvocationDoesNotExist", "ThrottlingException"}:
+            # AWS asking the controller to slow down is not a fault in the host.
+            if code in {
+                "InvalidInstanceId",
+                "InvocationDoesNotExist",
+                "ThrottlingException",
+                "Throttling",
+                "RequestLimitExceeded",
+            }:
                 changes = {
                     "state": "preparing",
                     "retry_at": now + 30,
@@ -364,6 +371,8 @@ class GpuLifecycle:
             return {
                 "state": "ready",
                 "retry_at": now + 10,
+                # A worker that was just ready gets the same grace if it goes quiet.
+                "startup_deadline": now + self.startup,
                 "recovery": 0,
                 "halted_until": 0,
                 "note": None,
