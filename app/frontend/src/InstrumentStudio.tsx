@@ -799,6 +799,9 @@ export default function InstrumentStudio({
                   onResidual={(input) =>
                     mutate(`/twins/${twin.id}/residuals`, input)
                   }
+                  onSizeCheck={(checked) =>
+                    mutate(`/twins/${twin.id}/size-check`, { checked }, "PUT")
+                  }
                   onMatch={(m) =>
                     mutate(
                       `/twins/${twin.id}/match`,

@@ -704,6 +704,16 @@
   font: inherit;
   font-size: 12px;
 }
+.sizeCheck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+.sizeCheck small {
+  color: var(--muted);
+}
 .residuals {
   display: grid;
   gap: 8px;

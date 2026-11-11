@@ -38,6 +38,7 @@ from .simple_twins import (
     SavePlan,
     SearchLayouts,
     SimpleTwinService,
+    SizeCheck,
     StressLayout,
 )
 from .simple_twins import Revision as TwinRevision
@@ -335,6 +336,10 @@ def create_app(settings: Settings | None = None, store=None):
     @app.put("/api/twins/{twin_id}/match")
     def match_instrument(twin_id: UUID, data: MatchTwin, owner: str = Depends(identify)):
         return app.state.twins.match(owner, twin_id, data)
+
+    @app.put("/api/twins/{twin_id}/size-check")
+    def instrument_size_check(twin_id: UUID, data: SizeCheck, owner: str = Depends(identify)):
+        return app.state.twins.size_check(owner, twin_id, data)
 
     @app.put("/api/twins/{twin_id}/connector")
     def instrument_connector_mode(
