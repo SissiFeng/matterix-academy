@@ -1,4 +1,4 @@
-"""Search across the pinned starting-point collections (SimReady and ChemLab)."""
+"""Search across the pinned starting-point collections: workcell models, SimReady, ChemLab."""
 
 import re
 
@@ -32,34 +32,174 @@ def summary(collection, asset_id, asset):
     }
 
 
-def matches(asset, words):
-    return all(w in haystack(asset) for w in words)
+# What people type for an instrument, and the catalogue words it stands for. A term may
+# stand for several phrasings; an entry matches when it has every word of any one of them.
+ALIASES = {
+    "rotavap": ["rotary evaporator"],
+    "rotovap": ["rotary evaporator"],
+    "fridge": ["refrigerator", "refrigerated"],
+    "pipette": ["liquid handling", "liquid handler"],
+    "pipettor": ["liquid handling", "liquid handler"],
+    "pipetting": ["liquid handling", "liquid handler"],
+    "liquid handler": ["liquid handling", "liquid handler"],
+    "scale": ["balance"],
+    "ph meter": ["ph"],
+    "plate reader": ["microplate reader", "plate reader"],
+    "hot plate": ["hotplate"],
+    "stir plate": ["hotplate stirrer"],
+    "glove box": ["glovebox"],
+    "mass spec": ["mass spectrometer"],
+    "ms": ["mass spectrometer"],
+    "gc ms": ["gas chromatograph"],
+    "gcms": ["gas chromatograph"],
+    "lc": ["hplc"],
+    "lc ms": ["hplc"],
+    "lcms": ["hplc"],
+    "icp ms": ["icp mass"],
+    "icp oes": ["icp optical"],
+    "aas": ["atomic absorption"],
+    "toc": ["total organic carbon"],
+    "xrd": ["x ray diffractometer"],
+    "xps": ["x ray photoelectron"],
+    "xrf": ["xrf"],
+    "saxs": ["small angle x ray"],
+    "ct": ["computed tomography"],
+    "sem": ["scanning electron microscope"],
+    "tem": ["transmission electron microscope"],
+    "afm": ["atomic force microscope"],
+    "stm": ["scanning tunneling microscope"],
+    "dsc": ["differential scanning calorimeter"],
+    "tga": ["thermogravimetric"],
+    "ir": ["ft ir"],
+    "esr": ["epr"],
+    "viscometer": ["rheometer"],
+    "lyophilizer": ["freeze dryer"],
+    "lyophiliser": ["freeze dryer"],
+    "sonicator": ["ultrasonic"],
+    "homogenizer": ["disperser", "ultrasonic processor"],
+    "homogeniser": ["disperser", "ultrasonic processor"],
+    "pcr": ["qpcr"],
+    "thermocycler": ["qpcr"],
+    "fluorometer": ["spectrofluorometer"],
+    "fluorimeter": ["spectrofluorometer"],
+    "bet": ["physisorption"],
+    "cobot": ["collaborative arm"],
+    "robot arm": ["arm"],
+    "chiller": ["circulator"],
+    "water bath": ["circulator", "bath"],
+    "vacuum pump": ["vacuum pumping"],
+    "mfc": ["mass flow controller"],
+    "kiln": ["furnace"],
+    "tensile tester": ["universal testing machine"],
+    "bsc": ["biological safety cabinet"],
+    "analyser": ["analyzer"],
+    "vapor": ["vapour"],
+}
+LONGEST_ALIAS = max(len(key.split()) for key in ALIASES)
 
 
-def haystack(asset):
-    fields = [asset["label"], asset["spec"]["name"], asset["provider"], asset.get("domain", "")]
-    return " ".join(fields).lower()
+def squash(text):
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def tokens(text):
+    """Lower-case words; a hyphenated or slashed run also counts joined (uv-vis as uvvis)."""
+    text = text.lower()
+    joined = re.findall(r"[a-z0-9]+(?:[-/][a-z0-9]+)+", text)
+    return re.findall(r"[a-z0-9]+", text) + [re.sub(r"[-/]", "", run) for run in joined]
+
+
+def index(asset):
+    """An entry's name words, all its words, and its label run together for model numbers."""
+    name = set(tokens(asset["spec"]["name"]))
+    other = [asset["label"], asset["provider"], asset.get("domain", "")]
+    return name, name | {t for field in other for t in tokens(field)}, squash(asset["label"])
+
+
+INDEX = {(c, i): index(a) for c, assets in COLLECTIONS.items() for i, a in assets.items()}
+
+
+def parse(query):
+    """The query as terms; each term is the alternative phrasings (word lists) it stands for."""
+    words = re.findall(r"[a-z0-9]+", query.lower())
+    terms, at = [], 0
+    while at < len(words):
+        for n in range(min(LONGEST_ALIAS, len(words) - at), 0, -1):
+            typed = " ".join(words[at : at + n])
+            if typed in ALIASES or n == 1:
+                phrasings = [typed, *ALIASES.get(typed, [])]
+                terms.append([phrase.split() for phrase in dict.fromkeys(phrasings)])
+                at += n
+                break
+    return terms
+
+
+def word_score(word, have):
+    """3 for a whole word, 2 for the start of one, 1 for a longer fragment inside one."""
+    for stem in dict.fromkeys([word, word.removesuffix("es"), word.removesuffix("s")]):
+        if len(stem) < len(word) and len(stem) < 3:
+            continue
+        if stem in have:
+            return 3
+        if len(stem) >= 3 and any(t.startswith(stem) for t in have):
+            return 2
+        # Two letters inside a longer word say nothing (ph in spectrophotometer); digits
+        # inside a model number do (204 in xpr204e).
+        if (len(stem) >= 4 or (len(stem) >= 3 and stem.isdigit())) and any(stem in t for t in have):
+            return 1
+    return 0
+
+
+def relevance(query, terms, entry):
+    """How well an entry answers the query: its word score, or a model number typed apart
+    from or run into its neighbours (rv10 for RV 10)."""
+    typed = squash(query)
+    model = len(typed) >= 4 and any(c.isdigit() for c in typed) and typed in entry[2]
+    return score(terms, entry[1]) or (2 if model else 0)
+
+
+def score(terms, have):
+    """How well an entry's words answer every term, or 0 when one term finds nothing."""
+    total = 0
+    for phrasings in terms:
+        best = 0
+        for words in phrasings:
+            found = [word_score(w, have) for w in words]
+            if all(found):
+                best = max(best, sum(found) / len(found))
+        if not best:
+            return 0
+        total += best
+    return total
 
 
 def search(query, limit=16):
-    """Every query word must appear; name matches, featured entries and models rank first."""
-    words = re.findall(r"[\w.+-]+", query.lower())
+    """Every query term must be found; the closest name matches rank first.
+
+    A term is found as a whole word, the start of a word or a longer fragment of one, in
+    the entry's name, maker, model or domain. Common lab shorthand (rotavap, XRD, fridge)
+    stands for the catalogue's wording, and plurals are read as singular.
+    """
+    terms = parse(query)
     hits = []
     for collection, assets in COLLECTIONS.items():
         for asset_id, asset in assets.items():
             featured = asset.get("featured", collection == "simready")
-            if words:
-                if not matches(asset, words):
+            entry = INDEX[collection, asset_id]
+            if terms:
+                found = relevance(query, terms, entry)
+                if not found:
                     continue
-                in_name = all(w in asset["spec"]["name"].lower() for w in words)
+                in_name = score(terms, entry[0])
             elif not featured:
                 continue
             else:
-                in_name = True
+                found = in_name = 1
             # A search puts lessons first; then instruments with a full 3D model.
             rank = (
                 not in_name,
-                bool(words) and (collection, asset_id) not in LESSONS,
+                bool(terms) and (collection, asset_id) not in LESSONS,
+                -max(found, in_name),
                 not featured,
                 collection != "workcell",
                 asset["spec"]["name"],
@@ -74,20 +214,30 @@ def search(query, limit=16):
 
 
 def browse(query="", domain="", collection="", offset=0, limit=24):
-    """Every entry that has a drawn 3D model, by name, filtered for the asset library page."""
-    words = re.findall(r"[\w.+-]+", query.lower())
+    """Every entry that has a drawn 3D model, filtered for the asset library page.
+
+    Without a query the entries are in name order; with one, the closest matches lead.
+    """
+    terms = parse(query)
     drawn = [
         (c, i, a) for c, assets in COLLECTIONS.items() for i, a in assets.items() if a.get("mesh")
     ]
     found = [
-        (c, i, a) for c, i, a in drawn if matches(a, words) and (not collection or c == collection)
+        (relevance(query, terms, INDEX[c, i]) if terms else 1, c, i, a)
+        for c, i, a in drawn
+        if not collection or c == collection
     ]
+    found = [e for e in found if e[0]]
     domains = {}
-    for _, _, a in found:
+    for _, _, _, a in found:
         domains[a["domain"]] = domains.get(a["domain"], 0) + 1
     shown = sorted(
-        (e for e in found if not domain or e[2]["domain"] == domain),
-        key=lambda e: (e[0] != "workcell", e[2]["spec"]["name"].lower()),
+        (e for e in found if not domain or e[3]["domain"] == domain),
+        key=lambda e: (
+            -(e[0] + score(terms, INDEX[e[1], e[2]][0])),
+            e[1] != "workcell",
+            e[3]["spec"]["name"].lower(),
+        ),
     )
     return {
         "size": len(drawn),
@@ -95,7 +245,7 @@ def browse(query="", domain="", collection="", offset=0, limit=24):
         "domains": dict(sorted(domains.items())),
         "results": [
             {**summary(c, i, a), "mesh": a["mesh"], "url": a["url"]}
-            for c, i, a in shown[offset : offset + limit]
+            for _, c, i, a in shown[offset : offset + limit]
         ],
     }
 
@@ -110,10 +260,6 @@ def listing():
     return "\n".join(
         f"{c}:{i} | {a['label']}" for c, assets in COLLECTIONS.items() for i, a in assets.items()
     )
-
-
-def squash(text):
-    return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
 def candidates(identification):

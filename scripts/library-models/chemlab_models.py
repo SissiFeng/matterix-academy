@@ -1,7 +1,8 @@
 """Pinned ChemLab-Assets GLB models for the 3D view.
 
   manifest            regenerate app/backend/academy/chemlab_models.json from the pinned
-                      dataset revision (sha256 and size of every model.glb, from the Hub API)
+                      dataset revision (sha256 and size of every model.glb, from the Hub API,
+                      and which axis each model stands on, from its own node tree)
   fetch [DIR]         download every listed model into DIR (default: the web app's
                       public/library-models, ignored by git) and verify its sha256
   upload BUCKET       fetch into the local cache, then put the models the bucket does not
@@ -15,7 +16,9 @@ The models are CC-BY-NC-4.0; attribution travels with every twin started from th
 
 import argparse
 import hashlib
+import itertools
 import json
+import struct
 import sys
 import time
 import urllib.request
@@ -38,6 +41,69 @@ def revision():
     raise SystemExit("REVISION not found in chemlab.py")
 
 
+def gltf(read):
+    """The JSON chunk of a GLB; `read(start, end)` returns that inclusive byte range."""
+    magic, _, _, length, kind = struct.unpack("<4sIIII", read(0, 19))
+    if magic != b"glTF" or kind != 0x4E4F534A:
+        raise SystemExit("Not a binary glTF file")
+    return json.loads(read(20, 19 + length))
+
+
+def _matrix(node):
+    if "matrix" in node:
+        m = node["matrix"]
+        return [[m[c * 4 + r] for c in range(4)] for r in range(4)]
+    x, y, z, w = node.get("rotation", (0, 0, 0, 1))
+    sx, sy, sz = node.get("scale", (1, 1, 1))
+    tx, ty, tz = node.get("translation", (0, 0, 0))
+    return [
+        [(1 - 2 * (y * y + z * z)) * sx, 2 * (x * y - z * w) * sy, 2 * (x * z + y * w) * sz, tx],
+        [2 * (x * y + z * w) * sx, (1 - 2 * (x * x + z * z)) * sy, 2 * (y * z - x * w) * sz, ty],
+        [2 * (x * z - y * w) * sx, 2 * (y * z + x * w) * sy, (1 - 2 * (x * x + y * y)) * sz, tz],
+        [0, 0, 0, 1],
+    ]
+
+
+def extent(doc):
+    """Overall (x, y, z) size of a glTF scene, from its accessor bounds and node transforms."""
+    lo, hi = [float("inf")] * 3, [float("-inf")] * 3
+
+    def walk(index, parent):
+        node = doc["nodes"][index]
+        local = _matrix(node)
+        world = [
+            [sum(parent[r][k] * local[k][c] for k in range(4)) for c in range(4)] for r in range(4)
+        ]
+        if "mesh" in node:
+            for primitive in doc["meshes"][node["mesh"]]["primitives"]:
+                bounds = doc["accessors"][primitive["attributes"]["POSITION"]]
+                for corner in itertools.product(*zip(bounds["min"], bounds["max"], strict=True)):
+                    for axis in range(3):
+                        v = sum(world[axis][k] * corner[k] for k in range(3)) + world[axis][3]
+                        lo[axis], hi[axis] = min(lo[axis], v), max(hi[axis], v)
+        for child in node.get("children", []):
+            walk(child, world)
+
+    identity = [[float(r == c) for c in range(4)] for r in range(4)]
+    for root in doc["scenes"][doc.get("scene", 0)]["nodes"]:
+        walk(root, identity)
+    return [h - low for low, h in zip(lo, hi, strict=True)]
+
+
+def up_axis(doc, size_zup):
+    """'z' when the model's extent is the catalogue's (x, y, z) size, 'y' when it is turned.
+
+    Most ChemLab models stand on z = 0, but some keep glTF's own Y-up convention; the
+    3D view has to know which to stand them upright.
+    """
+    x, y, z = extent(doc)
+
+    def error(got):
+        return max(abs(g - want) / want for g, want in zip(got, size_zup, strict=True))
+
+    return "y" if error((x, z, y)) < error((x, y, z)) else "z"
+
+
 def manifest():
     rev = revision()
     rows = json.loads((BACKEND / "chemlab_catalog.json").read_text())["instruments"]
@@ -49,12 +115,24 @@ def manifest():
         glb = next((f for f in files if f["path"].endswith("/model.glb") and "lfs" in f), None)
         if not glb or glb["lfs"]["size"] > MAX_BYTES:
             return None
-        return row["slug"], {
+
+        def read(start, end):
+            request = urllib.request.Request(
+                f"https://huggingface.co/datasets/{REPO}/resolve/{rev}/{glb['path']}",
+                headers={"Range": f"bytes={start}-{end}"},
+            )
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return response.read()
+
+        model = {
             "file": f"{PREFIX}/{row['slug']}.glb",
             "source": glb["path"],
             "sha256": glb["lfs"]["oid"],
             "bytes": glb["lfs"]["size"],
         }
+        if up_axis(gltf(read), row["size_m"]) == "y":
+            model["up"] = "y"
+        return row["slug"], model
 
     with ThreadPoolExecutor(12) as pool:
         found = dict(r for r in pool.map(one, rows) if r)

@@ -16,11 +16,11 @@ export function lit(scene: THREE.Scene) {
   scene.add(sun, fill);
 }
 
-/** The Z-up model turned Y up, standing on the floor at the origin. */
-export function upright(object: THREE.Object3D) {
+/** The model standing Y up on the floor at the origin, turned there when it is Z-up. */
+export function upright(object: THREE.Object3D, up: Mesh["up"] = "z") {
   const holder = new THREE.Group();
   const turned = new THREE.Group();
-  turned.rotation.x = -Math.PI / 2;
+  if (up !== "y") turned.rotation.x = -Math.PI / 2;
   turned.add(object);
   holder.add(turned);
   holder.updateMatrixWorld(true);
@@ -92,7 +92,7 @@ async function draw(mesh: Mesh) {
   }
   const scene = new THREE.Scene();
   lit(scene);
-  scene.add(upright(model.object));
+  scene.add(upright(model.object, mesh.up));
   const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
   aim(camera, scene, 1);
   renderer.render(scene, camera);

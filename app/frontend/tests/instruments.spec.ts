@@ -273,7 +273,18 @@ test("a ChemLab asset starts a non-commercial reference twin", async ({
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await enterInstruments(page);
-  await page.getByLabel("Search the asset library").fill("xpr204e");
+  // Lab shorthand and two-letter words find the instrument they mean.
+  const search = page.getByLabel("Search the asset library");
+  await search.fill("rotavap");
+  await expect(
+    page.getByRole("button", { name: /^Add Rotary evaporator/ }),
+  ).toBeVisible();
+  await search.fill("ph meter");
+  await expect(page.getByText("1 match", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Add pH \/ DO \/ conductivity meter/ }),
+  ).toBeVisible();
+  await search.fill("xpr204e");
   await expect(page.getByText("1 match", { exact: true })).toBeVisible();
   await page
     .getByRole("button", { name: "Add Analytical balance (XPR204E)" })
