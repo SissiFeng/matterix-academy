@@ -13,7 +13,7 @@ github_oidc_subject_prefix = "repo:SissiFeng@38707787/matterix-academy@139333201
 # alarm_email        = "operator@example.org"
 # Wakeup for the reviewed Ohio GPU host; does not enable native execution.
 gpu_instance_id = "i-0f369ff6e01f8d623"
-gpu_worker_id   = "ec2-flex-ohio-1"
+gpu_worker_id   = "ec2-flex-ohio-2"
 # monthly_budget_usd = 100
 
 # GPU host region (EC2/SSM only; Cognito, DynamoDB, KVS stay in `region`).
