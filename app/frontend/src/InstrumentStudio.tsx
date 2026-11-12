@@ -11,6 +11,7 @@ import {
   ArrowRight,
   ArrowUp,
   Camera,
+  Check,
   Download,
   Play,
   Plug,
@@ -483,6 +484,49 @@ export default function InstrumentStudio({
     setTab(next);
     window.history.replaceState({}, "", `/#/plan/${next}`);
   };
+  const leave = (next: Tab) => {
+    if (
+      next !== tab &&
+      twinDirty.current.size &&
+      !window.confirm(
+        "Your instrument edits are not saved. Discard them and switch tabs?",
+      )
+    )
+      return;
+    go(next);
+  };
+  const layoutSaved = !!catalog.layout && !layoutDirty.current;
+  const done: Partial<Record<Tab, boolean>> = {
+    describe: !!catalog.brief?.draft,
+    instruments: confirmed.length > 0,
+    workflow: catalog.steps.length > 0,
+    layout: layoutSaved,
+  };
+  /** The step after this one, and what still stands before it. */
+  const next: { to: Tab; label: string; blocker?: string } | null =
+    tab === "instruments" && !catalog.brief?.draft
+      ? {
+          to: "workflow",
+          label: "Design the workflow",
+          blocker: confirmed.length
+            ? undefined
+            : "Confirm an instrument first.",
+        }
+      : tab === "workflow"
+        ? {
+            to: "layout",
+            label: "Lay out the bench",
+            blocker: confirmed.length
+              ? undefined
+              : "Confirm an instrument first.",
+          }
+        : tab === "layout"
+          ? {
+              to: "connectors",
+              label: "Connect the instruments",
+              blocker: layoutSaved ? undefined : "Save a layout first.",
+            }
+          : null;
   const findFor = (role: BriefRole) => {
     setFinding((current) => (current === role.key ? null : role.key));
     setQuery(role.query);
@@ -500,7 +544,7 @@ export default function InstrumentStudio({
     <section className={s.page} aria-labelledby="byo-instrument">
       <div className={s.heading}>
         <div>
-          <h2 id="byo-instrument">Plan your workcell</h2>
+          <h2 id="byo-instrument">Plan a workcell</h2>
           <p>
             Describe the workflow, choose each instrument, then find a bench
             layout that runs it.
@@ -524,19 +568,10 @@ export default function InstrumentStudio({
             role="tab"
             aria-selected={tab === t.id}
             className={tab === t.id ? s.activeTab : ""}
-            onClick={() => {
-              if (
-                t.id !== tab &&
-                twinDirty.current.size &&
-                !window.confirm(
-                  "Your instrument edits are not saved. Discard them and switch tabs?",
-                )
-              )
-                return;
-              go(t.id);
-            }}
+            onClick={() => leave(t.id)}
           >
             {t.label}
+            {done[t.id] && <Check size={13} aria-label="done" />}
           </button>
         ))}
       </div>
@@ -684,7 +719,7 @@ export default function InstrumentStudio({
               <div className={s.addHeading}>
                 <h2>Add an instrument</h2>
                 <a className={s.modelsLink} href="#/models">
-                  Browse models <ArrowRight size={14} aria-hidden />
+                  Browse all models <ArrowRight size={14} aria-hidden />
                 </a>
               </div>
               <section className={s.library} aria-label="Asset library">
@@ -910,12 +945,6 @@ export default function InstrumentStudio({
                 />
               </>
             ))}
-          {tab === "layout" && (
-            <a className={s.modelsLink} href="#/models">
-              Browse instrument models <ArrowRight size={14} aria-hidden />
-            </a>
-          )}
-
           {tab === "workflow" && (
             <>
               <h2>Design the workflow</h2>
@@ -1352,6 +1381,18 @@ export default function InstrumentStudio({
                 </div>
               )}
             </>
+          )}
+          {next && (
+            <div className={s.next}>
+              <button
+                className={s.secondary}
+                disabled={!!next.blocker}
+                onClick={() => leave(next.to)}
+              >
+                {next.label} <ArrowRight size={14} aria-hidden />
+              </button>
+              {next.blocker && <small>{next.blocker}</small>}
+            </div>
           )}
         </aside>
       </div>

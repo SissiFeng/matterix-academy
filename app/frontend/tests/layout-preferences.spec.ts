@@ -80,7 +80,7 @@ test("an imported workflow file plans a layout that reaches deck slots", async (
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
   await page
-    .getByRole("button", { name: "Plan a layout", exact: true })
+    .getByRole("button", { name: "Plan a workcell", exact: true })
     .click();
   await page.getByRole("tab", { name: "1 · Describe" }).click();
 

@@ -67,6 +67,22 @@
   font-weight: 600;
   white-space: nowrap;
 }
+.tabs button svg {
+  margin-left: 6px;
+  vertical-align: -1px;
+  color: var(--brand-text);
+}
+.next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: var(--hairline) solid var(--line);
+  padding-top: 14px;
+}
+.next small {
+  color: var(--muted);
+}
 .tabs .activeTab {
   color: var(--ink);
   border-bottom-color: var(--brand);

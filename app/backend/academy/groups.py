@@ -218,7 +218,7 @@ def install(app, *, store):
         _, member = membership(owner, group_id)
         record = request.app.state.twins.get(owner)
         if not record.get("layout"):
-            raise HTTPException(409, "Save a bench layout in Plan a layout first")
+            raise HTTPException(409, "Save a bench layout in Plan a workcell first")
         twins = {t["id"]: t for t in record["twins"]}
         arms = {s["device_id"] for s in record["steps"] if s["operation"] == "transfer"}
         share_id = f"{member['id']}_layout"

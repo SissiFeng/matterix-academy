@@ -32,7 +32,6 @@ import {
   Store,
   GitBranch,
   LayoutDashboard,
-  Boxes,
   House,
   ListChecks,
 } from "lucide-react";
@@ -898,6 +897,17 @@ export default function App() {
             </nav>
             <div className={s.sidebarLabel}>YOUR WORKCELL</div>
             <nav aria-label="Workcell navigation">
+              {canPlan && (
+                <button
+                  className={
+                    view === "plan" || view === "models" ? s.activeNav : ""
+                  }
+                  aria-current={view === "plan" ? "page" : undefined}
+                  onClick={() => nav("plan")}
+                >
+                  <LayoutDashboard size={18} /> Plan a workcell
+                </button>
+              )}
               {workspaceViews
                 .filter((target) => target !== "overview")
                 .map((target, index) => {
@@ -930,22 +940,6 @@ export default function App() {
                 onClick={() => nav("connector")}
               >
                 <GitBranch size={18} /> Connector explorer
-              </button>
-              {canPlan && (
-                <button
-                  className={view === "plan" ? s.activeNav : ""}
-                  aria-current={view === "plan" ? "page" : undefined}
-                  onClick={() => nav("plan")}
-                >
-                  <LayoutDashboard size={18} /> Plan a layout
-                </button>
-              )}
-              <button
-                className={view === "models" ? s.activeNav : ""}
-                aria-current={view === "models" ? "page" : undefined}
-                onClick={() => nav("models")}
-              >
-                <Boxes size={18} /> Instrument models
               </button>
             </nav>
             <div className={s.sidebarBottom}>
@@ -995,7 +989,7 @@ export default function App() {
                     (view === "instruments"
                       ? "Meet the instruments"
                       : view === "plan"
-                        ? "Plan a layout"
+                        ? "Plan a workcell"
                         : view === "models"
                           ? "Instrument models"
                           : view === "lab"
@@ -1144,7 +1138,7 @@ export default function App() {
                   <ModelLibrary
                     canAdd={canPlan}
                     onAdded={() => nav("plan/instruments")}
-                    onPlan={() => nav("plan")}
+                    onPlan={() => nav("plan/instruments")}
                   />
                 </div>
               ) : view === "sim" ? (

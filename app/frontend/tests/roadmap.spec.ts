@@ -29,7 +29,7 @@ test("the start page maps every stop on both routes to its page", async ({
     [learning, "Compare with classmates", /#\/groups$/, "Study groups"],
     [using, "Add a device", /#\/onboard$/, "Add a device"],
     [using, "Practise on its twin", /#\/twin$/, "Teaching twin"],
-    [using, "Plan the bench", /#\/plan$/, "Plan your workcell"],
+    [using, "Plan the bench", /#\/plan$/, "Plan a workcell"],
     [using, "Check readiness", /#\/readiness$/, "Real-device readiness"],
     [using, "Review runs", /#\/runs$/, "Teaching runs"],
   ];
