@@ -410,6 +410,69 @@ def test_a_failed_nova_call_says_so_and_the_settings_pair_is_checked(client, app
         Settings(brief_model="us.amazon.nova-pro-v1:0")
 
 
+def test_a_draft_that_loads_a_sample_twice_is_sent_back():
+    import pytest
+    from pydantic import ValidationError
+
+    twice = json.loads(json.dumps(DRAFT))
+    twice["steps"].insert(
+        3, {"role": "reader", "operation": "load", "source_role": "", "target_role": "", "value": 1}
+    )
+    with pytest.raises(ValidationError, match="Step 4 loads sample again after step 1"):
+        Draft.model_validate(twice)
+    # A second sample may be loaded on its own.
+    twice["steps"][3]["sample"] = "plate-b"
+    Draft.model_validate(twice)
+
+
+def test_a_draft_acting_where_the_sample_is_not_is_sent_back():
+    import pytest
+    from pydantic import ValidationError
+
+    def with_steps(*steps):
+        draft = json.loads(json.dumps(DRAFT))
+        draft["steps"] = [
+            {"source_role": "", "target_role": "", "value": 1, **step} for step in steps
+        ]
+        return draft
+
+    load = {"role": "heater", "operation": "load", "value": 150}
+    move = {
+        "role": "robot",
+        "operation": "transfer",
+        "source_role": "heater",
+        "target_role": "reader",
+    }
+    with pytest.raises(ValidationError, match="before any step loads it"):
+        Draft.model_validate(with_steps({"role": "heater", "operation": "heat", "value": 37}))
+    with pytest.raises(ValidationError, match="sample is at reader, not heater"):
+        Draft.model_validate(
+            with_steps(load, move, {"role": "heater", "operation": "heat", "value": 37})
+        )
+    with pytest.raises(ValidationError, match="but it is at reader"):
+        Draft.model_validate(with_steps(load, move, move))
+    robot_holding = with_steps(load, move)
+    robot_holding["roles"][1]["operations"] = ["load", "transfer"]
+    with pytest.raises(ValidationError, match="moves samples, so it must not hold one"):
+        Draft.model_validate(robot_holding)
+    Draft.model_validate(with_steps(load, move, {"role": "reader", "operation": "read"}))
+
+
+def test_nova_placement_wishes_need_a_description_that_states_them(app):
+    wishes = {
+        **DRAFT,
+        "preferences": [
+            {"kind": "near", "role": "heater", "other_role": "reader", "side": "", "metres": 0.5}
+        ],
+    }
+    nova(app, wishes, wishes)
+    drafter = app.state.twins.drafter
+    silent = drafter.attempt(drafter.begin("Heat a plate to 37 °C, then read it."))[1]
+    assert silent["preferences"] == []
+    stated = drafter.attempt(drafter.begin("Heat a plate, then read it; keep them close."))[1]
+    assert stated["preferences"][0]["kind"] == "near"
+
+
 def test_an_instrument_that_no_longer_fits_its_role_is_not_accepted(client, app):
     catalog = drafted(client, app)
     # A station that holds plates is bound to the robot role behind the page's back.
