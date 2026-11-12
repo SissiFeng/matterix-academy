@@ -35,7 +35,8 @@ def shapes(twin):
     asset = twin.get("asset") or {}
     measured = twin.get("source") == "chemlab_asset" and _measured().get(asset.get("id"))
     level = spec.get("level_m")
-    deck = spec.get("sites") and level is not None
+    # Only a deck served through its front is an enclosure; one loaded from above is open.
+    deck = spec.get("sites") and level is not None and spec.get("access") == "front"
     if measured:
         boxes = [
             (
@@ -57,7 +58,7 @@ def shapes(twin):
         return boxes
     if deck and level + 2 * WALL < height:
         side = (WALL / 2, (height - level) / 2, depth / 2)
-        return [
+        enclosure = [
             ((cx, level / 2, cz), (width / 2, level / 2, depth / 2)),
             ((cx, height - WALL / 2, cz), (width / 2, WALL / 2, depth / 2)),
             (
@@ -67,4 +68,6 @@ def shapes(twin):
             ((x0 + WALL / 2, (height + level) / 2, cz), side),
             ((x1 - WALL / 2, (height + level) / 2, cz), side),
         ]
+        # A deck level with the bench has no slab under it.
+        return [(c, h) for c, h in enclosure if min(h) > 0]
     return [(tuple(p["position"]), tuple(v / 2 for v in p["size"])) for p in spec["parts"]]

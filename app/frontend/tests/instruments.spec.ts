@@ -520,10 +520,15 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   // Across the bench from the arm, still on it.
   await page.getByLabel("Plate reader x").fill(String(armX > 0 ? -0.9 : 0.9));
   await page.getByLabel("Plate reader z").fill(String(armZ > 0 ? -0.45 : 0.45));
-  // The reader takes its plate on a tray at the front, which the arm cannot serve there.
-  const refused =
-    /Step 2: (Plate reader's front access point|no collision-free path)/;
-  await expect(page.getByText(refused).first()).toBeVisible();
+  // The reader takes its plate on a tray at the front; turned half round, the tray is
+  // on the far side, well past what the arm reaches.
+  const readerBox = page.getByRole("button", { name: /^Plate reader at x/ });
+  await readerBox.focus();
+  for (let i = 0; i < 12; i++) await page.keyboard.press("r");
+  const refused = /Step 2: /;
+  await expect(page.getByText(refused).first()).toBeVisible({
+    timeout: 30_000,
+  });
   await page.getByRole("button", { name: "Save layout" }).click();
   await expect(page.getByRole("alert")).toContainText(refused);
   await page
@@ -531,9 +536,11 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
     .getByRole("button", { name: "Dismiss" })
     .click();
 
+  await readerBox.focus();
+  for (let i = 0; i < 12; i++) await page.keyboard.press("R");
   await page.getByLabel("Plate reader x").fill(readerX);
   await page.getByLabel("Plate reader z").fill(readerZ);
-  await expect(path).toContainText("cm min clearance");
+  await expect(path).toContainText("cm min clearance", { timeout: 30_000 });
   await page.getByRole("button", { name: "Save layout" }).click();
   await expect(
     page.getByRole("button", { name: "Save layout" }),

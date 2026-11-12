@@ -305,15 +305,12 @@ export default function LayoutPanel({
 
       {onRefine && (
         <LayoutRefine
+          layout={layout}
+          constraints={constraints}
           onRefine={onRefine}
           busy={busy}
-          onApply={(result) => {
-            onChange({ bench: result.bench, placements: result.placements });
-            if (
-              JSON.stringify(result.constraints) !== JSON.stringify(constraints)
-            )
-              onConstraints(result.constraints);
-          }}
+          onApply={onChange}
+          onConstraints={onConstraints}
         />
       )}
       <LayoutPreferences

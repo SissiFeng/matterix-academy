@@ -1,6 +1,7 @@
 """A layout is changed by asking in plain words; a model only names the changes."""
 
 from academy import layout_refine
+from botocore.exceptions import ClientError
 from test_workflow_brief import nova
 
 FLEX, READER, ARM = "Liquid handler (Opentrons Flex)", "Plate reader (CLARIOstar Plus)", "UR5e arm"
@@ -94,7 +95,20 @@ def test_a_new_preference_replaces_the_one_it_contradicts():
         {"kind": "near", "twin_id": "a", "other_id": "b", "metres": 0.4},
     ]
     # A request with only moves needs no new search.
-    assert layout_refine.apply([], twins, {"width": 2, "depth": 1}, [], [])["search"] is False
+    place = {"twin_id": "a", "x": 0.0, "z": 0.0, "yaw": 0, "access": "top", "kept": False}
+    move = layout_refine.parse({"changes": [change("move", "A", side="front", metres=0.2)]})
+    moved = layout_refine.apply(
+        move.model_dump()["changes"], twins, {"width": 2, "depth": 1}, [place], before
+    )
+    assert moved["search"] is False and moved["placements"][0]["z"] == 0.2
+    assert moved["constraints"] == before
+    # A seventeenth preference is refused by name; none is dropped to make room.
+    full = [{"kind": "zone", "twin_id": str(i), "side": "left"} for i in range(16)]
+    zone = layout_refine.parse({"changes": [change("zone", "A", side="right")]})
+    kept = layout_refine.apply(
+        zone.model_dump()["changes"], twins, {"width": 2, "depth": 1}, [], full
+    )
+    assert kept["constraints"] == full and kept["skipped"] == ["A (zone): 16 preferences at most"]
 
 
 def test_an_unusable_answer_is_reported_not_applied(client, app):
@@ -102,3 +116,10 @@ def test_an_unusable_answer_is_reported_not_applied(client, app):
     nova(app, {"changes": [{"kind": "teleport", "instrument": FLEX}], "unclear": ""})
     answer = refine(client, catalog)
     assert answer.status_code == 502 and "Rephrase" in answer.json()["detail"]
+    # A model that does not answer at all is an error too, not an empty set of changes.
+    nova(
+        app, ClientError({"Error": {"Code": "ThrottlingException", "Message": "busy"}}, "Converse")
+    )
+    assert refine(client, catalog).status_code == 502
+    after = client.get("/api/twins").json()
+    assert after["version"] == catalog["version"] and after["layout"] == catalog["layout"]

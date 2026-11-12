@@ -15,6 +15,7 @@ from .models import StrictModel
 
 TOOL = "layout_changes"
 KINDS = ("zone", "near", "apart", "keep", "release", "move", "turn", "bench")
+LIMIT = 16  # preferences a workspace keeps
 SIDES = {"left": (-1, 0), "right": (1, 0), "back": (0, -1), "front": (0, 1)}
 PROMPT = (
     "You change a laboratory bench layout as a learner asks. Return the changes with the "
@@ -70,7 +71,8 @@ def schema():
 
 def parse(answer):
     """The model's answer as Changes; a field it left null counts as left out."""
-    answer = answer if isinstance(answer, dict) else {}
+    if not isinstance(answer, dict) or not isinstance(answer.get("changes"), list):
+        raise ValueError("The model returned no changes")
     changes = [
         {k: v for k, v in c.items() if v is not None}
         for c in answer.get("changes") or []
@@ -110,6 +112,10 @@ def apply(changes, twins, bench, placements, constraints):
     done, skipped, search = [], [], False
     for change in changes:
         kind = change["kind"]
+        if kind in ("zone", "near", "apart") and len(constraints) >= LIMIT:
+            # Replacing a preference frees its place; a seventeenth is not taken.
+            skipped.append(f"{change['instrument']} ({kind}): {LIMIT} preferences at most")
+            continue
         if kind == "bench":
             width = min(4, max(0.6, change["width"] or bench["width"]))
             depth = min(3, max(0.4, change["depth"] or bench["depth"]))
@@ -159,7 +165,7 @@ def apply(changes, twins, bench, placements, constraints):
     return {
         "bench": bench,
         "placements": [places[p["twin_id"]] for p in placements],
-        "constraints": constraints[-16:],
+        "constraints": constraints,
         "applied": done,
         "skipped": skipped,
         "search": search,

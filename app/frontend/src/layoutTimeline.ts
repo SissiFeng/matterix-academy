@@ -1,5 +1,7 @@
 import type { LayoutPreview, Motion, TimelineStep } from "./instrumentTypes";
 
+const DWELL = 1; // seconds held at each grasp; mirrors workcell_layout.DWELL
+
 /** Workflow time in seconds: the end of the last step. */
 export function duration(timeline: TimelineStep[]) {
   return timeline.length ? timeline[timeline.length - 1].end_s : 0;
@@ -41,15 +43,29 @@ export function armAt(preview: LayoutPreview, clock: number): ArmMoment | null {
   );
   if (active) {
     const { step, motion } = active;
-    const part = (clock - step.start_s) / (step.end_s - step.start_s || 1);
-    const progress = motion.profile?.progress;
-    const frame = progress
-      ? Math.max(
-          0,
-          progress.findIndex((p) => p >= part),
-        )
-      : Math.round(part * (motion.frames.length - 1));
-    return { motion, frame, moving: true };
+    const lasts = step.end_s - step.start_s;
+    const elapsed = clock - step.start_s;
+    const profile = motion.profile;
+    if (!profile || lasts <= 2 * DWELL) {
+      const part = elapsed / (lasts || 1);
+      return {
+        motion,
+        frame: Math.round(part * (motion.frames.length - 1)),
+        moving: true,
+      };
+    }
+    // The arm holds still at the grasp and again at the release.
+    const reached = (i: number) =>
+      profile.progress[i] * (lasts - 2 * DWELL) +
+      (profile.segment[i] >= 1 ? DWELL : 0) +
+      (profile.segment[i] >= 4 ? DWELL : 0);
+    let frame = 0;
+    while (frame + 1 < motion.frames.length && reached(frame + 1) <= elapsed)
+      frame += 1;
+    const moving =
+      frame + 1 < motion.frames.length &&
+      reached(frame + 1) - reached(frame) < DWELL;
+    return { motion, frame, moving };
   }
   const before = transfers.filter(({ step }) => step.end_s <= clock);
   if (before.length) {

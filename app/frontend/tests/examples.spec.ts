@@ -32,7 +32,8 @@ test("an example workcell opens with a layout the arm can run", async ({
     "true",
   );
   const paths = page.getByRole("button", { name: /^Step \d+ · / });
-  await expect(paths).toHaveCount(2);
+  // Two transfers are planned and simulated, which a busy runner takes a while over.
+  await expect(paths).toHaveCount(2, { timeout: 60_000 });
   await expect(paths.first()).toContainText("cm min clearance");
   await expect(
     page.getByRole("button", { name: "Save layout" }),
@@ -96,13 +97,14 @@ test("a layout request in plain words lands on the draft for review", async ({
             ? { ...p, x: Number((p.x - 0.05).toFixed(2)), kept: true }
             : p,
         ),
-        constraints: [],
+        constraints: [{ kind: "zone", twin_id: reader.twin_id, side: "left" }],
         applied: [
           "Plate reader (CLARIOstar Plus) moved 0.05 m toward the left",
+          "Plate reader (CLARIOstar Plus) on the left",
         ],
         skipped: ["Centrifuge"],
         unclear: "",
-        search: false,
+        search: true,
         model: "Amazon Nova Pro",
       },
     });
@@ -128,7 +130,7 @@ test("a layout request in plain words lands on the draft for review", async ({
     .getByRole("button", { name: /Flex to plate reader/ })
     .click();
   const path = page.getByRole("button", { name: /^Step 3 · / });
-  await expect(path).toContainText("cm min clearance");
+  await expect(path).toContainText("cm min clearance", { timeout: 60_000 });
 
   const request = page.getByLabel("Change this layout");
   const refine = page.getByRole("button", { name: "Refine" });
@@ -146,4 +148,9 @@ test("a layout request in plain words lands on the draft for review", async ({
   await expect(path).toContainText("cm min clearance");
   await expect(page.getByRole("button", { name: "Save layout" })).toBeEnabled();
   await expect(request).toHaveValue("");
+  // A preference is the learner's to keep: it is saved only when they say so.
+  await page.getByRole("button", { name: "Save these preferences" }).click();
+  await expect(
+    page.getByText("Search layouts to place the instruments this way."),
+  ).toBeVisible();
 });

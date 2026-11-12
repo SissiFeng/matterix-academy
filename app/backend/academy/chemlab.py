@@ -18,6 +18,7 @@ import json
 import re
 from pathlib import Path
 
+from .collision import _measured
 from .simready import footprint_spec
 
 LICENSE = "CC-BY-NC-4.0"
@@ -193,9 +194,13 @@ def entry(row):
         COLORS[sum(map(ord, row["slug"])) % len(COLORS)],
         spec,
         f"The footprint is one box with the overall size of the ChemLab-Assets model of the "
-        f"{title[:200]} ({LICENSE}, non-commercial use only); arm paths stay clear of "
-        "boxes measured from that model. It is reconstructed "
-        "from public documents, not manufacturer CAD. Operations, vessel, volume, slots "
+        f"{title[:200]} ({LICENSE}, non-commercial use only)"
+        + (
+            "; arm paths stay clear of boxes measured from that model. It is reconstructed "
+            if row["slug"] in _measured()
+            else ". That model is reconstructed "
+        )
+        + "from public documents, not manufacturer CAD. Operations, vessel, volume, slots "
         "and limits are Academy teaching defaults, not manufacturer specifications or "
         "ChemLab behaviour. Correct them for your instrument before confirming.",
     )

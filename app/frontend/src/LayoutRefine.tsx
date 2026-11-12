@@ -1,19 +1,29 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
-import type { Refinement } from "./instrumentTypes";
+import type { Constraint, Layout, Refinement } from "./instrumentTypes";
 import studio from "./InstrumentStudio.module.css";
 import s from "./LayoutPanel.module.css";
 
 /** Ask for a change to the layout in plain words; the result lands on the draft. */
 export default function LayoutRefine({
+  layout,
+  constraints,
   onRefine,
   onApply,
+  onConstraints,
   busy,
 }: {
+  /** The draft the request is about; an answer to an older draft is not applied. */
+  layout: Layout;
+  constraints: Constraint[];
   onRefine: (text: string) => Promise<Refinement>;
-  onApply: (result: Refinement) => void;
+  onApply: (next: Layout) => void;
+  /** Saves the preferences the request asked for, once the learner agrees. */
+  onConstraints: (next: Constraint[]) => void;
   busy: boolean;
 }) {
+  const current = useRef("");
+  current.current = JSON.stringify(layout);
   const [text, setText] = useState("");
   const [asking, setAsking] = useState(false);
   const [result, setResult] = useState<Refinement | null>(null);
@@ -29,11 +39,16 @@ export default function LayoutRefine({
         setAsking(true);
         setError("");
         setResult(null);
+        const asked = current.current;
         try {
           const next = await onRefine(text.trim());
+          if (current.current !== asked) {
+            setError("The layout changed while this was read. Ask again.");
+            return;
+          }
           setResult(next);
           if (next.applied.length) {
-            onApply(next);
+            onApply({ bench: next.bench, placements: next.placements });
             setText("");
           }
         } catch (e) {
@@ -48,6 +63,7 @@ export default function LayoutRefine({
         <input
           value={text}
           maxLength={600}
+          disabled={asking}
           placeholder="Reader on the left, closer to the Flex; keep the arm where it is"
           onChange={(e) => setText(e.target.value)}
         />
@@ -63,17 +79,28 @@ export default function LayoutRefine({
         <div className={s.refined} role="status">
           {result.applied.length ? (
             <ul>
-              {result.applied.map((line) => (
-                <li key={line}>{line}</li>
+              {result.applied.map((line, i) => (
+                <li key={i}>{line}</li>
               ))}
             </ul>
           ) : (
             <p>Nothing in that request changes the layout.</p>
           )}
           {missed.length > 0 && <p>Not applied: {missed.join("; ")}</p>}
-          {result.search && (
-            <p>Search layouts to place the instruments by these preferences.</p>
-          )}
+          {result.search &&
+            (JSON.stringify(result.constraints) ===
+            JSON.stringify(constraints) ? (
+              <p>Search layouts to place the instruments this way.</p>
+            ) : (
+              <button
+                type="button"
+                className={studio.secondary}
+                disabled={busy}
+                onClick={() => onConstraints(result.constraints)}
+              >
+                Save these preferences
+              </button>
+            ))}
         </div>
       )}
     </form>

@@ -1068,9 +1068,10 @@ def loaded(twin):
     if not entry:
         return twin
     today = entry["spec"]
-    spec = {**spec, **{k: deepcopy(today[k]) for k in ("access", "level_m", "sites")}}
+    spec = {**spec, "access": today["access"], "level_m": today["level_m"]}
     if not (twin.get("size_edited") or twin.get("size_checked")):
-        spec["parts"] = deepcopy(today["parts"])
+        # Slots sit where the entry's own footprint has them.
+        spec.update(parts=deepcopy(today["parts"]), sites=deepcopy(today["sites"]))
     return {**twin, "spec": spec}
 
 
@@ -1279,7 +1280,7 @@ class SimpleTwinService:
         )
         try:
             changes = layout_refine.parse(answer)
-        except ValidationError as exc:
+        except (ValidationError, ValueError) as exc:
             raise HTTPException(
                 502, f"{self.drafter.name} did not return usable changes. Rephrase and retry."
             ) from exc

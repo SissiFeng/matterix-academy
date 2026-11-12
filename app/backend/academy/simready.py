@@ -17,7 +17,7 @@ LICENSE = "CC-BY-4.0"
 
 # Instruments loaded through a door or onto a tray at the front, by what they are called.
 DOOR = re.compile(
-    r"plate reader|microplate reader|oven|furnace|incubator|refrigerator|freezer|cabinet|glovebox",
+    r"plate reader|microplate reader|oven|furnace|incubator|refrigerator|freezer|cabinet|glovebox|hood",
     re.I,
 )
 
