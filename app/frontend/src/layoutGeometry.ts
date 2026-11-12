@@ -166,7 +166,7 @@ function facing(
 }
 
 /** Stations around one arm, front first, each facing it and clear of its neighbours. */
-function around(stations: Twin[], arm: Point): Placement[] {
+function around(stations: Twin[], arm: Point, base: Point[]): Placement[] {
   if (!stations.length) return [];
   const size = stations.map((t) => {
     const { x0, x1, z0, z1 } = footprint(t.spec!);
@@ -203,11 +203,13 @@ function around(stations: Twin[], arm: Point): Placement[] {
     return shapes.every(
       (a, i) =>
         !overlaps(a, pedestal) &&
+        !overlaps(a, base) &&
         shapes.slice(i + 1).every((b) => !overlaps(a, b)),
     );
   };
   let placed = place(radius);
-  for (let n = 0; n < 12 && !clear(placed); n++)
+  // Six metres is past any bench; the server reports what still does not fit.
+  for (let n = 0; n < 120 && !clear(placed); n++)
     placed = place((radius += 0.05));
   return placed;
 }
@@ -242,9 +244,16 @@ export function defaultLayout(twins: Twin[]): Layout {
   const groups = arms.map((_, i) => stations.slice(i * share, (i + 1) * share));
   const specs = new Map(twins.map((t) => [t.id, t.spec!]));
   const cells = arms.map((arm, i) => {
+    const home = {
+      twin_id: arm.id,
+      x: 0,
+      z: 0,
+      yaw: 0,
+      access: "top" as const,
+    };
     const placed = [
-      { twin_id: arm.id, x: 0, z: 0, yaw: 0, access: "top" as const },
-      ...around(groups[i], [0, 0]),
+      home,
+      ...around(groups[i], [0, 0], corners(arm.spec!, home)),
     ];
     const xs = placed.flatMap((p) =>
       corners(specs.get(p.twin_id)!, p).map((c) => c[0]),
