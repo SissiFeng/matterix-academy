@@ -22,6 +22,7 @@ import os
 import time
 
 from .arms import ARMS
+from .collision import shapes
 from .mock_contract import PlanError
 
 # The physics needs no renderer; without this the import looks for a display library.
@@ -216,28 +217,27 @@ def arm_xml(arm, base, tool):
 
 
 def layout_boxes(twins, layout, actor):
-    """Every placed instrument part as a static box, in the planner's y-up frame."""
+    """Every placed instrument as static boxes, in the planner's y-up frame."""
     boxes = []
     for placement in layout["placements"]:
         twin = twins[placement["twin_id"]]
         yaw = math.radians(placement["yaw"])
         c, s = math.cos(yaw), math.sin(yaw)
-        for part in twin["spec"]["parts"]:
-            px, py, pz = part["position"]
+        for (px, py, pz), half in shapes(twin):
             # The planner's yaw: local (x, z) -> (c x + s z, -s x + c z), about world y.
             x, z = placement["x"] + c * px + s * pz, placement["z"] - s * px + c * pz
             boxes.append(
                 {
                     "id": twin["id"],
                     "name": twin["spec"]["name"],
-                    "half": [v / 2 for v in part["size"]],
+                    "half": list(half),
                     "pos": (x, py, z),
                     "quat": (math.cos(yaw / 2), 0, math.sin(yaw / 2), 0),
-                    # The base stands on its own pedestal.
+                    # The base stands on its own base plate.
                     "stand": twin["id"] == actor["id"],
                 }
             )
-    # The bench top, which the arm's own pedestal rests on.
+    # The bench top, which the arm's base plate rests on.
     boxes.append(
         {
             "id": "",

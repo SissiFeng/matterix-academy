@@ -61,6 +61,31 @@ class NovaBriefs:
             )
         return self._client
 
+    def ask(self, text, tool, description, schema):
+        """One model call that must answer with `tool`; its input, or None if it did not."""
+        try:
+            response = self.client().converse(
+                modelId=self.settings.brief_model,
+                messages=[{"role": "user", "content": [{"text": text}]}],
+                inferenceConfig={"maxTokens": 1500, "temperature": 0},
+                toolConfig={
+                    "tools": [
+                        {
+                            "toolSpec": {
+                                "name": tool,
+                                "description": description,
+                                "inputSchema": {"json": schema},
+                            }
+                        }
+                    ],
+                    "toolChoice": {"tool": {"name": tool}},
+                },
+            )
+            content = response["output"]["message"]["content"]
+            return next(c["toolUse"]["input"] for c in content if "toolUse" in c)
+        except (BotoCoreError, ClientError, KeyError, StopIteration, TypeError):
+            return None
+
     def begin(self, text):
         """The conversation state for a new draft."""
         from .workflow_brief import PROMPT

@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import arm_simulation, groups, opentrons_check, sim2real_api
+from . import arm_simulation, examples, groups, opentrons_check, sim2real_api
 from ._version import __version__
 from .auth import identify, local_signer, may_plan_layouts, require_layout_planner
 from .connections import ConnectionService
@@ -32,8 +32,10 @@ from .simple_twins import (
     ConnectorMode,
     CreateTwin,
     LayoutDraft,
+    LoadExample,
     MatchTwin,
     RecordResidual,
+    RefineLayout,
     SaveConstraints,
     SaveLayout,
     SavePlan,
@@ -317,6 +319,10 @@ def create_app(settings: Settings | None = None, store=None):
     def save_layout_constraints(data: SaveConstraints, owner: str = Depends(identify)):
         return app.state.twins.save_constraints(owner, data)
 
+    @app.post("/api/twins/layout/refine", dependencies=[Depends(require_layout_planner)])
+    def refine_instrument_layout(data: RefineLayout, owner: str = Depends(identify)):
+        return app.state.twins.refine_layout(owner, data)
+
     @app.post("/api/twins/layout/search", dependencies=[Depends(require_layout_planner)])
     def search_instrument_layouts(data: SearchLayouts, owner: str = Depends(identify)):
         return app.state.twins.search_layout(owner, data)
@@ -420,6 +426,14 @@ def create_app(settings: Settings | None = None, store=None):
     @app.put("/api/twins/workflow/brief/apply")
     def apply_instrument_workflow(data: TwinRevision, owner: str = Depends(identify)):
         return app.state.twins.apply_brief(owner, data)
+
+    @app.get("/api/twins/examples")
+    def list_example_workcells(owner: str = Depends(identify)):
+        return {"examples": examples.listing()}
+
+    @app.put("/api/twins/examples/{example_id}")
+    def open_example_workcell(example_id: str, data: LoadExample, owner: str = Depends(identify)):
+        return app.state.twins.load_example(owner, example_id, data)
 
     @app.put("/api/twins/workflow")
     def save_instrument_workflow(data: SavePlan, owner: str = Depends(identify)):

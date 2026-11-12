@@ -34,10 +34,10 @@ DEVICES = {
     ),
     "ur5e-2f140": (
         "ur5e-robotiq-2f140",
-        "UR5e arm with Robotiq 2F-140 gripper on a pedestal",
+        "UR5e arm with Robotiq 2F-140 gripper",
         "Universal Robots, Robotiq",
-        # The pedestal the planner mounts the arm on, as in the transfer robot template.
-        (0.16, 0.16, 0.5775),
+        # The base plate the planner mounts the arm on: it stands on the bench.
+        (0.16, 0.16, 0.02),
         "#7b8794",
         {"name": "UR5e arm", "operations": ["transfer", "wait"]},
     ),

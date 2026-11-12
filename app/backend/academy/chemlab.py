@@ -1,8 +1,9 @@
 """MBZUAI ChemLab-Assets instruments usable as starting points for teaching twins.
 
 `chemlab_catalog.json` is a pinned snapshot of the release catalog (name, maker, model,
-domain, dataset path and overall size of all 203 instruments). A twin plans with one box
-with the catalog footprint; the 3D view draws the dataset's own model.glb in its place.
+domain, dataset path and overall size of all 203 instruments). A twin's footprint is one
+box with the catalog size; the 3D view draws the dataset's own model.glb in its place,
+and arm paths stay clear of boxes measured from that model (`chemlab_collision.json`).
 Those models are pinned by sha256 in `chemlab_models.json` and served from the web app's
 origin (`scripts/library-models/chemlab_models.py`); URDF, contracts and behaviour models
 are never used. Operations, vessel, volume, slots and limits are Academy teaching
@@ -17,6 +18,7 @@ import json
 import re
 from pathlib import Path
 
+from .collision import _measured
 from .simready import footprint_spec
 
 LICENSE = "CC-BY-NC-4.0"
@@ -97,6 +99,8 @@ FEATURED = {
         "volume": 2000,
         "slots": 11,
         "deck": "flex",
+        # The deck sits left of centre in this model: the touchscreen is on its right.
+        "deck_at": (-0.06, 0.03),
         "consumables": [{"name": "Pipette tips", "used_by": "mix", "per_use": 1, "stock": 96}],
     },
     "azenta_automated_roll_heat_sealer_a4s": {
@@ -189,9 +193,14 @@ def entry(row):
         row["size_m"],
         COLORS[sum(map(ord, row["slug"])) % len(COLORS)],
         spec,
-        f"Geometry is one box with the overall size of the ChemLab-Assets model of the "
-        f"{title[:200]} ({LICENSE}, non-commercial use only). That model is reconstructed "
-        "from public documents, not manufacturer CAD. Operations, vessel, volume, slots "
+        f"The footprint is one box with the overall size of the ChemLab-Assets model of the "
+        f"{title[:200]} ({LICENSE}, non-commercial use only)"
+        + (
+            "; arm paths stay clear of boxes measured from that model. It is reconstructed "
+            if row["slug"] in _measured()
+            else ". That model is reconstructed "
+        )
+        + "from public documents, not manufacturer CAD. Operations, vessel, volume, slots "
         "and limits are Academy teaching defaults, not manufacturer specifications or "
         "ChemLab behaviour. Correct them for your instrument before confirming.",
     )

@@ -64,6 +64,9 @@ export type TwinSpec = {
   /** Transfer twins: the arm profile and joint limits narrowed by its connector. */
   arm?: ArmProfile | null;
   joint_limits_deg?: number[];
+  /** Where labware goes in, and how high above the bench it then sits (metres). */
+  access?: Access | null;
+  level_m?: number | null;
 };
 export type Site = { key: string; x: number; z: number };
 export type ArmProfile = "ur3e" | "ur5e" | "ur10e";
@@ -241,6 +244,36 @@ export type Motion = MotionSummary & {
   frames: ArmFrame[];
   /** Joint angles (rad) of the same frames. */
   joints: number[][];
+  /** For each frame: how far along the path, which segment, and the arm's clearance. */
+  profile?: {
+    progress: number[];
+    segment: number[];
+    segments: string[];
+    clearance_m: number[];
+    nearest: string[];
+  };
+};
+/** One workflow step in time, with where every sample and consumable is once it ends. */
+export type TimelineStep = {
+  step: number;
+  device_id: string;
+  operation: Operation;
+  sample: string;
+  location: string | null;
+  site: string | null;
+  samples: Record<
+    string,
+    {
+      location: string | null;
+      site: string | null;
+      volume_ul: number;
+      temperature_c: number;
+      mixed: boolean;
+    }
+  >;
+  consumables: Record<string, Record<string, number>>;
+  start_s: number;
+  end_s: number;
 };
 export type BlockedMotion = {
   step: number;
@@ -259,6 +292,8 @@ export type LayoutPreview = {
   motions: Motion[];
   error: { message: string; layer: string } | null;
   blocked: BlockedMotion | null;
+  /** The saved workflow in time; empty when it could not be planned. */
+  timeline?: TimelineStep[];
   /** What arm paths are simulated with; null when only the geometry is checked. */
   simulation: {
     engine: "mujoco";
@@ -311,6 +346,22 @@ export type Constraint = {
   count?: number;
   side?: Side | null;
   metres?: number;
+};
+/** What a plain-language request changes in a layout, for the learner to review. */
+export type Refinement = Layout & {
+  constraints: Constraint[];
+  applied: string[];
+  skipped: string[];
+  unclear: string;
+  search: boolean;
+  model: string;
+};
+export type ExampleCell = {
+  id: string;
+  name: string;
+  summary: string;
+  instruments: string[];
+  placed: boolean;
 };
 export type BriefRole = {
   key: string;
@@ -396,6 +447,7 @@ export type InstrumentCatalog = {
   astra_available: boolean;
   /** Whether a described workflow can be drafted here, and by which model. */
   brief_available?: boolean;
+  refine_available?: boolean;
   brief_model?: string;
   real_available: boolean;
   real_reason: string;

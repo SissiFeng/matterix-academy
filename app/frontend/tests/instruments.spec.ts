@@ -520,23 +520,35 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   // Across the bench from the arm, still on it.
   await page.getByLabel("Plate reader x").fill(String(armX > 0 ? -0.9 : 0.9));
   await page.getByLabel("Plate reader z").fill(String(armZ > 0 ? -0.45 : 0.45));
-  await expect(
-    page.getByText(
-      /Plate reader's top access point: it is .* m from the UR5e shoulder/,
-    ),
-  ).toBeVisible();
+  // The reader takes its plate on a tray at the front; turned half round, the tray is
+  // on the far side, well past what the arm reaches.
+  const readerYaw = await page.getByLabel("Plate reader yaw").inputValue();
+  await page
+    .getByLabel("Plate reader yaw")
+    .fill(
+      String(
+        Number(readerYaw) > 0
+          ? Number(readerYaw) - 180
+          : Number(readerYaw) + 180,
+      ),
+    );
+  const refused = /Step 2: /;
+  await expect(page.getByText(refused).first()).toBeVisible({
+    timeout: 30_000,
+  });
   await page.getByRole("button", { name: "Save layout" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "arm reaches about 0.85 m",
-  );
+  await expect(page.getByRole("alert")).toContainText(refused, {
+    timeout: 30_000,
+  });
   await page
     .getByRole("alert")
     .getByRole("button", { name: "Dismiss" })
     .click();
 
+  await page.getByLabel("Plate reader yaw").fill(readerYaw);
   await page.getByLabel("Plate reader x").fill(readerX);
   await page.getByLabel("Plate reader z").fill(readerZ);
-  await expect(path).toContainText("cm min clearance");
+  await expect(path).toContainText("cm min clearance", { timeout: 30_000 });
   await page.getByRole("button", { name: "Save layout" }).click();
   await expect(
     page.getByRole("button", { name: "Save layout" }),
@@ -655,7 +667,11 @@ test("layout search keeps pinned instruments and compares measured options", asy
   await expect(
     page.getByText(/holds \d+% of 2 cm misplacements/).first(),
   ).toBeVisible({ timeout: 60_000 });
-  await page.getByRole("button", { name: "Stop test" }).click();
+  // A quick runner has finished the test by now and the button is gone.
+  await page
+    .getByRole("button", { name: "Stop test" })
+    .click({ timeout: 2_000 })
+    .catch(() => undefined);
   await expect(
     page.getByLabel("Sort by").getByRole("option", {
       name: "Placement tolerance",
@@ -671,7 +687,13 @@ test("layout search keeps pinned instruments and compares measured options", asy
     name: /Step 2 · Heating station → Plate reader/,
   });
   await expect(path).toContainText("cm min clearance");
+  // The button is also disabled while saving, so wait for the save itself before reloading.
+  const stored = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/twins/layout") && r.request().method() === "PUT",
+  );
   await page.getByRole("button", { name: "Save layout" }).click();
+  expect((await stored).status()).toBe(200);
   await expect(
     page.getByRole("button", { name: "Save layout" }),
   ).toBeDisabled();
@@ -1074,6 +1096,25 @@ test("workcell models start on a bench the arm can serve", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+// Whether the first arrangement plans is the planner's to decide; these fixtures need it refused.
+const refuseFirstLayout = (page: import("@playwright/test").Page) =>
+  page.route("**/api/twins/layout/preview", (route) =>
+    route.fulfill({
+      json: {
+        arm: "UR5e",
+        reach_m: 0.85,
+        motions: [],
+        error: {
+          message: "Step 3: the arm cannot serve this layout",
+          layer: "geometry",
+        },
+        blocked: null,
+        timeline: [],
+        simulation: null,
+      },
+    }),
+  );
+
 test("browser fixture only: a bench no search can serve says what to try", async ({
   page,
 }) => {
@@ -1096,6 +1137,7 @@ test("browser fixture only: a bench no search can serve says what to try", async
       },
     });
   });
+  await refuseFirstLayout(page);
   await openInstruments(page);
   await addModel(page, "opentrons flex", "Liquid handler (Opentrons Flex)");
   await addModel(page, "ur5e", "UR5e arm");
@@ -1129,6 +1171,7 @@ test("browser fixture only: a starting search the server fails says so", async (
   await page.route("**/api/twins/layout/search", (route) =>
     route.fulfill({ status: 500, json: { message: "Internal Server Error" } }),
   );
+  await refuseFirstLayout(page);
   await openInstruments(page);
   await addModel(page, "opentrons flex", "Liquid handler (Opentrons Flex)");
   await addModel(page, "ur5e", "UR5e arm");

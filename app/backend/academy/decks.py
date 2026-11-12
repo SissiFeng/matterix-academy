@@ -2,10 +2,13 @@
 
 Slot pitches come from the Opentrons deck definitions (ot2_standard, ot3_standard), the
 same data the workcell case draws. Positions are slot centres on the twin's top face,
-centred on its footprint: x to the right, z toward the front (row 1 or D). The twin is
-still one planning box, so a site is reached from above the box top, not down inside
-the enclosure. Teaching geometry, not calibrated deck coordinates.
+centred on its footprint: x to the right, z toward the front (row 1 or D). The deck is
+inside the enclosure, at LEVELS above the bench, and an arm reaches it through the open
+front. Teaching geometry, not calibrated deck coordinates.
 """
+
+# Deck surface above the bench (metres), as in the workcell case.
+LEVELS = {"ot2": 0.1, "flex": 0.153}
 
 SLOT = (0.128, 0.086)  # ANSI/SLAS footprint, metres
 
@@ -21,13 +24,14 @@ DECKS = {
 }
 
 
-def deck_sites(kind):
+def deck_sites(kind, at=(0.0, 0.0)):
+    """Slot centres; `at` is where the deck's centre sits on the footprint (x, z)."""
     pitch_x, pitch_z, rows = DECKS[kind]
     cols = max(len(r) for r in rows)
     sites = []
     for r, row in enumerate(rows):
         for c, key in enumerate(row):
-            x = (c - (cols - 1) / 2) * pitch_x
-            z = ((len(rows) - 1) / 2 - r) * pitch_z
+            x = at[0] + (c - (cols - 1) / 2) * pitch_x
+            z = at[1] + ((len(rows) - 1) / 2 - r) * pitch_z
             sites.append({"key": key, "x": round(x, 4) + 0.0, "z": round(z, 4) + 0.0})
     return sites

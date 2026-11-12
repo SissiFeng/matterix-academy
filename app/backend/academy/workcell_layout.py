@@ -17,6 +17,7 @@ import random
 
 from . import arm_simulation
 from .arms import ARMS, ELBOW_MIN_DEG, arm_for
+from .collision import shapes
 from .mock_contract import PlanError, transfer_sites
 
 UR5E = ARMS["ur5e"]
@@ -187,7 +188,8 @@ class Scene:
             n = max(1, math.ceil(length / SAMPLE))
             samples = [_add(a, seg, k / n) for k in range(n + 1)]
             floor = min(p[1] for p in samples) - radius
-            if floor < worst[0]:
+            # The base stands on the bench.
+            if li and floor < worst[0]:
                 worst = (floor, link, "the bench")
             mid = _add(a, seg, 0.5)
             skip = ignore.get(li, ())
@@ -261,15 +263,14 @@ def _scene(twins, layout):
     boxes = []
     for placement in layout["placements"]:
         twin = twins[placement["twin_id"]]
-        for part in twin["spec"]["parts"]:
-            px, py, pz = part["position"]
+        for (px, py, pz), half in shapes(twin):
             rx, rz = _yaw(placement["yaw"], px, pz)
             boxes.append(
                 Box(
                     twin["id"],
                     twin["spec"]["name"],
                     (placement["x"] + rx, py, placement["z"] + rz),
-                    tuple(v / 2 for v in part["size"]),
+                    half,
                     placement["yaw"],
                 )
             )
@@ -293,30 +294,46 @@ def site_xz(spec, site=None):
     return (drawn["x"], drawn["z"]) if drawn else ((x0 + x1) / 2, (z0 + z1) / 2)
 
 
-def access(spec, placement, site=None):
-    """Grasp point, approach direction and grasp rotation (as columns) of a station.
+def side(spec, placement):
+    """The side labware goes in: the twin's own, or the placement's where the twin has none."""
+    return spec.get("access") or placement["access"]
 
-    Top access reaches the named slot; front access is one opening, whatever the slot.
+
+TRAY = 0.08  # how far in front of its face an instrument presents its tray
+
+
+def access(spec, placement, site=None):
+    """Where and how a station is served, always with the gripper pointing down.
+
+    Returns the grasp point, the direction the arm backs out along, the grasp rotation
+    (as columns) and how far it backs out. From above, the named slot is reached at the
+    twin's level and left straight up. At the front, a deck slot is reached under the
+    enclosure and left up and out through its open front; an instrument without slots
+    presents labware on a tray in front of its face, lowered onto from above.
     """
     x0, x1, z0, z1 = footprint(spec)
-    height = top(spec)
+    height, level = top(spec), spec.get("level_m")
     yaw = placement["yaw"]
-    if placement["access"] == "front":
-        local = ((x0 + x1) / 2, max(0.08, height / 2), z1 + 0.04)
-        nx, nz = _yaw(yaw, 0, 1)
-        direction = (nx, 0.0, nz)
-        tool_z = (-nx, 0.0, -nz)
-        tool_x = (0.0, 1.0, 0.0)
-    else:
+    direction, reach = (0.0, 1.0, 0.0), APPROACH
+    if side(spec, placement) == "top":
         sx, sz = site_xz(spec, site)
-        local = (sx, height + 0.02, sz)
-        direction = (0.0, 1.0, 0.0)
-        tool_z = (0.0, -1.0, 0.0)
-        ax, az = _yaw(yaw, 1, 0)
-        tool_x = (ax, 0.0, az)
+        y = (height if level is None else min(level, height)) + 0.02
+        local, reach = (sx, y, sz), height + 0.02 - y + APPROACH
+    elif spec.get("sites"):
+        sx, sz = site_xz(spec, site)
+        local = (sx, (height / 2 if level is None else level) + 0.02, sz)
+        out = z1 - sz + APPROACH
+        nx, nz = _yaw(yaw, 0, 1)
+        reach = math.hypot(out, APPROACH)
+        direction = (nx * out / reach, APPROACH / reach, nz * out / reach)
+    else:
+        y = max(0.08, height / 3) if level is None else level
+        local = ((x0 + x1) / 2, y + 0.02, z1 + TRAY)
     rx, rz = _yaw(yaw, local[0], local[2])
     point = (placement["x"] + rx, local[1], placement["z"] + rz)
-    return point, direction, (tool_x, _cross(tool_z, tool_x), tool_z)
+    ax, az = _yaw(yaw, 1, 0)
+    tool_x, tool_z = (ax, 0.0, az), (0.0, -1.0, 0.0)
+    return point, direction, (tool_x, _cross(tool_z, tool_x), tool_z), reach
 
 
 def _seeds(base, target):
@@ -398,7 +415,7 @@ class Planner:
         self.arm = arm_for(actor["spec"])
         self.base = mount(actor["spec"], self.places[actor["id"]])
         self.name = actor["spec"]["name"]
-        self.rest = {0: {actor["id"]}}  # the base capsule sits on its own pedestal
+        self.rest = {0: {actor["id"]}}  # the base capsule sits on its own base plate
         self.bent = 0  # straight-elbow solutions rejected, for the failure reason
 
     def measure(self, q, ignore=None):
@@ -433,7 +450,7 @@ class Planner:
                 break
         if prefer:
             found.sort(key=lambda f: _span(f, prefer))
-        # Name another instrument before the arm's own pedestal or the bench.
+        # Name another instrument before the arm's own base plate or the bench.
         hits.sort(key=lambda h: (h[2] == self.name, h[2] == "the bench"))
         return found, hits[0] if hits else None
 
@@ -524,10 +541,28 @@ class Planner:
         return dense
 
     def station(self, twin, ignore, prefer=None, site=None, enough=4):
-        """Collision-free configurations at a station's pre-grasp pose with a clear approach."""
+        """Collision-free configurations at a station's pre-grasp pose with a clear approach.
+
+        The gripper stays pointing down, so carried labware stays level, but it may be
+        turned about the vertical: square to the station first, then the other three ways.
+        """
         spec = twin["spec"]
-        point, direction, rotation = access(spec, self.places[twin["id"]], site)
-        pre = _add(point, direction, APPROACH)
+        point, direction, square, reach = access(spec, self.places[twin["id"]], site)
+        pre = _add(point, direction, reach)
+        first = None
+        for turn in (0.0, math.pi, math.pi / 2, -math.pi / 2):
+            rotation = _spin(square, turn) if turn else square
+            options, reason = self._served(pre, point, rotation, ignore, prefer, enough)
+            if options:
+                return options, pre, rotation, point
+            first = first or reason
+        where = side(spec, self.places[twin["id"]])
+        if site and spec.get("sites"):
+            where = f"slot {site}"
+        raise PlanError("geometry", f"{spec['name']}'s {where} access point: {first}")
+
+    def _served(self, pre, point, rotation, ignore, prefer, enough):
+        """(options, None) for one grasp rotation, or ([], why it cannot be used)."""
         found, blocked = self.candidates(pre, rotation, ignore, prefer, enough)
         reason = f"the {blocked[1]} would hit {blocked[2]}" if blocked else None
         if not found and not blocked:
@@ -555,11 +590,7 @@ class Planner:
                     if clear
                     else "the straight approach needs a wrist flip"
                 )
-        if not options:
-            side = self.places[twin["id"]]["access"]
-            where = f"slot {site}" if site and side == "top" and spec.get("sites") else side
-            raise PlanError("geometry", f"{spec['name']}'s {where} access point: {reason}")
-        return options, pre, rotation, point
+        return options, reason
 
     def swing(self, qa, pa, ra, pb, rb, target_ignore, grasp):
         """Lift, swing around the base at travel height, lower and approach."""
@@ -761,6 +792,32 @@ def _simulated(benches, twins, layout, planned, chain):
     planned["clearance_m"] = result["clearance_m"]
 
 
+def _profile(chain):
+    """What the arm is doing at each kept frame of a planned transfer.
+
+    For every frame: how far along the path it is (by joint travel, 0 to 1), which
+    segment it belongs to, and the arm's clearance there and what it is nearest to.
+    """
+    planner, joints, segment, ignores = chain["planner"], [], [], []
+    for index, (_, part, ignore) in enumerate(chain["segments"]):
+        for q in part if not index else part[1:]:
+            joints.append(q)
+            segment.append(index)
+            ignores.append(ignore)
+    travel = [0.0]
+    for a, b in zip(joints, joints[1:], strict=False):
+        travel.append(travel[-1] + _span(a, b))
+    kept = _thin(list(range(len(joints))))
+    measured = [planner.measure(joints[i], ignores[i]) for i in kept]
+    return {
+        "progress": [round(travel[i] / (travel[-1] or 1), 4) for i in kept],
+        "segment": [segment[i] for i in kept],
+        "segments": [label for label, _, _ in chain["segments"]],
+        "clearance_m": [round(gap, 3) for gap, _, _ in measured],
+        "nearest": [name for _, _, name in measured],
+    }
+
+
 def plan_workflow(twins, layout, steps, keep_frames=False):
     """Motions for every transfer step; raises PlanError('geometry') on the first failure.
 
@@ -776,6 +833,8 @@ def plan_workflow(twins, layout, steps, keep_frames=False):
         try:
             planned = plan_transfer(twins, layout, index + 1, step, sites[index + 1])
             chain = planned.pop("_chain")
+            if keep_frames:
+                planned["profile"] = _profile(chain)
             if arm_simulation.available():
                 _simulated(benches, twins, layout, planned, chain)
         except MotionError as exc:

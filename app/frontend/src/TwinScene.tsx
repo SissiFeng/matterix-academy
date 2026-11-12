@@ -201,7 +201,7 @@ export default function TwinScene({
         new THREE.Vector3(-0.5, 0, -0.5),
         new THREE.Vector3(0.5, 0.5, 0.5),
       );
-    // Leave headroom for the arm above its pedestal.
+    // Leave headroom for the arm above its base.
     if (layout || shown.some(isArm)) bounds.max.y = Math.max(bounds.max.y, 1.3);
     const center = bounds.getCenter(new THREE.Vector3());
     const radius = Math.max(
