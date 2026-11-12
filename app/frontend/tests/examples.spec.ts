@@ -114,7 +114,9 @@ test("a layout request in plain words lands on the draft for review", async ({
   await page.route(/\/api\/twins(\/.*)?$/, async (route) => {
     if (route.request().url().endsWith("/layout/refine"))
       return route.fallback();
-    const response = await route.fetch();
+    // A check still in flight when the test ends has nobody left to answer.
+    const response = await route.fetch().catch(() => null);
+    if (!response) return;
     const body = await response.json().catch(() => null);
     if (!response.ok() || !Array.isArray(body?.twins))
       return route.fulfill({ response });
@@ -160,4 +162,5 @@ test("a layout request in plain words lands on the draft for review", async ({
   await expect(
     page.getByText("Search layouts to place the instruments this way."),
   ).toBeVisible();
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 });
