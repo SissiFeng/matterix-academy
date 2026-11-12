@@ -22,7 +22,7 @@ export function fits(role: BriefRole, twin: Twin) {
   return (
     !!spec &&
     role.operations.every((op) => spec.operations.includes(op)) &&
-    (role.vessel === "none" || spec.container.vessel === role.vessel) &&
+    spec.container.vessel === role.vessel &&
     siteKeys(spec).length >= (role.reach_slots ?? 0)
   );
 }
