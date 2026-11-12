@@ -62,9 +62,13 @@ export function armAt(preview: LayoutPreview, clock: number): ArmMoment | null {
     let frame = 0;
     while (frame + 1 < motion.frames.length && reached(frame + 1) <= elapsed)
       frame += 1;
-    const moving =
-      frame + 1 < motion.frames.length &&
-      reached(frame + 1) - reached(frame) < DWELL;
+    // Holding is the second after the last frame of the approach and of the placing.
+    const travel = lasts - 2 * DWELL;
+    const grasp = profile.progress[profile.segment.lastIndexOf(0)] * travel;
+    const release =
+      profile.progress[profile.segment.lastIndexOf(3)] * travel + DWELL;
+    const held = (from: number) => elapsed >= from && elapsed < from + DWELL;
+    const moving = !held(grasp) && !held(release);
     return { motion, frame, moving };
   }
   const before = transfers.filter(({ step }) => step.end_s <= clock);

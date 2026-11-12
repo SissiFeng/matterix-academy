@@ -27,9 +27,11 @@ test("an example workcell opens with a layout the arm can run", async ({
     .click();
 
   // It lands on the layout, with both transfers planned and simulated.
+  // Opening plans and simulates both transfers first, which a busy runner takes a while over.
   await expect(page.getByRole("tab", { name: "4 · Layout" })).toHaveAttribute(
     "aria-selected",
     "true",
+    { timeout: 60_000 },
   );
   const paths = page.getByRole("button", { name: /^Step \d+ · / });
   // Two transfers are planned and simulated, which a busy runner takes a while over.

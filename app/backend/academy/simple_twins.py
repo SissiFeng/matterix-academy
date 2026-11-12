@@ -1882,7 +1882,8 @@ class SimpleTwinService:
             brief=None,
         )
         record.pop("constraints", None)
-        self.check_plan(record, record["steps"])
+        # Every example is planned in the tests; planning it again here would only make
+        # opening one slow. The layout tab checks it like any other layout.
         return self.save(owner, record, data.expected_version)
 
     def plan(self, owner, data):

@@ -530,7 +530,9 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
     timeout: 30_000,
   });
   await page.getByRole("button", { name: "Save layout" }).click();
-  await expect(page.getByRole("alert")).toContainText(refused);
+  await expect(page.getByRole("alert")).toContainText(refused, {
+    timeout: 30_000,
+  });
   await page
     .getByRole("alert")
     .getByRole("button", { name: "Dismiss" })
@@ -659,7 +661,11 @@ test("layout search keeps pinned instruments and compares measured options", asy
   await expect(
     page.getByText(/holds \d+% of 2 cm misplacements/).first(),
   ).toBeVisible({ timeout: 60_000 });
-  await page.getByRole("button", { name: "Stop test" }).click();
+  // A quick runner has finished the test by now and the button is gone.
+  await page
+    .getByRole("button", { name: "Stop test" })
+    .click({ timeout: 2_000 })
+    .catch(() => undefined);
   await expect(
     page.getByLabel("Sort by").getByRole("option", {
       name: "Placement tolerance",
