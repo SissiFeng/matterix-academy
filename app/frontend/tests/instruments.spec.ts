@@ -1080,3 +1080,28 @@ test("browser fixture only: a bench no search can serve says what to try", async
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("browser fixture only: a starting search the server fails says so", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await page.route("**/api/twins/layout/search", (route) =>
+    route.fulfill({ status: 500, json: { message: "Internal Server Error" } }),
+  );
+  await openInstruments(page);
+  await addModel(page, "opentrons flex", "Liquid handler (Opentrons Flex)");
+  await addModel(page, "ur5e", "UR5e arm");
+  await addModel(page, "clariostar", "Plate reader (CLARIOstar Plus)");
+  await transferWorkflow(
+    page,
+    3,
+    "Liquid handler (Opentrons Flex)",
+    "Plate reader (CLARIOstar Plus)",
+  );
+  await expect(page.getByText(/^Layout search failed:/)).toBeVisible({
+    timeout: 90_000,
+  });
+  await expect(
+    page.getByRole("status").filter({ hasText: "Finding one it can" }),
+  ).toHaveCount(0);
+});
