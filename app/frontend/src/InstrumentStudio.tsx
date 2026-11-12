@@ -673,8 +673,11 @@ export default function InstrumentStudio({
                       "PUT",
                     );
                     if (next) {
-                      dirty.current = false;
-                      setSteps(next.steps);
+                      // A response older than the catalog on the page was not applied.
+                      if (next.version === version.current) {
+                        dirty.current = false;
+                        setSteps(next.steps);
+                      }
                       go("workflow");
                     }
                   }}
