@@ -388,7 +388,11 @@ export default function InstrumentStudio({
         start = chunk.next;
       }
       setStarting("none");
-    })().catch(() => live && setStarting(null));
+    })().catch((e) => {
+      if (!live) return;
+      setStarting(null);
+      setError(`Layout search failed: ${(e as Error).message}`);
+    });
     return () => {
       live = false;
       setStarting(null);
