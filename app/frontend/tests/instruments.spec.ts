@@ -22,7 +22,7 @@ test("instrument twins run a multi-device workflow on the mock contract", async 
     .getByRole("button", { name: /Bring your own instruments/ })
     .click();
   await expect(page).toHaveURL(/#\/plan$/);
-  const studio = page.getByRole("region", { name: "Plan your workcell" });
+  const studio = page.getByRole("region", { name: "Plan a workcell" });
   await expect(studio).toBeVisible();
   // Without a drafting model the description step says so and the manual path stays open.
   await expect(
@@ -149,7 +149,7 @@ async function openInstruments(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Open my workspace" }).click();
   await page
-    .getByRole("button", { name: "Plan a layout", exact: true })
+    .getByRole("button", { name: "Plan a workcell", exact: true })
     .click();
   await page.getByRole("tab", { name: "2 · Instruments" }).click();
 }
@@ -809,13 +809,54 @@ test("browser fixture only: a drafted description lists roles and guides instrum
   expect(errors).toEqual([]);
 });
 
+test("planning a workcell has one entry and one next step per tab", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openInstruments(page);
+  const workcell = page.getByRole("navigation", {
+    name: "Workcell navigation",
+  });
+  await expect(workcell.getByRole("button").first()).toHaveText(
+    "Plan a workcell",
+  );
+  // The model library opens from the instruments step, not from the sidebar.
+  await expect(
+    page.getByRole("button", { name: "Instrument models", exact: true }),
+  ).toHaveCount(0);
+  const studio = page.getByRole("region", { name: "Plan a workcell" });
+  const next = studio.getByRole("button", { name: /Design the workflow/ });
+  await expect(next).toBeDisabled();
+  await expect(studio.getByText("Confirm an instrument first.")).toBeVisible();
+  await page.getByRole("link", { name: "Browse all models" }).click();
+  await page.getByRole("button", { name: "Back to instruments" }).click();
+  await expect(page).toHaveURL(/#\/plan\/instruments$/);
+  await page
+    .getByRole("button", { name: "Heating station", exact: true })
+    .click();
+  await studio.getByRole("button", { name: "Confirm twin" }).click();
+  await expect(
+    page.getByRole("tab", { name: /2 · Instruments ?done/ }),
+  ).toBeVisible();
+  await next.click();
+  await expect(page).toHaveURL(/#\/plan\/workflow$/);
+  await studio.getByRole("button", { name: /Lay out the bench/ }).click();
+  await expect(page).toHaveURL(/#\/plan\/layout$/);
+  await expect(
+    studio.getByRole("button", { name: /Connect the instruments/ }),
+  ).toBeDisabled();
+  await expect(studio.getByText("Save a layout first.")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("the model library previews every drawn instrument and adds one to the workcell", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await openInstruments(page);
-  await page.getByRole("link", { name: "Browse models" }).click();
+  await page.getByRole("link", { name: "Browse all models" }).click();
   await expect(page).toHaveURL(/#\/models$/);
   const library = page.getByRole("region", { name: "Instrument models" });
   await expect(library.getByLabel("Search instrument models")).toHaveAttribute(

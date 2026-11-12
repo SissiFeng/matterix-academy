@@ -5,10 +5,10 @@ import type { LibraryEntry, LibraryResults } from "./instrumentTypes";
 import type { StoryInstrument } from "./instrumentStoriesContent";
 import s from "./InstrumentStories.module.css";
 
-/** Handed to Plan a layout so its library search opens on the same words. */
+/** Handed to Plan a workcell so its library search opens on the same words. */
 export const LIBRARY_QUERY_KEY = "academy-library-query";
 
-/** "Onboard me on …": a lesson when there is one, else a twin in Plan a layout. */
+/** "Onboard me on …": a lesson when there is one, else a twin in Plan a workcell. */
 export default function LessonSearch({
   onLesson,
 }: {

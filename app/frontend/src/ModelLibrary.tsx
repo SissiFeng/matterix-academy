@@ -1,4 +1,4 @@
-import { ArrowRight, Box, Plus, Search } from "lucide-react";
+import { ArrowLeft, Box, Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -120,7 +120,7 @@ export default function ModelLibrary({
       <header className={s.heading}>
         <h2 id="model-library">Instrument models</h2>
         <button className={s.planLink} onClick={onPlan}>
-          Plan a workcell <ArrowRight size={15} aria-hidden />
+          <ArrowLeft size={15} aria-hidden /> Back to instruments
         </button>
       </header>
       {error && (

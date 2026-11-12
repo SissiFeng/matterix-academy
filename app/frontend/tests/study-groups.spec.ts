@@ -110,11 +110,11 @@ test("a saved bench layout is shared with the group and discussed", async ({
   // Nothing to share until a layout is saved.
   await page.getByRole("button", { name: "Share my bench layout" }).click();
   await expect(
-    page.getByText("Save a bench layout in Plan a layout first"),
+    page.getByText("Save a bench layout in Plan a workcell first"),
   ).toBeVisible();
 
   await page
-    .getByRole("button", { name: "Plan a layout", exact: true })
+    .getByRole("button", { name: "Plan a workcell", exact: true })
     .click();
   await page.getByRole("tab", { name: "2 · Instruments" }).click();
   for (const name of ["Heating station", "Plate reader", "Transfer robot"])
