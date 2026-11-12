@@ -20,9 +20,9 @@ from collections import Counter, OrderedDict
 from .arms import arm_for
 from .mock_contract import PlanError, execute_mock, site_keys
 from .workcell_layout import (
-    APPROACH,
     GRIPPER,
     TOOL,
+    TRAY,
     Planner,
     _add,
     _col,
@@ -74,7 +74,7 @@ def _pose(spec, side, point, toward):
     yaw = round(facing / 90) * 90 % 360
     yaw = yaw - 360 if yaw > 180 else yaw
     x0, x1, z0, z1 = footprint(spec)
-    local = ((x0 + x1) / 2, z1 + 0.04 if side == "front" else (z0 + z1) / 2)
+    local = ((x0 + x1) / 2, z1 + TRAY if side == "front" else (z0 + z1) / 2)
     rx, rz = _yaw(yaw, *local)
     # Adding 0.0 turns a rounded -0.0 into 0.0.
     x, z = round(point[0] - rx, 2) + 0.0, round(point[1] - rz, 2) + 0.0
@@ -84,8 +84,8 @@ def _pose(spec, side, point, toward):
 def _stretch(twins, arm, station):
     """Shoulder-to-flange distance at the station's pre-grasp pose."""
     spec = twins[station["twin_id"]]["spec"]
-    point, direction, rotation = access(spec, station)
-    flange = _add(_add(point, direction, APPROACH), rotation[2], -TOOL)
+    point, direction, rotation, reach = access(spec, station)
+    flange = _add(_add(point, direction, reach), rotation[2], -TOOL)
     spec = twins[arm["twin_id"]]["spec"]
     base = mount(spec, arm)
     return _norm(_sub(flange, _add(_col(base, 3), _col(base, 2), arm_for(spec).d[0])))
@@ -415,7 +415,8 @@ class Search:
         angles = sorted(ANGLES, key=lambda a: (abs((a - start + 180) % 360 - 180), a))
         offered = False
         scale = self.profile(home).scale
-        for side in order["sides"]:
+        # A twin that says where labware goes in is only tried there.
+        for side in (spec["access"],) if spec.get("access") else order["sides"]:
             for ring in order["radii"]:
                 radius = round(ring * scale, 3)
                 if not self.reachable(home, station_id, side, radius):

@@ -7,6 +7,7 @@ import type {
   LayoutPreview,
   LayoutSearchChunk,
   Placement,
+  Refinement,
   Twin,
   TwinSpec,
 } from "./instrumentTypes";
@@ -18,12 +19,14 @@ import {
   corners,
   frontFace,
   isArm,
+  loads,
   siteCentres,
   type Point,
 } from "./layoutGeometry";
 import studio from "./InstrumentStudio.module.css";
 import LayoutOptions from "./LayoutOptions";
 import LayoutPreferences from "./LayoutPreferences";
+import LayoutRefine from "./LayoutRefine";
 import s from "./LayoutPanel.module.css";
 
 const PAD = 0.12;
@@ -46,6 +49,7 @@ export default function LayoutPanel({
   onSearch,
   constraints,
   onConstraints,
+  onRefine,
   busy,
 }: {
   twins: Twin[];
@@ -67,6 +71,8 @@ export default function LayoutPanel({
   ) => Promise<LayoutSearchChunk>;
   constraints: Constraint[];
   onConstraints: (next: Constraint[]) => void;
+  /** Present when the server has a language model to read layout requests. */
+  onRefine?: (text: string) => Promise<Refinement>;
   busy: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -250,20 +256,19 @@ export default function LayoutPanel({
                 points={shape.map((c) => c.join(",")).join(" ")}
                 style={{ fill: spec.parts[0].color }}
               />
-              {p.access === "top" &&
-                siteCentres(spec, p).map(({ key, at }) => (
-                  <rect
-                    key={key}
-                    className={`${s.slot} ${reachedNow[p.twin_id]?.includes(key) ? s.slotReached : ""}`}
-                    x={at[0] - SLOT[0] / 2}
-                    y={at[1] - SLOT[1] / 2}
-                    width={SLOT[0]}
-                    height={SLOT[1]}
-                    transform={`rotate(${-p.yaw} ${at[0]} ${at[1]})`}
-                  />
-                ))}
+              {siteCentres(spec, p).map(({ key, at }) => (
+                <rect
+                  key={key}
+                  className={`${s.slot} ${reachedNow[p.twin_id]?.includes(key) ? s.slotReached : ""}`}
+                  x={at[0] - SLOT[0] / 2}
+                  y={at[1] - SLOT[1] / 2}
+                  width={SLOT[0]}
+                  height={SLOT[1]}
+                  transform={`rotate(${-p.yaw} ${at[0]} ${at[1]})`}
+                />
+              ))}
               {!arm &&
-                (p.access === "front" ? (
+                (loads(spec, p) === "front" && !spec.sites?.length ? (
                   <circle className={s.access} cx={fx} cy={fz} r={0.025} />
                 ) : (
                   !spec.sites?.length && (
@@ -298,6 +303,19 @@ export default function LayoutPanel({
         ))}
       </div>
 
+      {onRefine && (
+        <LayoutRefine
+          onRefine={onRefine}
+          busy={busy}
+          onApply={(result) => {
+            onChange({ bench: result.bench, placements: result.placements });
+            if (
+              JSON.stringify(result.constraints) !== JSON.stringify(constraints)
+            )
+              onConstraints(result.constraints);
+          }}
+        />
+      )}
       <LayoutPreferences
         twins={twins}
         constraints={constraints}
@@ -359,13 +377,14 @@ export default function LayoutPanel({
               Access
               <select
                 aria-label={`${name(current.twin_id)} access`}
-                value={current.access}
+                value={loads(specs.get(current.twin_id)!, current)}
+                disabled={!!specs.get(current.twin_id)!.access}
                 onChange={(e) =>
                   update(current.twin_id, { access: e.target.value as Access })
                 }
               >
                 <option value="top">From above</option>
-                <option value="front">Front face</option>
+                <option value="front">At the front</option>
               </select>
             </label>
           )}
@@ -415,7 +434,7 @@ export default function LayoutPanel({
                         x: 0,
                         z: round(depth / 2 - 0.3),
                         yaw: 0,
-                        access: "top",
+                        access: loads(t.spec!),
                       },
                     ],
                   });

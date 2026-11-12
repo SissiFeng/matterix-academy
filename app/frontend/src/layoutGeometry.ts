@@ -1,5 +1,6 @@
 import {
   armProfiles,
+  type Access,
   type Layout,
   type Placement,
   type Twin,
@@ -32,7 +33,7 @@ export function top(spec: TwinSpec) {
   return Math.max(...spec.parts.map((p) => p.position[1] + p.size[1] / 2));
 }
 
-/** Mirrors workcell_layout.mount: the arm base frame (Z up) on top of its pedestal, as a Y-up world matrix. */
+/** Mirrors workcell_layout.mount: the arm base frame (Z up) on top of its base plate, as a Y-up world matrix. */
 export function mountMatrix(
   spec: TwinSpec,
   p: Pick<Placement, "x" | "z" | "yaw">,
@@ -84,10 +85,17 @@ export function centre(spec: TwinSpec, p: Placement): Point {
   return [p.x + rx, p.z + rz];
 }
 
-/** Midpoint of the front face, where a front access point sits. */
+/** The side labware goes in: the twin's own, or the placement's where the twin has none. */
+export function loads(spec: TwinSpec, p?: Placement): Access {
+  return spec.access ?? p?.access ?? "top";
+}
+
+const TRAY = 0.08; // mirrors workcell_layout.TRAY
+
+/** Where an instrument without slots presents its tray, in front of its face. */
 export function frontFace(spec: TwinSpec, p: Placement): Point {
   const { x0, x1, z1 } = footprint(spec);
-  const [rx, rz] = rotate(p.yaw, (x0 + x1) / 2, z1);
+  const [rx, rz] = rotate(p.yaw, (x0 + x1) / 2, z1 + TRAY);
   return [p.x + rx, p.z + rz];
 }
 
@@ -142,7 +150,7 @@ const GAP = 0.06; // between neighbouring stations
 const FIRST = 0.42; // nearest access point the layout search tries
 const BENCH = { width: 2.4, depth: 1.6 };
 
-/** A station facing `toward`, its footprint centre `radius` away at `bearing`. */
+/** A station facing `toward`, where it is served `radius` away at `bearing`: its tray or its centre. */
 function facing(
   spec: TwinSpec,
   toward: Point,
@@ -160,7 +168,11 @@ function facing(
   let yaw = (((Math.round(exact / 90) * 90) % 360) + 360) % 360;
   if (yaw > 180) yaw -= 360;
   const { x0, x1, z0, z1 } = footprint(spec);
-  const [rx, rz] = rotate(yaw, (x0 + x1) / 2, (z0 + z1) / 2);
+  const [rx, rz] = rotate(
+    yaw,
+    (x0 + x1) / 2,
+    loads(spec) === "front" ? z1 + TRAY : (z0 + z1) / 2,
+  );
   const round = (v: number) => Number(v.toFixed(2)) + 0;
   return { x: round(point[0] - rx), z: round(point[1] - rz), yaw };
 }
@@ -170,12 +182,14 @@ function around(stations: Twin[], arm: Point, base: Point[]): Placement[] {
   if (!stations.length) return [];
   const size = stations.map((t) => {
     const { x0, x1, z0, z1 } = footprint(t.spec!);
-    return { w: x1 - x0, d: z1 - z0 };
+    // How far the footprint comes toward the arm from where it is served.
+    const near = loads(t.spec!) === "front" ? 0 : (z1 - z0) / 2;
+    return { w: x1 - x0, near };
   });
   // One ring for every station: far enough that the deepest one clears the arm.
-  let radius = Math.max(FIRST, ...size.map((s) => s.d / 2 + NEAR));
+  let radius = Math.max(FIRST, ...size.map((s) => s.near + NEAR));
   const span = (r: number) =>
-    size.map(({ w, d }) => 2 * Math.atan((w / 2 + GAP / 2) / (r - d / 2)));
+    size.map(({ w, near }) => 2 * Math.atan((w / 2 + GAP / 2) / (r - near)));
   while (span(radius).reduce((a, b) => a + b, 0) > 2 * Math.PI) radius += 0.05;
   const place = (r: number): Placement[] => {
     const angles = span(r);
@@ -186,12 +200,12 @@ function around(stations: Twin[], arm: Point, base: Point[]): Placement[] {
       return {
         twin_id: t.id,
         ...facing(t.spec!, arm, r, centre),
-        access: "top",
+        access: loads(t.spec!),
       };
     });
   };
   // Standing square rather than facing the arm exactly, a station's corner can reach
-  // its neighbour or the arm's pedestal; the ring widens until none does.
+  // its neighbour or the space around the arm's base; the ring widens until none does.
   const pedestal: Point[] = [
     [arm[0] - NEAR, arm[1] - NEAR],
     [arm[0] + NEAR, arm[1] - NEAR],
@@ -231,7 +245,7 @@ export function defaultLayout(twins: Twin[]): Layout {
         x: Number((x - x0).toFixed(2)),
         z: 0,
         yaw: 0,
-        access: "top",
+        access: loads(t.spec!),
       });
       x += x1 - x0 + GAP;
     }

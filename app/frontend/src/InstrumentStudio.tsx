@@ -30,7 +30,9 @@ import {
   type LayoutPreview,
   type LayoutSearchChunk,
   type BriefRole,
+  type ExampleCell,
   type Operation,
+  type Refinement,
   type Step,
   type Twin,
   DEFAULT_SAMPLE,
@@ -38,7 +40,9 @@ import {
 } from "./instrumentTypes";
 import BriefPanel, { RoleBindings, applyBlocker } from "./BriefPanel";
 import s from "./InstrumentStudio.module.css";
+import LayoutData from "./LayoutData";
 import LayoutPanel from "./LayoutPanel";
+import { armAt, duration } from "./layoutTimeline";
 import { LIBRARY_QUERY_KEY } from "./LessonSearch";
 import { conflicts, defaultLayout } from "./layoutGeometry";
 import TwinCard from "./TwinCard";
@@ -172,6 +176,13 @@ export default function InstrumentStudio({
       window.removeEventListener("beforeunload", warn);
     };
   }, [registerLeaveGuard]);
+
+  const [examples, setExamples] = useState<ExampleCell[]>([]);
+  useEffect(() => {
+    api<{ examples: ExampleCell[] }>("/twins/examples")
+      .then((found) => setExamples(found.examples))
+      .catch((e) => setError((e as Error).message));
+  }, []);
 
   const accept = useCallback((next: InstrumentCatalog) => {
     if (next.version < version.current) return;
@@ -404,17 +415,48 @@ export default function InstrumentStudio({
           selectedMotion
         ] ?? null)
       : null;
-  const motionFrames = selected?.frames ?? null;
+  // The workflow clock: while a planned layout has a timeline, the arm follows it.
+  const [clock, setClock] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [rate, setRate] = useState(4);
+  const timed =
+    tab === "layout" && preview?.timeline?.length && !preview.error
+      ? preview
+      : null;
+  const runtime = timed ? duration(timed.timeline!) : 0;
+  useEffect(() => {
+    setClock(0);
+    setPlaying(false);
+  }, [timed]);
+  useEffect(() => {
+    if (!playing || !runtime) return;
+    const timer = window.setInterval(
+      () =>
+        setClock((t) => {
+          const next = t + 0.1 * rate;
+          if (next >= runtime) setPlaying(false);
+          return Math.min(runtime, next);
+        }),
+      100,
+    );
+    return () => window.clearInterval(timer);
+  }, [playing, rate, runtime]);
+  const moment = timed ? armAt(timed, clock) : null;
+  const motionFrames = moment?.motion.frames ?? selected?.frames ?? null;
   useEffect(() => {
     setArmFrame(0);
-    if (!motionFrames?.length) return;
+    if (!motionFrames?.length || timed) return;
     // Loop the path with a short hold on the final pose.
     const timer = window.setInterval(
       () => setArmFrame((f) => (f + 1) % (motionFrames.length + 15)),
       70,
     );
     return () => window.clearInterval(timer);
-  }, [motionFrames]);
+  }, [motionFrames, timed]);
+  const shown = moment?.motion ?? selected;
+  const shownFrame = moment
+    ? moment.frame
+    : Math.min(armFrame, (motionFrames?.length ?? 1) - 1);
 
   if (!catalog)
     return (
@@ -580,7 +622,7 @@ export default function InstrumentStudio({
             <span>
               {tab === "layout"
                 ? motionFrames
-                  ? `${showingBlocked ? "Blocked attempt" : "Planned path"} · Step ${(showingBlocked ? preview!.blocked! : preview!.motions[selectedMotion]).step} · drag to orbit`
+                  ? `${showingBlocked ? "Blocked attempt" : "Planned path"} · Step ${shown!.step} · drag to orbit`
                   : `${draft.placements.length} on the bench · drag to orbit`
                 : trace
                   ? `Last run · Step ${trace.step} · ${operationLabels[trace.operation]} · ${name(trace.device_id)}`
@@ -608,19 +650,11 @@ export default function InstrumentStudio({
                       ? savedLayout(confirmed)
                       : null
               }
-              arm={
-                motionFrames?.length
-                  ? motionFrames[Math.min(armFrame, motionFrames.length - 1)]
-                  : null
-              }
+              arm={motionFrames?.length ? motionFrames[shownFrame] : null}
               armJoints={
-                selected?.joints?.length
-                  ? selected.joints[
-                      Math.min(armFrame, selected.joints.length - 1)
-                    ]
-                  : null
+                shown?.joints?.length ? shown.joints[shownFrame] : null
               }
-              armActor={selected?.actor_id ?? null}
+              armActor={shown?.actor_id ?? null}
               path={motionFrames?.map((f) => f[f.length - 1]) ?? null}
               blocked={showingBlocked ? blockedTwin : null}
             />
@@ -683,6 +717,61 @@ export default function InstrumentStudio({
               }}
               onNext={() => go("instruments")}
             />
+          )}
+          {tab === "describe" && (
+            <section className={s.library} aria-label="Example workcells">
+              <h2 className={s.examplesHeading}>Or open an example</h2>
+              <ul className={s.results}>
+                {examples.map((example) => (
+                  <li key={example.id}>
+                    <button
+                      className={s.libraryItem}
+                      disabled={busy}
+                      onClick={async () => {
+                        if (
+                          catalog.twins.length &&
+                          !window.confirm(
+                            "Opening an example replaces your instruments, workflow and layout.",
+                          )
+                        )
+                          return;
+                        const next = await mutate(
+                          `/twins/examples/${example.id}`,
+                          { replace: true },
+                          "PUT",
+                        );
+                        if (!next) return;
+                        dirty.current = false;
+                        layoutDirty.current = false;
+                        setSteps(next.steps);
+                        setLayoutDraft(next.layout ?? null);
+                        go(example.placed ? "layout" : "instruments");
+                      }}
+                    >
+                      <span>
+                        <strong>{example.name}</strong>
+                        <small>{example.summary}</small>
+                      </span>
+                      <ArrowRight size={14} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+                <li>
+                  <a
+                    className={s.libraryItem}
+                    href="#/onboard/case-synthesis-cell"
+                  >
+                    <span>
+                      <strong>Synthesis workcell</strong>
+                      <small>
+                        Flex, balance and OT-2 with arm waypoints set by hand.
+                      </small>
+                    </span>
+                    <ArrowRight size={14} aria-hidden />
+                  </a>
+                </li>
+              </ul>
+            </section>
           )}
 
           {tab === "instruments" && (
@@ -895,14 +984,43 @@ export default function InstrumentStudio({
                       : "No layout the arm can serve turned up yet. Search layouts tries more, or move instruments closer."}
                   </p>
                 )}
+                {timed && (
+                  <LayoutData
+                    twins={confirmed}
+                    preview={timed}
+                    clock={clock}
+                    onClock={(seconds) => {
+                      setPlaying(false);
+                      setClock(seconds);
+                    }}
+                    playing={playing}
+                    onPlaying={setPlaying}
+                    rate={rate}
+                    onRate={setRate}
+                  />
+                )}
                 <LayoutPanel
                   twins={confirmed}
                   layout={draft}
                   onChange={editLayout}
                   preview={preview}
                   checking={checking}
-                  selectedMotion={selectedMotion}
-                  onSelectMotion={(i) => setSelectedMotion(i)}
+                  selectedMotion={
+                    moment
+                      ? timed!.motions.indexOf(moment.motion)
+                      : selectedMotion
+                  }
+                  onSelectMotion={(i) => {
+                    setSelectedMotion(i);
+                    // Choosing a transfer plays it from its start.
+                    const step = timed?.timeline!.find(
+                      (row) => row.step === timed.motions[i]?.step,
+                    );
+                    if (step) {
+                      setClock(step.start_s);
+                      setPlaying(true);
+                    }
+                  }}
                   saveDisabled={
                     busy || (!layoutDirty.current && !!catalog.layout)
                   }
@@ -932,6 +1050,15 @@ export default function InstrumentStudio({
                       "/twins/layout/search",
                       json({ bench: draft.bench, fixed, start, avoid }),
                     )
+                  }
+                  onRefine={
+                    catalog.refine_available
+                      ? (text) =>
+                          api<Refinement>(
+                            "/twins/layout/refine",
+                            json({ ...draft, text }),
+                          )
+                      : undefined
                   }
                   constraints={catalog.constraints ?? []}
                   onConstraints={(next) =>

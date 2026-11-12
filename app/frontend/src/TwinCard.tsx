@@ -377,6 +377,21 @@ export default function TwinCard({
                     ))}
                 </select>
               </label>
+              <label className={s.field}>
+                Loaded
+                <select
+                  value={draft.access ?? "top"}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      access: e.target.value as TwinSpec["access"],
+                    })
+                  }
+                >
+                  <option value="top">From above</option>
+                  <option value="front">At the front</option>
+                </select>
+              </label>
               <NumberField
                 label="Max volume (µL)"
                 value={draft.container.max_volume_ul}

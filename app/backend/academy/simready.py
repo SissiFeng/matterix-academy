@@ -7,15 +7,30 @@ manufacturer specifications. All listed datasets are CC-BY-4.0, so attribution t
 with the twin and its exports.
 """
 
-from .decks import deck_sites
+import re
+
+from .decks import LEVELS, deck_sites
 from .simple_twins import Consumable, Container, Limits, Part, Resource, TwinSpec
 
 LICENSE = "CC-BY-4.0"
 
 
+# Instruments loaded through a door or onto a tray at the front, by what they are called.
+DOOR = re.compile(
+    r"plate reader|microplate reader|oven|furnace|incubator|refrigerator|freezer|cabinet|glovebox",
+    re.I,
+)
+
+
 def footprint_spec(size_zup, color, spec, assumptions):
-    """One-box twin from the bounding box (x, y, z) of a Z-up asset in metres."""
+    """One-box twin from the bounding box (x, y, z) of a Z-up asset in metres.
+
+    A deck is reached through the open front at its own height; an instrument with a
+    door is loaded at the front; anything else from above.
+    """
     x, y, z = size_zup
+    deck = spec.get("deck")
+    front = deck or DOOR.search(spec["name"])
     size = (x, z, y)  # Academy twins are Y-up
     return TwinSpec(
         name=spec["name"],
@@ -30,7 +45,9 @@ def footprint_spec(size_zup, color, spec, assumptions):
             max_duration_s=600,
         ),
         assumptions=assumptions,
-        sites=deck_sites(spec["deck"]) if spec.get("deck") else [],
+        sites=deck_sites(deck, spec.get("deck_at", (0.0, 0.0))) if deck else [],
+        access=spec.get("access") or ("front" if front else "top"),
+        level_m=LEVELS[deck] if deck else None,
     ).model_dump(mode="json")
 
 

@@ -256,6 +256,32 @@
   fill: color-mix(in srgb, var(--info) 45%, transparent);
   stroke: var(--info);
 }
+.refine {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 8px;
+}
+.refine label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.refine > p,
+.refined {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 13px;
+}
+.refined ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.refined p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
 .preferences {
   display: grid;
   gap: 8px;

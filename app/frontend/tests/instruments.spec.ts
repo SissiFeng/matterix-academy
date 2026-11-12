@@ -520,15 +520,12 @@ test("bench layout plans a collision-checked arm path for each transfer", async 
   // Across the bench from the arm, still on it.
   await page.getByLabel("Plate reader x").fill(String(armX > 0 ? -0.9 : 0.9));
   await page.getByLabel("Plate reader z").fill(String(armZ > 0 ? -0.45 : 0.45));
-  await expect(
-    page.getByText(
-      /Plate reader's top access point: it is .* m from the UR5e shoulder/,
-    ),
-  ).toBeVisible();
+  // The reader takes its plate on a tray at the front, which the arm cannot serve there.
+  const refused =
+    /Step 2: (Plate reader's front access point|no collision-free path)/;
+  await expect(page.getByText(refused).first()).toBeVisible();
   await page.getByRole("button", { name: "Save layout" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "arm reaches about 0.85 m",
-  );
+  await expect(page.getByRole("alert")).toContainText(refused);
   await page
     .getByRole("alert")
     .getByRole("button", { name: "Dismiss" })
@@ -1074,6 +1071,25 @@ test("workcell models start on a bench the arm can serve", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+// Whether the first arrangement plans is the planner's to decide; these fixtures need it refused.
+const refuseFirstLayout = (page: import("@playwright/test").Page) =>
+  page.route("**/api/twins/layout/preview", (route) =>
+    route.fulfill({
+      json: {
+        arm: "UR5e",
+        reach_m: 0.85,
+        motions: [],
+        error: {
+          message: "Step 3: the arm cannot serve this layout",
+          layer: "geometry",
+        },
+        blocked: null,
+        timeline: [],
+        simulation: null,
+      },
+    }),
+  );
+
 test("browser fixture only: a bench no search can serve says what to try", async ({
   page,
 }) => {
@@ -1096,6 +1112,7 @@ test("browser fixture only: a bench no search can serve says what to try", async
       },
     });
   });
+  await refuseFirstLayout(page);
   await openInstruments(page);
   await addModel(page, "opentrons flex", "Liquid handler (Opentrons Flex)");
   await addModel(page, "ur5e", "UR5e arm");
@@ -1129,6 +1146,7 @@ test("browser fixture only: a starting search the server fails says so", async (
   await page.route("**/api/twins/layout/search", (route) =>
     route.fulfill({ status: 500, json: { message: "Internal Server Error" } }),
   );
+  await refuseFirstLayout(page);
   await openInstruments(page);
   await addModel(page, "opentrons flex", "Liquid handler (Opentrons Flex)");
   await addModel(page, "ur5e", "UR5e arm");

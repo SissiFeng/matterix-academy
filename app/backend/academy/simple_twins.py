@@ -112,6 +112,10 @@ class TwinSpec(StrictModel):
     # Transfer twins: the arm profile, and joint limits its connector narrows to (degrees).
     arm: Literal["ur3e", "ur5e", "ur10e"] | None = None
     joint_limits_deg: list[float] = Field(default=[], max_length=6)
+    # Where labware goes in, and how high above the bench it then sits. Left out, it goes
+    # in from above and rests on the twin's top.
+    access: Literal["top", "front"] | None = None
+    level_m: float | None = Field(default=None, ge=0, le=2, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def consistent(self):
@@ -292,7 +296,16 @@ class Identification(StrictModel):
 
 
 def template(
-    name, operations, size, color, vessel, max_volume, slots, consumables=(), temps=(4, 120)
+    name,
+    operations,
+    size,
+    color,
+    vessel,
+    max_volume,
+    slots,
+    consumables=(),
+    temps=(4, 120),
+    access=None,
 ):
     return TwinSpec(
         name=name,
@@ -309,6 +322,7 @@ def template(
         resource=Resource(slots=slots),
         consumables=[Consumable(**c) for c in consumables],
         limits=Limits(min_temp_c=temps[0], max_temp_c=temps[1], max_duration_s=600),
+        access=access,
         assumptions="Original Academy minimum sufficient template. Dimensions are approximate. "
         "Models volume, slots, vessel, consumables, sample state and limits only; no collisions, "
         "reachability or chemistry.",
@@ -336,17 +350,30 @@ TEMPLATES = {
         1,
         temps=(20, 100),
     ),
+    # A plate reader takes its plate on a tray at the front.
     "reader": template(
-        "Plate reader", ["load", "read", "wait"], (0.45, 0.3, 0.4), "#466e7d", "plate", 300, 1
+        "Plate reader",
+        ["load", "read", "wait"],
+        (0.45, 0.3, 0.4),
+        "#466e7d",
+        "plate",
+        300,
+        1,
+        access="front",
     ),
+    # The arm stands on the bench, on its base plate.
     "transfer-arm": template(
-        "Sample transfer robot", ["transfer", "wait"], (0.16, 0.55, 0.16), "#58668a", "none", 0, 0
+        "Sample transfer robot", ["transfer", "wait"], (0.16, 0.02, 0.16), "#58668a", "none", 0, 0
     ),
 }
 
 
 class Revision(StrictModel):
     expected_version: int = Field(ge=0, strict=True)
+
+
+class LoadExample(Revision):
+    replace: bool = False  # the learner agreed to lose the instruments they have
 
 
 class CreateTwin(Revision):
@@ -472,6 +499,10 @@ class LayoutDraft(StrictModel):
 
 class SaveLayout(Revision, LayoutDraft):
     pass
+
+
+class RefineLayout(LayoutDraft):
+    text: str = Field(min_length=1, max_length=600)
 
 
 class Constraint(StrictModel):
@@ -983,6 +1014,66 @@ def drawn(twin):
     return {**twin, "asset": {**asset, "mesh": mesh}} if mesh else twin
 
 
+def timeline(trace, motions):
+    """When each workflow step runs, and where every sample and consumable then is.
+
+    A device step lasts what the mock contract gives it; a transfer lasts as long as
+    its planned arm path.
+    """
+    arm = {m["step"]: m["seconds"] for m in motions}
+    rows, clock, before = [], 0.0, 0.0
+    for entry in trace:
+        lasts = arm.get(entry["step"], entry["elapsed_s"] - before)
+        before = entry["elapsed_s"]
+        rows.append(
+            {
+                **{
+                    k: entry[k]
+                    for k in (
+                        "step",
+                        "device_id",
+                        "operation",
+                        "sample",
+                        "location",
+                        "site",
+                        "samples",
+                        "consumables",
+                    )
+                },
+                "start_s": round(clock, 1),
+                "end_s": round(clock + lasts, 1),
+            }
+        )
+        clock += lasts
+    return rows
+
+
+def loaded(twin):
+    """A library twin with where labware goes in, as its entry says today.
+
+    Twins stored before entries said so pick it up on read, with the entry's size unless
+    the learner set their own: the arm then stands on the bench, not on a pedestal.
+    """
+    from . import chemlab, simready, workcell_models
+
+    spec, asset = twin.get("spec"), twin.get("asset") or {}
+    if not spec or "access" in spec:
+        return twin
+    entries = {
+        "chemlab_asset": chemlab.CHEMLAB,
+        "workcell_asset": workcell_models.catalog(),
+        "simready_asset": simready.SIMREADY,
+    }.get(twin.get("source"), {})
+    entry = entries.get(asset.get("id"))
+    if not entry:
+        return twin
+    today = entry["spec"]
+    spec = {**spec, **{k: deepcopy(today[k]) for k in ("access", "level_m", "sites")}}
+    if not (twin.get("size_edited") or twin.get("size_checked")):
+        spec["parts"] = deepcopy(today["parts"])
+    return {**twin, "spec": spec}
+
+
 def new_twin(twin_id, source, spec, asset):
     """An unconfirmed twin, as a learner starts one from a template or a library entry."""
     return {
@@ -1053,7 +1144,7 @@ class SimpleTwinService:
         self.drafter = NovaBriefs(settings) if settings.brief_model else None
 
     def get(self, owner):
-        return self.store.get(owner, self.key) or {
+        record = self.store.get(owner, self.key) or {
             "version": 0,
             "twins": [],
             "steps": [],
@@ -1061,6 +1152,8 @@ class SimpleTwinService:
             "layout": None,
             "brief": None,
         }
+        record["twins"] = [loaded(t) for t in record["twins"]]
+        return record
 
     def catalog(self, owner):
         from .simready import SIMREADY
@@ -1079,6 +1172,8 @@ class SimpleTwinService:
             "simready": SIMREADY,
             "astra_available": self.provider.available,
             "brief_available": (self.drafter or self.provider).available,
+            # Plain-language layout changes need the workflow drafting model.
+            "refine_available": bool(self.drafter and self.drafter.available),
             "brief_model": self.drafter.name if self.drafter else "GPT-6 Astra",
             "real_available": False,
             "real_reason": REAL_REASON,
@@ -1159,6 +1254,44 @@ class SimpleTwinService:
         except PlanError as exc:
             raise HTTPException(422, {"message": str(exc), "layer": exc.layer}) from exc
 
+    def refine_layout(self, owner, data):
+        """What a plain-language request changes in a layout; nothing is saved.
+
+        The learner sees the changes on the draft layout, where they are checked like any
+        other edit, and the layout search takes the preferences from there.
+        """
+        from pydantic import ValidationError
+
+        from . import layout_refine
+
+        if not (self.drafter and self.drafter.available):
+            raise HTTPException(503, "No language model is configured on this server")
+        record = self.get(owner)
+        twins = [t for t in record["twins"] if t.get("spec")]
+        layout = self.placed(record, data)
+        if not layout:
+            raise HTTPException(422, "Place the instruments before asking for changes")
+        answer = self.drafter.ask(
+            layout_refine.prompt(data.text, twins, layout["bench"], layout["placements"]),
+            layout_refine.TOOL,
+            "The changes the learner asked for.",
+            layout_refine.schema(),
+        )
+        try:
+            changes = layout_refine.parse(answer)
+        except ValidationError as exc:
+            raise HTTPException(
+                502, f"{self.drafter.name} did not return usable changes. Rephrase and retry."
+            ) from exc
+        result = layout_refine.apply(
+            changes.model_dump()["changes"],
+            twins,
+            layout["bench"],
+            layout["placements"],
+            record.get("constraints", []),
+        )
+        return {**result, "unclear": changes.unclear, "model": self.drafter.name}
+
     def save_constraints(self, owner, data):
         record = self.current(owner, data.expected_version)
         constraints = [c.model_dump(mode="json") for c in data.constraints]
@@ -1184,15 +1317,16 @@ class SimpleTwinService:
             "motions": [],
             "error": None,
             "blocked": None,
+            "timeline": [],
             "simulation": arm_simulation.describe(NOMINAL_SPEED),
         }
         if not layout:
             return result
         twins = {t["id"]: t for t in record["twins"]}
         try:
-            if record["steps"]:
-                execute_mock(twins, record["steps"])
+            trace = execute_mock(twins, record["steps"]) if record["steps"] else []
             result["motions"] = plan_workflow(twins, layout, record["steps"], keep_frames=True)
+            result["timeline"] = timeline(trace, result["motions"])
         except MotionError as exc:
             result.update(
                 motions=exc.motions,
@@ -1726,6 +1860,28 @@ class SimpleTwinService:
             "bindings": {k: v for k, v in bindings.items() if k in keys},
         }
         self.choose(record)
+        return self.save(owner, record, data.expected_version)
+
+    def load_example(self, owner, example_id, data):
+        """Replace the workspace with an example workcell: instruments, workflow, layout."""
+        from .examples import EXAMPLES, build
+
+        record = self.current(owner, data.expected_version)
+        case = EXAMPLES.get(example_id)
+        if not case:
+            raise HTTPException(404, "Unknown example")
+        if record["twins"] and not data.replace:
+            raise HTTPException(409, "Opening an example replaces the instruments you have")
+        twins, steps, layout = build(case, uuid4)
+        record.update(
+            twins=twins,
+            steps=[Step.model_validate(s).model_dump(mode="json") for s in steps],
+            layout=layout,
+            runs=[],
+            brief=None,
+        )
+        record.pop("constraints", None)
+        self.check_plan(record, record["steps"])
         return self.save(owner, record, data.expected_version)
 
     def plan(self, owner, data):
