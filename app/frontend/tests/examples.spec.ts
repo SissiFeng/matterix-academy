@@ -109,12 +109,17 @@ test("a layout request in plain words lands on the draft for review", async ({
       },
     });
   });
-  await page.route(/\/api\/twins(\/examples\/[a-z0-9-]+)?$/, async (route) => {
+  await page.route(/\/api\/twins(\/.*)?$/, async (route) => {
+    if (route.request().url().endsWith("/layout/refine"))
+      return route.fallback();
     const response = await route.fetch();
-    const body = await response.json();
-    if (response.ok() && Array.isArray(body.twins))
-      body.refine_available = true;
-    await route.fulfill({ response, json: body });
+    const body = await response.json().catch(() => null);
+    if (!response.ok() || !Array.isArray(body?.twins))
+      return route.fulfill({ response });
+    await route.fulfill({
+      response,
+      json: { ...body, refine_available: true },
+    });
   });
   await page.goto("/");
   await page.getByPlaceholder("Your first name").fill("Ada");

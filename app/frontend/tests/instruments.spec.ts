@@ -675,7 +675,13 @@ test("layout search keeps pinned instruments and compares measured options", asy
     name: /Step 2 · Heating station → Plate reader/,
   });
   await expect(path).toContainText("cm min clearance");
+  // The button is also disabled while saving, so wait for the save itself before reloading.
+  const stored = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/twins/layout") && r.request().method() === "PUT",
+  );
   await page.getByRole("button", { name: "Save layout" }).click();
+  expect((await stored).status()).toBe(200);
   await expect(
     page.getByRole("button", { name: "Save layout" }),
   ).toBeDisabled();

@@ -4,6 +4,14 @@ import type { Constraint, Layout, Refinement } from "./instrumentTypes";
 import studio from "./InstrumentStudio.module.css";
 import s from "./LayoutPanel.module.css";
 
+/** Whether every asked-for preference is among the saved ones, which carry defaults too. */
+function saved(asked: Constraint[], kept: Constraint[]) {
+  const key = (c: Constraint) =>
+    [c.kind, c.twin_id, c.other_id ?? "", c.side ?? ""].join("|");
+  const have = new Set(kept.map(key));
+  return asked.every((c) => have.has(key(c)));
+}
+
 /** Ask for a change to the layout in plain words; the result lands on the draft. */
 export default function LayoutRefine({
   layout,
@@ -88,8 +96,7 @@ export default function LayoutRefine({
           )}
           {missed.length > 0 && <p>Not applied: {missed.join("; ")}</p>}
           {result.search &&
-            (JSON.stringify(result.constraints) ===
-            JSON.stringify(constraints) ? (
+            (saved(result.constraints, constraints) ? (
               <p>Search layouts to place the instruments this way.</p>
             ) : (
               <button
