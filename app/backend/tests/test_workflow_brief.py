@@ -475,11 +475,14 @@ def test_nova_placement_wishes_need_a_description_that_states_them(app):
 
 def test_an_instrument_that_no_longer_fits_its_role_is_not_accepted(client, app):
     catalog = drafted(client, app)
-    # A station that holds plates is bound to the robot role behind the page's back.
-    heater = catalog["brief"]["bindings"]["heater"]
+    # A station that can transfer but holds plates is bound to the robot role behind the
+    # page's back, so only the vessel tells it from an arm.
+    spec = {**TEMPLATES["heater"], "operations": ["load", "heat", "transfer", "wait"]}
+    station, catalog = add(client, catalog["version"], template_id="heater")
+    catalog = confirm(client, station, catalog["version"], spec)
     bound = client.put(
         "/api/twins/workflow/brief/bind",
-        json={"expected_version": catalog["version"], "role": "robot", "twin_id": heater},
+        json={"expected_version": catalog["version"], "role": "robot", "twin_id": station},
     ).json()
     refused = client.put(
         "/api/twins/workflow/brief/accept", json={"expected_version": bound["version"]}
@@ -487,17 +490,21 @@ def test_an_instrument_that_no_longer_fits_its_role_is_not_accepted(client, app)
     assert refused.status_code == 422
     assert "cannot play Transfer robot" in refused.json()["detail"]["message"]
     after = client.get("/api/twins").json()
-    assert after["steps"] == [] and not any(t["confirmed"] for t in after["twins"])
+    assert after["steps"] == []
+    assert [t["id"] for t in after["twins"] if t["confirmed"]] == [station]
 
 
 def test_a_station_that_can_also_transfer_is_not_taken_for_the_arm(client, app):
     spec = {**TEMPLATES["heater"], "operations": ["load", "heat", "transfer", "wait"]}
     station, catalog = add(client, 0, template_id="heater")
     catalog = confirm(client, station, catalog["version"], spec)
+    # The heater role takes one; the other is still free when the robot role is filled.
+    spare, catalog = add(client, catalog["version"], template_id="heater")
+    catalog = confirm(client, spare, catalog["version"], spec)
     app.state.twins.provider = FakeBriefs(polls=[done(DRAFT)])
     catalog = describe(client, catalog["version"]).json()
     catalog = client.post(
         "/api/twins/workflow/brief/poll", json={"expected_version": catalog["version"]}
     ).json()
-    assert catalog["brief"]["bindings"]["robot"] != station
+    assert catalog["brief"]["bindings"]["robot"] not in {station, spare}
     assert chosen(catalog, "robot")["spec"]["container"]["vessel"] == "none"

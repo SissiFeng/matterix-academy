@@ -204,13 +204,12 @@ export default function InstrumentStudio({
     setBusy(true);
     setError("");
     try {
-      accept(
-        await api<InstrumentCatalog>(
-          path,
-          json({ expected_version: version.current, ...body }, method),
-        ),
+      const next = await api<InstrumentCatalog>(
+        path,
+        json({ expected_version: version.current, ...body }, method),
       );
-      return true;
+      accept(next);
+      return next;
     } catch (e) {
       setError((e as Error).message);
       // Reconcile lost receipts by reading; never repeat a mutation automatically.
@@ -668,10 +667,14 @@ export default function InstrumentStudio({
                   }
                   onAccept={async () => {
                     // Unsaved step edits stay protected until the draft has replaced them.
-                    if (
-                      await mutate("/twins/workflow/brief/accept", {}, "PUT")
-                    ) {
+                    const next = await mutate(
+                      "/twins/workflow/brief/accept",
+                      {},
+                      "PUT",
+                    );
+                    if (next) {
                       dirty.current = false;
+                      setSteps(next.steps);
                       go("workflow");
                     }
                   }}
@@ -806,7 +809,7 @@ export default function InstrumentStudio({
                   }
                   onRemove={() => mutate(`/twins/${twin.id}`, {}, "DELETE")}
                   onResidual={(input) =>
-                    mutate(`/twins/${twin.id}/residuals`, input)
+                    mutate(`/twins/${twin.id}/residuals`, input).then(Boolean)
                   }
                   onSizeCheck={(checked) =>
                     mutate(`/twins/${twin.id}/size-check`, { checked }, "PUT")
